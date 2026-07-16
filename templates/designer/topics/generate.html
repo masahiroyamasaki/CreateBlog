@@ -1,0 +1,228 @@
+{% extends "designer/base.html" %}
+{% block title %}AI記事生成 — {{ topic.title }}{% endblock %}
+{% block page_title %}AI記事生成{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ネタキューに戻る</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.generate-wrap { max-width: 640px; }
+.topic-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
+.topic-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.topic-card .title { font-size: 17px; font-weight: 700; }
+.topic-card .outline { font-size: 13px; color: var(--muted); margin-top: 6px; white-space: pre-wrap; }
+
+.pipeline { display: flex; flex-direction: column; gap: 12px; }
+.pipe-step { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg3); transition: all .3s; }
+.pipe-step.active { border-color: var(--primary); background: rgba(99,102,241,.08); }
+.pipe-step.done   { border-color: var(--success); background: rgba(16,185,129,.06); }
+.pipe-step.error  { border-color: var(--danger);  background: rgba(239,68,68,.06); }
+
+.pipe-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; background: var(--bg4); color: var(--muted); }
+.pipe-step.active .pipe-icon { background: var(--primary); color: #fff; }
+.pipe-step.done   .pipe-icon { background: var(--success); color: #fff; }
+.pipe-step.error  .pipe-icon { background: var(--danger);  color: #fff; }
+
+.pipe-info { flex: 1; }
+.pipe-name   { font-size: 14px; font-weight: 600; }
+.pipe-status { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pipe-step.active .pipe-status { color: var(--primary); }
+.pipe-step.done   .pipe-status { color: var(--success); }
+.pipe-step.error  .pipe-status { color: var(--danger); }
+
+.pipe-spinner { width: 18px; height: 18px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-box { margin-top: 28px; text-align: center; padding: 28px; background: var(--bg3); border: 1px solid var(--success); border-radius: 12px; }
+.result-box .icon { font-size: 40px; margin-bottom: 10px; }
+.result-box .msg  { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+.error-box { margin-top: 28px; padding: 20px; background: rgba(239,68,68,.08); border: 1px solid var(--danger); border-radius: 10px; color: var(--danger); font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="generate-wrap">
+
+  <!-- トピック情報 -->
+  <div class="topic-card">
+    <div class="label">生成対象のネタ — {{ client.name }}</div>
+    <div class="title">{{ topic.title }}</div>
+    {% if topic.outline %}
+    <div class="outline">{{ topic.outline }}</div>
+    {% endif %}
+  </div>
+
+  <!-- パイプライン進捗 -->
+  <div class="pipeline" id="pipeline">
+    <div class="pipe-step" id="step-1">
+      <div class="pipe-icon">1</div>
+      <div class="pipe-info">
+        <div class="pipe-name">下書き作成</div>
+        <div class="pipe-status" id="status-1">待機中</div>
+      </div>
+    </div>
+    <div class="pipe-step" id="step-2">
+      <div class="pipe-icon">2</div>
+      <div class="pipe-info">
+        <div class="pipe-name">コンテンツチェック</div>
+        <div class="pipe-status" id="status-2">待機中</div>
+      </div>
+    </div>
+    <div class="pipe-step" id="step-3">
+      <div class="pipe-icon">3</div>
+      <div class="pipe-info">
+        <div class="pipe-name">リーガルチェック</div>
+        <div class="pipe-status" id="status-3">待機中</div>
+      </div>
+    </div>
+    <div class="pipe-step" id="step-4">
+      <div class="pipe-icon">4</div>
+      <div class="pipe-info">
+        <div class="pipe-name">最終記事生成</div>
+        <div class="pipe-status" id="status-4">待機中</div>
+      </div>
+    </div>
+    <div class="pipe-step" id="step-5">
+      <div class="pipe-icon">5</div>
+      <div class="pipe-info">
+        <div class="pipe-name">IGキャプション生成</div>
+        <div class="pipe-status" id="status-5">待機中</div>
+      </div>
+    </div>
+    <div class="pipe-step" id="step-6">
+      <div class="pipe-icon">6</div>
+      <div class="pipe-info">
+        <div class="pipe-name">保存</div>
+        <div class="pipe-status" id="status-6">待機中</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 完了 -->
+  <div class="result-box" id="result-box" style="display:none;">
+    <div class="icon">✓</div>
+    <div class="msg">記事の生成が完了しました！</div>
+    <a id="post-link" href="#" class="btn btn-primary btn-lg">投稿を編集する →</a>
+  </div>
+
+  <!-- エラー -->
+  <div class="error-box" id="error-box" style="display:none;">
+    <strong>エラーが発生しました</strong><br>
+    <span id="error-msg"></span>
+  </div>
+
+</div>
+
+<script>
+const CLIENT_ID = {{ client.id }};
+const TOPIC_ID  = {{ topic.id }};
+
+const STEP_MAP = {
+  blog_creator:    1,
+  content_checker: 2,
+  legal_checker:   3,
+  final_creator:   4,
+  ig_caption:      5,
+  saving:          6,
+  done:            6,
+};
+const STEP_LABELS = {
+  blog_creator:    '生成中（1〜2分）...',
+  content_checker: 'チェック中...',
+  legal_checker:   'チェック中...',
+  final_creator:   '生成中（1〜2分）...',
+  ig_caption:      '生成中...',
+  saving:          '保存中...',
+};
+
+let runId = null;
+let pollTimer = null;
+
+async function startGeneration() {
+  const res = await fetch(`/designer/clients/${CLIENT_ID}/topics/${TOPIC_ID}/generate`, {
+    method: 'POST',
+  });
+  const data = await res.json();
+  if (!data.success) {
+    showError(data.reason || '起動に失敗しました');
+    return;
+  }
+  runId = data.run_id;
+  setStepActive(1);
+  pollTimer = setInterval(poll, 2500);
+}
+
+async function poll() {
+  if (!runId) return;
+  try {
+    const res = await fetch(`/designer/generate-status/${runId}`);
+    const data = await res.json();
+
+    const stepNum = STEP_MAP[data.step] || 0;
+    updatePipeline(data.step, stepNum);
+
+    if (data.status === 'done') {
+      clearInterval(pollTimer);
+      finishAll();
+      showResult(data.post_id);
+    } else if (data.status === 'error') {
+      clearInterval(pollTimer);
+      showError(data.error || '不明なエラー');
+    }
+  } catch (e) {
+    // 一時的なネットワークエラーは無視して再試行
+  }
+}
+
+function updatePipeline(step, activeNum) {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('step-' + i);
+    const st = document.getElementById('status-' + i);
+    const spinner = el.querySelector('.pipe-spinner');
+
+    if (i < activeNum) {
+      el.className = 'pipe-step done';
+      st.textContent = '完了';
+      if (spinner) spinner.remove();
+    } else if (i === activeNum) {
+      el.className = 'pipe-step active';
+      st.textContent = STEP_LABELS[step] || '処理中...';
+      if (!spinner) {
+        const s = document.createElement('div');
+        s.className = 'pipe-spinner';
+        el.appendChild(s);
+      }
+    }
+  }
+}
+
+function setStepActive(num) {
+  updatePipeline(Object.keys(STEP_MAP).find(k => STEP_MAP[k] === num) || '', num);
+}
+
+function finishAll() {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('step-' + i);
+    const st = document.getElementById('status-' + i);
+    const spinner = el.querySelector('.pipe-spinner');
+    el.className = 'pipe-step done';
+    st.textContent = '完了';
+    if (spinner) spinner.remove();
+  }
+}
+
+function showResult(postId) {
+  document.getElementById('result-box').style.display = 'block';
+  document.getElementById('post-link').href = `/designer/clients/${CLIENT_ID}/posts/${postId}`;
+}
+
+function showError(msg) {
+  document.getElementById('error-box').style.display = 'block';
+  document.getElementById('error-msg').textContent = msg;
+}
+
+// ページ読み込み後に自動スタート
+window.addEventListener('load', startGeneration);
+</script>
+{% endblock %}
