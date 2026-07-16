@@ -88,6 +88,8 @@
     .toast-success { background: var(--success); color: #fff; }
     .toast-error   { background: var(--danger);  color: #fff; }
     @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
   </style>
   {% block head %}{% endblock %}
 </head>

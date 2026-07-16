@@ -53,9 +53,7 @@ _pipeline_runs = {}
 
 @app.route("/")
 def index():
-    posts = database.get_all_posts()
-    companies = {c["id"]: c["name"] for c in database.get_all_companies()}
-    return render_template("index.html", posts=posts, companies=companies)
+    return redirect("/designer/clients")
 
 
 @app.route("/create")
@@ -87,8 +85,7 @@ def delete_post(post_id):
 
 @app.route("/companies")
 def companies():
-    company_list = database.get_all_companies()
-    return render_template("companies.html", companies=company_list)
+    return redirect("/designer/clients")
 
 
 @app.route("/companies/new", methods=["GET", "POST"])

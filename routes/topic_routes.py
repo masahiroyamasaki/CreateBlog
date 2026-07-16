@@ -1,7 +1,11 @@
 """routes/topic_routes.py — 記事ネタキュー管理"""
+import json
+import re
+import anthropic
 from flask import render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
-from models import db, Client, TopicQueue
+from models import db, Client, TopicQueue, Post
+from config import Config
 from routes import designer_bp
 
 
@@ -89,6 +93,67 @@ def topic_delete(client_id: int, topic_id: int):
     db.session.commit()
     flash("削除しました", "success")
     return redirect(url_for("designer.topic_list", client_id=client_id))
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/generate", methods=["POST"])
+@login_required
+def topic_generate(client_id: int, topic_id: int):
+    """AIで記事・IGキャプションを生成してPostとして保存する"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    topic = TopicQueue.query.get_or_404(topic_id)
+    if topic.client_id != client_id:
+        abort(403)
+    if topic.status != "pending":
+        return jsonify({"success": False, "reason": "このネタはすでに生成済みです"})
+
+    try:
+        ai = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        prompt = f"""あなたはプロのブログライター兼SNSマーケターです。
+
+契約企業: {client.name}
+記事タイトル: {topic.title}
+大枠・メモ: {topic.outline or '（指定なし）'}
+
+以下のJSON形式のみで出力してください。他のテキストは一切含めないでください。
+
+{{
+  "body_html": "<article>...</article>（日本語、1200文字以上のHTML記事本文）",
+  "ig_caption": "Instagramキャプション（日本語、2200文字以内。本文の要点を魅力的にまとめる。ハッシュタグは含めない）"
+}}"""
+
+        message = ai.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = message.content[0].text
+        m = re.search(r'\{[\s\S]*\}', text)
+        if not m:
+            raise ValueError("AIの応答からJSONが見つかりませんでした")
+        content = json.loads(m.group())
+
+        post = Post(
+            client_id=client.id,
+            created_by_designer_id=current_user.id,
+            title=topic.title,
+            outline=topic.outline,
+            body_html=content.get("body_html", ""),
+            ig_caption=content.get("ig_caption", ""),
+            status="draft",
+        )
+        db.session.add(post)
+        db.session.flush()
+
+        topic.status = "generated"
+        topic.generated_post_id = post.id
+        db.session.commit()
+
+        return jsonify({"success": True, "post_id": post.id})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "reason": str(e)}), 500
 
 
 @designer_bp.route("/clients/<int:client_id>/topics/reorder", methods=["POST"])

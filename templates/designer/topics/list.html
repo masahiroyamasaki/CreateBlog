@@ -10,11 +10,16 @@
 .topic-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; cursor: grab; }
 .topic-item.dragging { opacity: .5; border-style: dashed; }
 .topic-item.drag-over { border-color: var(--primary); background: var(--bg4); }
+.topic-item.generating { opacity: .7; cursor: not-allowed; }
 .drag-handle { color: var(--muted); font-size: 18px; cursor: grab; flex-shrink: 0; padding-top: 2px; }
 .topic-title { font-weight: 600; font-size: 14px; }
 .topic-outline { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
 .edit-form { display: none; margin-top: 10px; }
 .edit-form.open { display: block; }
+.btn-generate { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; }
+.btn-generate:hover:not(:disabled) { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+.generating-label { font-size: 12px; color: var(--primary); display: none; align-items: center; gap: 6px; }
+.generating-label.show { display: flex; }
 </style>
 {% endblock %}
 
@@ -56,11 +61,17 @@
                 </div>
               </div>
             </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
-              <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
-                <button type="submit" class="btn btn-danger btn-sm">削除</button>
-              </form>
+            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end;">
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-generate btn-sm" id="gen-btn-{{ t.id }}" onclick="generatePost({{ t.id }}, '{{ t.title|e }}')">AI生成</button>
+                <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
+                <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
+                  <button type="submit" class="btn btn-danger btn-sm">削除</button>
+                </form>
+              </div>
+              <div class="generating-label" id="gen-label-{{ t.id }}">
+                <span class="spinner-sm"></span> 生成中（1〜2分）...
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -138,6 +149,45 @@ function saveOrder() {
 function toggleEdit(id) {
   const f = document.getElementById('edit-' + id);
   f.classList.toggle('open');
+}
+
+async function generatePost(topicId, title) {
+  if (!confirm(`「${title}」の記事をAIで生成しますか？\n（1〜2分かかります）`)) return;
+
+  const btn = document.getElementById('gen-btn-' + topicId);
+  const label = document.getElementById('gen-label-' + topicId);
+  const item = document.getElementById('topic-' + topicId);
+
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  label.classList.add('show');
+  item.classList.add('generating');
+
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/${topicId}/generate`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('記事を生成しました！投稿編集画面に移動します...');
+      setTimeout(() => {
+        window.location.href = `/designer/clients/${clientId}/posts/${data.post_id}`;
+      }, 1000);
+    } else {
+      showToast('エラー: ' + data.reason, 'error');
+      btn.disabled = false;
+      btn.textContent = 'AI生成';
+      label.classList.remove('show');
+      item.classList.remove('generating');
+    }
+  } catch (err) {
+    showToast('通信エラー: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'AI生成';
+    label.classList.remove('show');
+    item.classList.remove('generating');
+  }
 }
 
 async function saveEdit(id) {
