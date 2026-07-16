@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}新規作成 — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="create-page">
+  <h1 class="page-title">AI ブログ作成</h1>
+
+  {% if company %}
+  <div class="company-banner">
+    <span class="company-banner-name">{{ company.name }}</span> の記事を作成中
+    <a href="/companies/{{ company.id }}" class="company-banner-back">← 会社詳細に戻る</a>
+  </div>
+  {% endif %}
+
+  <!-- 会社コンテキスト（JS から参照） -->
+  <input type="hidden" id="company-id"         value="{{ company.id if company else '' }}">
+  <input type="hidden" id="company-tone"       value="{{ company.tone if company else '' }}">
+  <input type="hidden" id="company-word-count" value="{{ company.word_count if company else '' }}">
+  <input type="hidden" id="wp-configured"      value="{{ 'true' if company and company.wp_url and company.wp_username and company.wp_password else '' }}">
+  <input type="hidden" id="wp-status-label"    value="{{ company.wp_status if company and company.wp_status else 'draft' }}">
+  <input type="hidden" id="has-template"       value="{{ 'true' if company and company.template_file else '' }}">
+  <input type="hidden" id="mail-configured"    value="{{ 'true' if mail_configured else '' }}">
+
+  <!-- 入力フォーム -->
+  <div class="wizard-card" id="input-card">
+    <div class="card-header">
+      <h2>記事の情報を入力</h2>
+    </div>
+    <div class="card-body">
+
+      <form id="form-main">
+        <div class="form-group">
+          <label for="topic">テーマ・トピック <span class="required">*</span></label>
+          <input type="text" id="topic" placeholder="例: 生成AIが変える日本のビジネス" required>
+        </div>
+        <div class="form-group">
+          <label for="keywords">伝える内容</label>
+          <input type="text" id="keywords" placeholder="例: 業務効率化の具体的な手法、導入コスト、中小企業向けの事例">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tone">トーン</label>
+            <select id="tone">
+              <option value="標準">標準</option>
+              <option value="カジュアル">カジュアル</option>
+              <option value="フォーマル">フォーマル</option>
+              <option value="学術的">学術的</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="word_count">文字数目安</label>
+            <select id="word_count">
+              <option value="800">800文字</option>
+              <option value="1200" selected>1200文字</option>
+              <option value="2000">2000文字</option>
+              <option value="3000">3000文字</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" id="btn-generate">
+          ブログ記事を自動生成する →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- パイプライン進捗 -->
+  <div class="wizard-card hidden" id="progress-card">
+    <div class="card-header">
+      <h2 id="progress-title">エージェントが処理中...</h2>
+    </div>
+    <div class="card-body">
+      <div class="pipeline">
+        <div class="pipeline-step" id="p-1">
+          <div class="pipe-icon waiting" id="icon-1">1</div>
+          <div class="pipe-label">
+            <div class="pipe-name">下書き作成</div>
+            <div class="pipe-status" id="status-1">待機中</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-step" id="p-2">
+          <div class="pipe-icon waiting" id="icon-2">2</div>
+          <div class="pipe-label">
+            <div class="pipe-name">内容チェック</div>
+            <div class="pipe-status" id="status-2">待機中</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-step" id="p-3">
+          <div class="pipe-icon waiting" id="icon-3">3</div>
+          <div class="pipe-label">
+            <div class="pipe-name">リーガルチェック</div>
+            <div class="pipe-status" id="status-3">待機中</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-step" id="p-4">
+          <div class="pipe-icon waiting" id="icon-4">4</div>
+          <div class="pipe-label">
+            <div class="pipe-name">最終記事生成</div>
+            <div class="pipe-status" id="status-4">待機中</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 非表示のストリーミングバッファ（ステップ1〜3） -->
+      <div class="hidden" id="stream-1"></div>
+      <div class="hidden" id="stream-2"></div>
+      <div class="hidden" id="stream-3"></div>
+
+    </div>
+  </div>
+
+  <!-- 最終記事（ステップ4で表示） -->
+  <div class="wizard-card hidden" id="final-card">
+    <div class="card-header">
+      <span class="step-badge step-badge-success">完成</span>
+      <h2>生成されたブログ記事</h2>
+    </div>
+    <div class="card-body">
+      <div class="final-article-stream" id="final-stream"></div>
+      <div class="final-article-rendered hidden" id="final-rendered"></div>
+      <textarea id="final-edit" class="edit-area hidden" rows="24"></textarea>
+
+      <div class="auto-save-notice hidden" id="auto-save-notice"></div>
+
+      <div class="save-form hidden" id="save-form">
+        <h3>記事を保存</h3>
+        <div class="form-group">
+          <label for="save-title">記事タイトル</label>
+          <input type="text" id="save-title" placeholder="タイトルを入力">
+        </div>
+        <div class="form-group">
+          <label for="save-tags">タグ（カンマ区切り）</label>
+          <input type="text" id="save-tags" placeholder="例: AI, ビジネス, DX">
+        </div>
+        <div class="result-actions" id="save-actions">
+          <button class="btn btn-secondary" onclick="toggleFinalEdit()">編集する</button>
+          <button class="btn btn-success btn-lg" onclick="saveArticle()">保存して完了 ✓</button>
+        </div>
+
+        <!-- 確認メール送信セクション（保存後に表示） -->
+        <div class="review-section hidden" id="review-section">
+          <div class="review-sending hidden" id="review-sending">
+            <span class="spinner"></span> 確認メールを送信中...
+          </div>
+          <div class="review-sent hidden" id="review-sent">
+            <div class="review-sent-icon">✉</div>
+            <div class="review-sent-body">
+              <div class="review-sent-title">確認メールを送信しました</div>
+              <div class="review-sent-desc" id="review-sent-desc"></div>
+            </div>
+          </div>
+          <div class="review-error hidden" id="review-error"></div>
+          <div class="result-actions" id="review-actions" style="margin-top:14px;">
+            <button class="btn btn-secondary" onclick="skipToList()">一覧に戻る</button>
+            <!-- WP未設定 または メール未設定の場合の直接投稿ボタン -->
+            <button class="btn btn-wp btn-lg hidden" id="btn-wp-direct" onclick="postToWordPress()">
+              WordPress に直接投稿する
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

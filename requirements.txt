@@ -1,0 +1,9 @@
+flask==3.1.0
+anthropic==0.55.0
+python-dotenv==1.1.0
+markdown==3.8
+gspread==6.1.4
+flask-sqlalchemy==3.1.1
+flask-login==0.6.3
+pymysql==1.1.1
+cryptography==44.0.3

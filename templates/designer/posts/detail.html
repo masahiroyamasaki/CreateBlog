@@ -1,0 +1,286 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ post.title or '投稿詳細' }} — {{ client.name }}{% endblock %}
+{% block page_title %}投稿詳細・編集{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.post_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">← 投稿一覧</a>
+  <span class="badge badge-{{ post.status_color }}" style="font-size:13px;padding:6px 14px;">{{ post.status_label }}</span>
+{% endblock %}
+
+{% block head %}
+<style>
+.panel { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+.preview-html { background: #fff; color: #111; padding: 24px; border-radius: 8px; font-size: 14px; line-height: 1.8; max-height: 400px; overflow-y: auto; }
+.img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; cursor: grab; }
+.img-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
+.char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
+.char-count.over { color: var(--danger); }
+.tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+.tab.active { border-color: var(--primary); color: var(--text); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+
+  <!-- 左: 編集エリア -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- 本文・キャプション編集 -->
+    <div class="card">
+      <div class="card-body">
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchTab('body')">ブログ本文</div>
+          <div class="tab" onclick="switchTab('ig')">IGキャプション</div>
+        </div>
+
+        <form id="save-form" method="POST" action="{{ url_for('designer.post_save', client_id=client.id, post_id=post.id) }}">
+          <div class="form-group">
+            <label>タイトル</label>
+            <input class="form-control" type="text" name="title" id="f-title" value="{{ post.title }}">
+          </div>
+
+          <!-- 本文タブ -->
+          <div class="tab-panel active" id="tab-body">
+            <div class="tab-bar" style="margin-bottom:10px;">
+              <div class="tab active" onclick="switchBodyView('edit')">編集</div>
+              <div class="tab" onclick="switchBodyView('preview')">プレビュー</div>
+            </div>
+            <div id="body-edit-area">
+              <textarea class="form-control" name="body_html" id="f-body" rows="16" style="font-family:monospace;font-size:12px;">{{ post.body_html }}</textarea>
+            </div>
+            <div id="body-preview-area" style="display:none;">
+              <div class="preview-html" id="body-preview-content">{{ post.body_html | safe }}</div>
+            </div>
+          </div>
+
+          <!-- IG キャプション タブ -->
+          <div class="tab-panel" id="tab-ig">
+            <textarea class="form-control" name="ig_caption" id="f-ig" rows="10" oninput="updateCharCount()" placeholder="Instagram キャプション（最大2200文字）">{{ post.ig_caption }}</textarea>
+            <div class="char-count" id="char-count">0 / 2200</div>
+          </div>
+        </form>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button type="submit" form="save-form" class="btn btn-primary">変更を保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 画像管理 -->
+    <div class="card">
+      <div class="card-header">
+        <h2>投稿画像（カルーセル対応、最大10枚）</h2>
+      </div>
+      <div class="card-body">
+        <div id="image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+          {% for img in post.image_list %}
+          <div class="img-card" draggable="true" data-id="{{ img.id }}" id="img-{{ img.id }}">
+            <span style="color:var(--muted);cursor:grab;">⠿</span>
+            <img src="{{ img.image_url }}" alt="" onerror="this.style.display='none'">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.image_url }}</div>
+              <div style="font-size:11px;color:var(--muted);">順序: {{ img.sort_order }}</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteImage({{ img.id }})">削除</button>
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">画像がありません</div>
+          {% endfor %}
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <input class="form-control" type="url" id="new-image-url" placeholder="https://example.com/image.png" style="flex:1;">
+          <button class="btn btn-secondary" onclick="addImage()">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右: 投稿パネル -->
+  <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;">
+
+    <!-- 今すぐ投稿 -->
+    {% if post.status in ['draft', 'approved', 'failed'] %}
+    <div class="card">
+      <div class="card-header"><h2>今すぐ投稿</h2></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">WordPress への公開 + Instagram への投稿を即時実行します。</p>
+        <button class="btn btn-success" style="width:100%;" id="publish-btn" onclick="publishNow()">投稿する</button>
+        <div id="publish-result" style="margin-top:12px;font-size:13px;display:none;"></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 日時指定投稿 -->
+    <div class="card">
+      <div class="card-header">
+        <h2>{% if post.status == 'scheduled' %}予約変更・取り消し{% else %}日時を指定して投稿{% endif %}</h2>
+      </div>
+      <div class="card-body">
+        {% if post.status == 'scheduled' %}
+        <div class="alert alert-warning" style="margin-bottom:14px;">
+          📅 {{ post.scheduled_at.strftime('%Y/%m/%d %H:%M') }} に予約中<br>
+          <small>WordPress は予約済み。Instagram は指定日時にバッチが実行します。</small>
+        </div>
+        <form method="POST" action="{{ url_for('designer.post_schedule', client_id=client.id, post_id=post.id) }}">
+          <input type="hidden" name="action" value="cancel">
+          <button type="submit" class="btn btn-danger" style="width:100%;" onclick="return confirm('予約を取り消しますか？')">予約を取り消す</button>
+        </form>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">日時を変更して再予約:</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('designer.post_schedule', client_id=client.id, post_id=post.id) }}" id="schedule-form">
+          <input type="hidden" name="action" value="set">
+          <div class="form-group">
+            <label>投稿日時</label>
+            <input class="form-control" type="datetime-local" name="scheduled_at" id="scheduled-at"
+                   value="{{ post.scheduled_at.strftime('%Y-%m-%dT%H:%M') if post.scheduled_at else '' }}"
+                   min="{{ now_str }}">
+            <p class="hint">時刻を空欄にすると企業のデフォルト時刻（{{ client.default_post_time or '10:00' }}）を使用</p>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">
+            {% if post.status == 'scheduled' %}変更して再予約{% else %}予約する{% endif %}
+          </button>
+        </form>
+
+        {% if post.status == 'scheduled' %}</div>{% endif %}
+      </div>
+    </div>
+
+    <!-- 投稿状態 -->
+    {% if post.wp_post_url or post.ig_media_id or post.error_message %}
+    <div class="card">
+      <div class="card-header"><h2>投稿結果</h2></div>
+      <div class="card-body" style="font-size:13px;">
+        {% if post.wp_post_url %}
+        <div style="margin-bottom:8px;">WordPress: <a href="{{ post.wp_post_url }}" target="_blank" style="color:var(--primary);">記事を見る ↗</a></div>
+        {% endif %}
+        {% if post.ig_media_id %}
+        <div style="margin-bottom:8px;">Instagram: <span style="color:var(--success);">投稿済み ({{ post.ig_media_id }})</span></div>
+        {% endif %}
+        {% if post.error_message %}
+        <div class="alert alert-error" style="margin-top:8px;white-space:pre-wrap;">{{ post.error_message }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const clientId = {{ client.id }};
+const postId = {{ post.id }};
+const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
+
+// タブ切り替え
+function switchTab(tab) {
+  document.querySelectorAll('.tab-bar:first-child .tab').forEach((t,i) => t.classList.toggle('active', i === (tab === 'body' ? 0 : 1)));
+  document.getElementById('tab-body').classList.toggle('active', tab === 'body');
+  document.getElementById('tab-ig').classList.toggle('active', tab === 'ig');
+  if (tab === 'ig') updateCharCount();
+}
+
+function switchBodyView(view) {
+  document.querySelectorAll('#tab-body .tab').forEach((t,i) => t.classList.toggle('active', i === (view === 'edit' ? 0 : 1)));
+  document.getElementById('body-edit-area').style.display = view === 'edit' ? '' : 'none';
+  document.getElementById('body-preview-area').style.display = view === 'preview' ? '' : 'none';
+  if (view === 'preview') document.getElementById('body-preview-content').innerHTML = document.getElementById('f-body').value;
+}
+
+function updateCharCount() {
+  const len = document.getElementById('f-ig').value.length;
+  const el = document.getElementById('char-count');
+  el.textContent = `${len} / 2200`;
+  el.classList.toggle('over', len > 2200);
+}
+updateCharCount();
+
+// 今すぐ投稿
+async function publishNow() {
+  if (!confirm('WordPress と Instagram に今すぐ投稿しますか？')) return;
+  const btn = document.getElementById('publish-btn');
+  const resultEl = document.getElementById('publish-result');
+  btn.disabled = true;
+  btn.textContent = '投稿中...';
+  resultEl.style.display = 'none';
+
+  const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/publish`, { method: 'POST' });
+  const data = await res.json();
+  resultEl.style.display = '';
+  if (data.success) {
+    resultEl.innerHTML = `<span style="color:var(--success);">✓ 投稿完了！</span> ${data.wp_url ? `<a href="${data.wp_url}" target="_blank" style="color:var(--primary);">WordPress 記事 ↗</a>` : ''}`;
+    showToast('投稿しました！', 'success');
+    setTimeout(() => location.reload(), 2000);
+  } else {
+    resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`;
+    btn.disabled = false;
+    btn.textContent = '投稿する';
+  }
+}
+
+// 日時を空欄にした場合にデフォルト時刻を補完
+document.getElementById('schedule-form').addEventListener('submit', function(e) {
+  const input = document.getElementById('scheduled-at');
+  if (input.value && !input.value.includes('T')) {
+    input.value = input.value + 'T' + defaultPostTime;
+  }
+});
+
+// 画像管理
+async function addImage() {
+  const url = document.getElementById('new-image-url').value.trim();
+  if (!url) return;
+  const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/images/add`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `image_url=${encodeURIComponent(url)}`,
+  });
+  const data = await res.json();
+  if (data.success) { showToast('画像を追加しました'); location.reload(); }
+  else showToast(data.reason, 'error');
+}
+
+async function deleteImage(imgId) {
+  if (!confirm('この画像を削除しますか？')) return;
+  const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/images/${imgId}/delete`, { method: 'POST' });
+  if ((await res.json()).success) { showToast('削除しました'); location.reload(); }
+}
+
+// 画像カルーセル並び替え
+let imgDragSrc = null;
+document.querySelectorAll('.img-card').forEach(card => {
+  card.addEventListener('dragstart', () => { imgDragSrc = card; card.style.opacity = '.4'; });
+  card.addEventListener('dragend', () => { card.style.opacity = ''; saveImageOrder(); });
+  card.addEventListener('dragover', e => e.preventDefault());
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    if (card !== imgDragSrc) {
+      const list = document.getElementById('image-list');
+      const items = [...list.children];
+      if (items.indexOf(imgDragSrc) < items.indexOf(card)) list.insertBefore(imgDragSrc, card.nextSibling);
+      else list.insertBefore(imgDragSrc, card);
+    }
+  });
+});
+
+function saveImageOrder() {
+  const ids = [...document.querySelectorAll('.img-card')].map(el => +el.dataset.id);
+  fetch(`/designer/clients/${clientId}/posts/${postId}/images/reorder`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({order: ids}),
+  });
+}
+
+// now_str for datetime-local min
+const now = new Date();
+now.setMinutes(now.getMinutes() + 10);
+document.getElementById('scheduled-at').min = now.toISOString().slice(0,16);
+</script>
+{% endblock %}

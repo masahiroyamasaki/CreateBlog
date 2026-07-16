@@ -1,0 +1,61 @@
+{% extends "designer/base.html" %}
+{% block title %}{% if client %}設定編集{% else %}企業追加{% endif %}{% endblock %}
+{% block page_title %}{% if client %}{{ client.name }} — 設定編集{% else %}企業を追加{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <form method="POST">
+      <div class="form-group">
+        <label>企業名 *</label>
+        <input class="form-control" type="text" name="name" value="{{ client.name if client else '' }}" required placeholder="例: 株式会社サンプル">
+      </div>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">WordPress 設定</h3>
+      <div class="form-group">
+        <label>WordPress エンドポイント</label>
+        <input class="form-control" type="text" name="wp_endpoint" value="{{ client.wp_endpoint if client else '' }}" placeholder="https://example.com">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group">
+          <label>ユーザー名</label>
+          <input class="form-control" type="text" name="wp_username" value="{{ client.wp_username if client else '' }}" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>アプリケーションパスワード</label>
+          <input class="form-control" type="password" name="wp_app_password" placeholder="{% if client %}変更する場合のみ入力{% else %}xxxx xxxx xxxx{% endif %}" autocomplete="new-password">
+        </div>
+      </div>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">Instagram 設定</h3>
+      <div class="form-group">
+        <label>IG ビジネスアカウント ID（IG User ID）</label>
+        <input class="form-control" type="text" name="ig_business_account_id" value="{{ client.ig_business_account_id if client else '' }}" placeholder="17841400000000000">
+      </div>
+      <div class="form-group">
+        <label>長期アクセストークン</label>
+        <input class="form-control" type="password" name="ig_access_token" placeholder="{% if client %}変更する場合のみ入力{% else %}EAAxxxxxxx...{% endif %}">
+      </div>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">Instagram ハッシュタグ設定</h3>
+      <div class="form-group">
+        <label>固定ハッシュタグ（投稿キャプションに自動追加）</label>
+        <textarea class="form-control" name="ig_hashtags" rows="4" placeholder="#サンプル&#10;#ハッシュタグ&#10;#一行に一つ入力" style="font-size:14px;">{{ client.ig_hashtags if client else '' }}</textarea>
+        <p class="hint">1行に1つ入力してください。すべての投稿のキャプション末尾に自動で追加されます。</p>
+      </div>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">スケジュール設定</h3>
+      <div class="form-group" style="max-width:200px;">
+        <label>デフォルト投稿時刻</label>
+        <input class="form-control" type="time" name="default_post_time" value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
+        <p class="hint">日付だけ選んで予約するときのデフォルト時刻</p>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:28px;">
+        <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
+        <button type="submit" class="btn btn-primary">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

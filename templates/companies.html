@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}会社一覧 — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <h1>会社一覧</h1>
+  <a href="/companies/new" class="btn btn-primary">+ 会社を追加</a>
+</section>
+
+{% if companies %}
+<div class="data-table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>会社名</th>
+        <th>スケジュール</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set day_labels = {'1':'月','2':'火','3':'水','4':'木','5':'金','6':'土','7':'日'} %}
+      {% for c in companies %}
+      <tr>
+        <td class="td-name">
+          <a href="/companies/{{ c.id }}">{{ c.name }}</a>
+        </td>
+        <td>
+          {% if c.schedule_enabled and c.schedule_days %}
+            {% set days = c.schedule_days.split(',') %}
+            <span class="schedule-days">
+              {% for d in days %}{% if d in day_labels %}{{ day_labels[d] }}{% endif %}{% endfor %}
+            </span>
+            <span class="schedule-time">{{ c.schedule_time }}</span>
+          {% elif c.schedule_enabled %}
+            <span class="text-muted">曜日未選択</span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge {% if c.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+            {% if c.is_active %}有効{% else %}無効{% endif %}
+          </span>
+        </td>
+        <td class="td-actions">
+          <a href="/create?company_id={{ c.id }}" class="btn btn-sm btn-post">記事作成</a>
+          <a href="/companies/{{ c.id }}" class="btn btn-sm">詳細</a>
+          <a href="/companies/{{ c.id }}/edit" class="btn btn-sm">編集</a>
+          <button class="btn btn-sm btn-danger" onclick="deleteCompany({{ c.id }}, this)">削除</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>会社が登録されていません。</p>
+  <a href="/companies/new" class="btn btn-primary">最初の会社を追加する</a>
+</div>
+{% endif %}
+
+<script>
+async function deleteCompany(id, btn) {
+  if (!confirm('この会社を削除しますか？関連する記事は残ります。')) return;
+  const res = await fetch(`/companies/${id}/delete`, { method: 'POST' });
+  if ((await res.json()).success) btn.closest('tr').remove();
+}
+</script>
+{% endblock %}

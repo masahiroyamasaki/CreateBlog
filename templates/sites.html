@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}サイト一覧 — {{ company.name }} — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/companies/{{ company.id }}" class="btn btn-secondary">← 会社詳細</a>
+      <h1>{{ company.name }} のサイト一覧</h1>
+    </div>
+    <a href="/companies/{{ company.id }}/sites/new" class="btn btn-primary">+ サイトを追加</a>
+  </div>
+
+  <div class="wizard-card">
+    <div class="card-header"><h2>登録サイト</h2></div>
+    <div class="card-body" style="padding:0;">
+      {% if sites %}
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>サイト名</th>
+              <th>タイプ</th>
+              <th>テンプレート</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="sites-tbody">
+            {% for site in sites %}
+            <tr id="site-row-{{ site.id }}">
+              <td class="td-name">
+                <span style="font-weight:600;color:var(--text);">{{ site.name }}</span>
+              </td>
+              <td>
+                {% if site.site_type == 'wordpress' %}
+                  <span class="badge badge-wp">WordPress</span>
+                {% elif site.site_type == 'api_cms' %}
+                  <span class="badge badge-api">API・CMS</span>
+                {% elif site.site_type == 'static' %}
+                  <span class="badge badge-static">静的サイト</span>
+                {% else %}
+                  <span class="badge badge-inactive">{{ site.site_type }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if site.template_file %}
+                  <span style="color:var(--success);font-size:13px;">✓ あり</span>
+                {% else %}
+                  <span class="text-muted">なし</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if site.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+                  {% if site.is_active %}有効{% else %}無効{% endif %}
+                </span>
+              </td>
+              <td>
+                <div class="td-actions">
+                  <a href="/sites/{{ site.id }}/edit" class="btn btn-sm">編集</a>
+                  <button class="btn btn-sm btn-danger"
+                          onclick="deleteSite({{ site.id }}, '{{ site.name|e }}')">
+                    削除
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:60px 0;">
+        <p>まだサイトが登録されていません。</p>
+        <a href="/companies/{{ company.id }}/sites/new" class="btn btn-primary">
+          + 最初のサイトを追加
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+async function deleteSite(id, name) {
+  if (!confirm(`「${name}」を削除しますか？この操作は取り消せません。`)) return;
+
+  try {
+    const res = await fetch(`/sites/${id}/delete`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const row = document.getElementById('site-row-' + id);
+      if (row) {
+        row.style.opacity = '0';
+        row.style.transition = 'opacity 0.3s';
+        setTimeout(() => row.remove(), 300);
+      }
+    } else {
+      alert('削除に失敗しました: ' + (data.reason || '不明なエラー'));
+    }
+  } catch (e) {
+    alert('通信エラーが発生しました');
+  }
+}
+</script>
+{% endblock %}

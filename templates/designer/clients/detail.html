@@ -1,0 +1,71 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block page_title %}{{ client.name }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.client_edit', client_id=client.id) }}" class="btn btn-secondary btn-sm">設定編集</a>
+  <a href="{{ url_for('designer.post_list', client_id=client.id) }}" class="btn btn-primary btn-sm">投稿一覧</a>
+{% endblock %}
+
+{% block content %}
+<!-- ネタキュー状態 -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+  <div class="card">
+    <div class="card-body" style="text-align:center;">
+      <div style="font-size:28px;font-weight:800;color:{% if pending_count < 5 %}var(--warning){% else %}var(--success){% endif %}">{{ pending_count }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">記事ネタ（未生成）</div>
+      {% if pending_count < 5 %}
+      <div style="font-size:11px;color:var(--warning);margin-top:4px;">⚠️ ネタが少なくなっています</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body" style="text-align:center;">
+      <div style="font-size:28px;font-weight:800;color:var(--primary)">{{ posts|selectattr('status','eq','draft')|list|length }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">下書き</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body" style="text-align:center;">
+      <div style="font-size:28px;font-weight:800;color:var(--success)">{{ posts|selectattr('status','eq','posted')|list|length }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">投稿済み</div>
+    </div>
+  </div>
+</div>
+
+<!-- 最近の投稿 -->
+<div class="card">
+  <div class="card-header">
+    <h2>最近の投稿</h2>
+    <div style="display:flex;gap:8px;">
+      <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">💡 記事ネタ管理</a>
+      <a href="{{ url_for('designer.post_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">すべて見る →</a>
+    </div>
+  </div>
+  <div class="card-body" style="padding:0;">
+    {% if posts %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>タイトル</th>
+          <th>ステータス</th>
+          <th>作成日</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in posts %}
+        <tr>
+          <td style="font-weight:600;">{{ p.title or '（タイトルなし）' }}</td>
+          <td><span class="badge badge-{{ p.status_color }}">{{ p.status_label }}</span></td>
+          <td style="color:var(--muted);font-size:12px;">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
+          <td><a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">詳細</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">まだ投稿がありません</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

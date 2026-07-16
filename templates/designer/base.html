@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}管理画面{% endblock %} — デザイナー</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --bg2: #1a1d23; --bg3: #252830; --bg4: #2e3240;
+      --border: #2e323a; --text: #e2e8f0; --muted: #94a3b8;
+      --primary: #6366f1; --primary-h: #4f52c9;
+      --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6;
+      --sidebar-w: 220px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; }
+
+    /* ── サイドバー ── */
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; }
+    .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo h2 { font-size: 14px; font-weight: 700; color: var(--primary); }
+    .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .sidebar-nav { flex: 1; padding: 12px 0; }
+    .nav-section { padding: 8px 14px 4px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px; color: var(--muted); text-decoration: none; border-radius: 6px; margin: 1px 6px; transition: all .15s; }
+    .nav-link:hover, .nav-link.active { background: var(--bg3); color: var(--text); }
+    .nav-link.active { color: var(--primary); }
+    .sidebar-user { padding: 14px; border-top: 1px solid var(--border); }
+    .sidebar-user .name { font-size: 13px; font-weight: 600; }
+    .sidebar-user .role { font-size: 11px; color: var(--muted); }
+    .logout-btn { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); text-decoration: none; }
+    .logout-btn:hover { color: var(--danger); }
+
+    /* ── メインコンテンツ ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+    .topbar { height: 56px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; background: var(--bg2); position: sticky; top: 0; z-index: 10; }
+    .topbar h1 { font-size: 16px; font-weight: 700; }
+    .topbar .spacer { flex: 1; }
+    .content { padding: 24px; }
+
+    /* ── 汎用コンポーネント ── */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: 14px; font-weight: 700; }
+    .card-body { padding: 20px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all .15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-h); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg4); }
+    .btn-danger { background: #ef444420; color: var(--danger); border: 1px solid #ef4444; }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-success { background: #10b98120; color: var(--success); border: 1px solid var(--success); }
+    .btn-success:hover { background: var(--success); color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-gray    { background: #94a3b820; color: var(--muted); }
+    .badge-blue    { background: #3b82f620; color: #60a5fa; }
+    .badge-orange  { background: #f59e0b20; color: #fbbf24; }
+    .badge-green   { background: #10b98120; color: #34d399; }
+    .badge-red     { background: #ef444420; color: #f87171; }
+
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+    .alert-success { background: #10b98115; border: 1px solid #10b981; color: #34d399; }
+    .alert-error   { background: #ef444415; border: 1px solid #ef4444; color: #f87171; }
+    .alert-warning { background: #f59e0b15; border: 1px solid #f59e0b; color: #fbbf24; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .form-control { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 13px; outline: none; }
+    .form-control:focus { border-color: var(--primary); }
+    textarea.form-control { resize: vertical; min-height: 100px; }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th { padding: 10px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    .table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .table tr:last-child td { border-bottom: none; }
+    .table tr:hover td { background: var(--bg3); }
+
+    .empty { text-align: center; padding: 48px; color: var(--muted); }
+
+    /* ── トースト通知 ── */
+    .toast-wrap { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; animation: slideIn .2s ease; box-shadow: 0 4px 20px #0008; min-width: 240px; }
+    .toast-success { background: var(--success); color: #fff; }
+    .toast-error   { background: var(--danger);  color: #fff; }
+    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- サイドバー -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h2>Designer Hub</h2>
+      <p>コンテンツ管理システム</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">メニュー</div>
+      <a href="{{ url_for('designer.clients') }}" class="nav-link {% if request.endpoint == 'designer.clients' %}active{% endif %}">
+        🏢 企業一覧
+      </a>
+      {% if client is defined and client %}
+      <div class="nav-section" style="margin-top:8px;">{{ client.name }}</div>
+      <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.client_detail' %}active{% endif %}">
+        📊 ダッシュボード
+      </a>
+      <a href="{{ url_for('designer.post_list', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.post_list' %}active{% endif %}">
+        📝 投稿一覧
+      </a>
+      <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.topic_list' %}active{% endif %}">
+        💡 記事ネタ
+      </a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-user">
+      <div class="name">{{ current_user.name }}</div>
+      <div class="role">{% if current_user.role == 'admin' %}管理者{% else %}デザイナー{% endif %}</div>
+      <a href="{{ url_for('designer.logout') }}" class="logout-btn">ログアウト →</a>
+    </div>
+  </aside>
+
+  <!-- メイン -->
+  <div class="main">
+    <div class="topbar">
+      <h1>{% block page_title %}{% endblock %}</h1>
+      <div class="spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+    </div>
+    <div class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ 'success' if cat == 'success' else 'error' if cat == 'error' else 'warning' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+  <script>
+  function showToast(msg, type='success') {
+    const w = document.getElementById('toast-wrap');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    w.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

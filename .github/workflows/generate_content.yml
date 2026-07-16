@@ -1,0 +1,46 @@
+name: Generate Blog Content
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 毎日 JST 10:00 (UTC 01:00)
+  workflow_dispatch:
+    inputs:
+      client_id:
+        description: 'クライアント ID（省略で全社）'
+        required: false
+      limit:
+        description: '生成件数'
+        required: false
+        default: '3'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run generate batch
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          GCP_SERVICE_ACCOUNT_FILE: gcp_service_account.json
+        run: |
+          CLIENT_ARG=""
+          LIMIT_ARG="--limit=${{ github.event.inputs.limit || '3' }}"
+          if [ -n "${{ github.event.inputs.client_id }}" ]; then
+            CLIENT_ARG="--client-id=${{ github.event.inputs.client_id }}"
+          fi
+          python -m batch.generate_content $CLIENT_ARG $LIMIT_ARG

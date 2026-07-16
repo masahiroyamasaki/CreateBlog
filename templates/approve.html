@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}記事の確認・承認 — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="approve-page">
+
+  {% if error %}
+  <!-- エラー表示 -->
+  <div class="approve-error-card">
+    <div class="approve-error-icon">⚠</div>
+    <h2>リンクが無効です</h2>
+    <p>{{ error }}</p>
+    <a href="/companies" class="btn btn-secondary">会社一覧に戻る</a>
+  </div>
+
+  {% elif post.wp_posted %}
+  <!-- 投稿済み -->
+  <div class="approve-done-card">
+    <div class="approve-done-icon">✓</div>
+    <h2>この記事はすでに投稿済みです</h2>
+    <p class="text-muted">タイトル: {{ post.title }}</p>
+    {% if post.wp_posted_url %}
+    <a href="{{ post.wp_posted_url }}" target="_blank" class="btn btn-primary" style="margin-top:16px;">
+      WordPress の記事を確認する ↗
+    </a>
+    {% endif %}
+    <a href="/companies" class="btn btn-secondary" style="margin-top:12px;">会社一覧に戻る</a>
+  </div>
+
+  {% else %}
+  <!-- 承認フォーム -->
+  <div class="approve-header">
+    <h1>記事の確認・承認</h1>
+    {% if company %}
+    <span class="approve-company">{{ company.name }}</span>
+    {% endif %}
+  </div>
+
+  <!-- 投稿情報 -->
+  <div class="wizard-card">
+    <div class="card-header">
+      <h2>投稿情報</h2>
+    </div>
+    <div class="card-body">
+      <dl class="info-list">
+        <dt>記事タイトル</dt>
+        <dd><strong>{{ post.title }}</strong></dd>
+        {% if company %}
+        <dt>投稿先サイト</dt>
+        <dd>
+          {% if company.blog_url %}
+            <a href="{{ company.blog_url }}" target="_blank">{{ company.blog_url }} ↗</a>
+          {% else %}
+            {{ company.wp_url }}
+          {% endif %}
+        </dd>
+        <dt>投稿ステータス</dt>
+        <dd>
+          {% if company.wp_status == 'publish' %}
+            <span class="badge badge-active">即時公開</span>
+          {% else %}
+            <span class="badge" style="background:rgba(99,102,241,.15);color:#6366f1;border:1px solid rgba(99,102,241,.3);">下書き保存</span>
+          {% endif %}
+        </dd>
+        {% endif %}
+        <dt>作成日時</dt>
+        <dd class="text-muted">{{ post.created_at[:16].replace('T', ' ') }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- 記事本文 -->
+  <div class="wizard-card">
+    <div class="card-header">
+      <h2>記事本文</h2>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">
+        約 {{ post.content | length }} 文字
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="article-preview" id="article-preview">{{ post.content }}</div>
+    </div>
+  </div>
+
+  <!-- 承認ボタン -->
+  <div class="approve-actions" id="approve-actions">
+    <div class="approve-confirm-box">
+      <p class="approve-confirm-text">
+        上記の内容を確認し、WordPress に投稿する場合は以下のボタンを押してください。
+      </p>
+      <div class="approve-btn-group">
+        <a href="/companies{% if company %}/{{ company.id }}{% endif %}"
+           class="btn btn-secondary btn-lg">キャンセル</a>
+        <button class="btn btn-approve btn-lg" id="btn-approve" onclick="approvePost()">
+          この内容でWordPressに投稿する
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結果表示 -->
+  <div class="approve-result hidden" id="approve-result"></div>
+
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// Markdown をレンダリング
+const previewEl = document.getElementById('article-preview');
+if (previewEl) {
+  previewEl.innerHTML = marked.parse(previewEl.textContent);
+  previewEl.classList.add('rendered');
+}
+
+async function approvePost() {
+  const btn    = document.getElementById('btn-approve');
+  const result = document.getElementById('approve-result');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>投稿中...';
+
+  const res  = await fetch('/api/wp-approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: '{{ token }}' }),
+  });
+  const data = await res.json();
+
+  document.getElementById('approve-actions').classList.add('hidden');
+  result.classList.remove('hidden');
+
+  if (data.success) {
+    const label = data.status === 'publish' ? '公開' : '下書きで保存';
+    result.className = 'approve-result approve-result-success';
+    result.innerHTML = `
+      <div class="approve-success-icon">✓</div>
+      <h2>WordPress に${label}しました</h2>
+      ${data.link ? `<a href="${data.link}" target="_blank" class="btn btn-primary" style="margin-top:16px;">記事を確認する ↗</a>` : ''}
+      <a href="/companies" class="btn btn-secondary" style="margin-top:10px;">会社一覧に戻る</a>
+    `;
+  } else {
+    result.className = 'approve-result approve-result-error';
+    result.innerHTML = `
+      <div class="approve-error-icon">⚠</div>
+      <h2>投稿に失敗しました</h2>
+      <p>${data.reason}</p>
+      <button class="btn btn-secondary" onclick="location.reload()">再試行</button>
+    `;
+  }
+}
+</script>
+{% endblock %}

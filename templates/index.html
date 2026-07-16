@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}記事一覧 — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <h1>記事一覧</h1>
+  <a href="/create" class="btn btn-primary">+ 新規作成</a>
+</section>
+
+{% if posts %}
+<div class="post-grid">
+  {% for post in posts %}
+  <article class="post-card">
+    <div class="post-card-body">
+      <h2 class="post-card-title">
+        <a href="/view/{{ post.id }}">{{ post.title }}</a>
+      </h2>
+      {% if post.tags %}
+      <div class="post-tags">
+        {% for tag in post.tags.split(',') %}
+        <span class="tag">{{ tag.strip() }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <p class="post-date">{{ post.created_at[:10] }}</p>
+    </div>
+    <div class="post-card-actions">
+      <a href="/view/{{ post.id }}" class="btn btn-sm">詳細を見る</a>
+      <button class="btn btn-sm btn-danger" onclick="deletePost({{ post.id }}, this)">削除</button>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <p>まだ記事がありません。</p>
+  <a href="/create" class="btn btn-primary">最初の記事を作成する</a>
+</div>
+{% endif %}
+
+<script>
+async function deletePost(id, btn) {
+  if (!confirm('この記事を削除しますか？')) return;
+  const res = await fetch(`/delete/${id}`, { method: 'POST' });
+  if ((await res.json()).success) {
+    btn.closest('.post-card').remove();
+  }
+}
+</script>
+{% endblock %}

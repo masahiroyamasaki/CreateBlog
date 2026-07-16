@@ -1,0 +1,159 @@
+{% extends "designer/base.html" %}
+{% block title %}記事ネタ管理 — {{ client.name }}{% endblock %}
+{% block page_title %}記事ネタキュー{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ダッシュボード</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.topic-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; cursor: grab; }
+.topic-item.dragging { opacity: .5; border-style: dashed; }
+.topic-item.drag-over { border-color: var(--primary); background: var(--bg4); }
+.drag-handle { color: var(--muted); font-size: 18px; cursor: grab; flex-shrink: 0; padding-top: 2px; }
+.topic-title { font-weight: 600; font-size: 14px; }
+.topic-outline { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
+.edit-form { display: none; margin-top: 10px; }
+.edit-form.open { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if pending_count < 5 %}
+<div class="alert alert-warning">⚠️ 記事ネタが {{ pending_count }} 件しかありません。自動補充バッチが週1回実行されますが、不足している場合は下記から手動追加してください。</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+
+  <!-- ネタ一覧 -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2>未生成のネタ（{{ pending_count }} 件）</h2>
+        <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
+      </div>
+      <div class="card-body" style="padding:12px;">
+        <div id="topic-list" style="display:flex;flex-direction:column;gap:8px;">
+          {% if topics %}
+          {% for t in topics %}
+          <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
+            <span class="drag-handle">⠿</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="topic-title">{{ t.title }}</span>
+                <span style="font-size:10px;color:var(--muted);">#{{ t.sort_order }}</span>
+                {% if t.created_by == 'ai_auto' %}<span class="badge badge-blue" style="font-size:10px;">AI生成</span>{% endif %}
+              </div>
+              {% if t.outline %}
+              <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
+              {% endif %}
+              <div class="edit-form" id="edit-{{ t.id }}">
+                <input class="form-control" style="margin-bottom:6px;" type="text" id="edit-title-{{ t.id }}" value="{{ t.title }}">
+                <textarea class="form-control" id="edit-outline-{{ t.id }}" rows="3">{{ t.outline }}</textarea>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <button class="btn btn-primary btn-sm" onclick="saveEdit({{ t.id }})">保存</button>
+                  <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">キャンセル</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
+              <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
+                <button type="submit" class="btn btn-danger btn-sm">削除</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="empty">ネタがありません。右のフォームから追加してください。</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 追加フォーム -->
+  <div class="card" style="position:sticky;top:76px;">
+    <div class="card-header"><h2>新規追加</h2></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('designer.topic_add', client_id=client.id) }}">
+        <div class="form-group">
+          <label>タイトル *</label>
+          <input class="form-control" type="text" name="title" required placeholder="例: WordPressの始め方 完全ガイド">
+        </div>
+        <div class="form-group">
+          <label>大枠・メモ</label>
+          <textarea class="form-control" name="outline" rows="4" placeholder="記事の方向性やキーポイントをメモ..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">追加する</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const clientId = {{ client.id }};
+let dragSrc = null;
+
+document.querySelectorAll('.topic-item').forEach(item => {
+  item.addEventListener('dragstart', e => {
+    dragSrc = item;
+    item.classList.add('dragging');
+  });
+  item.addEventListener('dragend', () => {
+    item.classList.remove('dragging');
+    item.classList.remove('drag-over');
+    saveOrder();
+  });
+  item.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (item !== dragSrc) item.classList.add('drag-over');
+  });
+  item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+  item.addEventListener('drop', e => {
+    e.preventDefault();
+    item.classList.remove('drag-over');
+    if (item !== dragSrc) {
+      const list = document.getElementById('topic-list');
+      const items = [...list.children];
+      const srcIdx = items.indexOf(dragSrc);
+      const tgtIdx = items.indexOf(item);
+      if (srcIdx < tgtIdx) list.insertBefore(dragSrc, item.nextSibling);
+      else list.insertBefore(dragSrc, item);
+    }
+  });
+});
+
+function saveOrder() {
+  const ids = [...document.querySelectorAll('.topic-item')].map(el => +el.dataset.id);
+  fetch(`/designer/clients/${clientId}/topics/reorder`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({order: ids}),
+  });
+}
+
+function toggleEdit(id) {
+  const f = document.getElementById('edit-' + id);
+  f.classList.toggle('open');
+}
+
+async function saveEdit(id) {
+  const title = document.getElementById('edit-title-' + id).value;
+  const outline = document.getElementById('edit-outline-' + id).value;
+  const res = await fetch(`/designer/clients/${clientId}/topics/${id}/edit`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `title=${encodeURIComponent(title)}&outline=${encodeURIComponent(outline)}`,
+  });
+  if ((await res.json()).success) {
+    document.querySelector(`#topic-${id} .topic-title`).textContent = title;
+    document.querySelector(`#topic-${id} .topic-outline`).textContent = outline.slice(0, 120) + (outline.length > 120 ? '...' : '');
+    toggleEdit(id);
+    showToast('保存しました');
+  }
+}
+</script>
+{% endblock %}

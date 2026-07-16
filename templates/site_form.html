@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}{% if site %}サイト編集{% else %}サイト追加{% endif %} — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/companies/{{ company_id }}" class="btn btn-secondary">← 会社詳細</a>
+      <h1>{% if site %}サイトを編集{% else %}サイトを追加{% endif %}</h1>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data">
+    <!-- 基本情報 -->
+    <div class="wizard-card">
+      <div class="card-header"><h2>基本情報</h2></div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="name">サイト名 <span class="required">*</span></label>
+          <input type="text" id="name" name="name" required
+                 value="{{ site.name if site else '' }}"
+                 placeholder="例: 公式ブログ">
+        </div>
+
+        <div class="form-group">
+          <label for="site_type">サイトタイプ <span class="required">*</span></label>
+          <select id="site_type" name="site_type" onchange="switchSiteType(this.value)">
+            <option value="wordpress" {% if not site or site.site_type == 'wordpress' %}selected{% endif %}>WordPress</option>
+            <option value="api_cms"   {% if site and site.site_type == 'api_cms' %}selected{% endif %}>API・CMS</option>
+            <option value="static"    {% if site and site.site_type == 'static' %}selected{% endif %}>静的サイト</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="toggle-label">
+            <input type="checkbox" name="is_active" value="1"
+                   {% if not site or site.is_active %}checked{% endif %}>
+            <span class="toggle-text">有効（このサイトをパイプラインで使用する）</span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- WordPress設定 -->
+    <div class="wizard-card site-section" id="section-wordpress">
+      <div class="card-header"><h2>WordPress 設定</h2></div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="wp_url">WordPress URL <span class="required">*</span></label>
+          <input type="text" id="wp_url" name="wp_url"
+                 value="{{ site.wp_url if site else '' }}"
+                 placeholder="https://example.com">
+          <p class="field-hint">WordPressサイトのベースURLを入力してください</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="wp_username">ユーザー名 <span class="required">*</span></label>
+            <input type="text" id="wp_username" name="wp_username"
+                   value="{{ site.wp_username if site else '' }}"
+                   placeholder="admin">
+          </div>
+          <div class="form-group">
+            <label for="wp_password">アプリケーションパスワード <span class="required">*</span></label>
+            <input type="password" id="wp_password" name="wp_password"
+                   value="{{ site.wp_password if site else '' }}"
+                   placeholder="xxxx xxxx xxxx xxxx xxxx xxxx">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>投稿ステータス</label>
+          <div style="display:flex;gap:24px;margin-top:8px;">
+            <label class="toggle-label">
+              <input type="radio" name="wp_status" value="draft"
+                     {% if not site or site.wp_status == 'draft' %}checked{% endif %}>
+              <span class="toggle-text">下書き（draft）</span>
+            </label>
+            <label class="toggle-label">
+              <input type="radio" name="wp_status" value="publish"
+                     {% if site and site.wp_status == 'publish' %}checked{% endif %}>
+              <span class="toggle-text">即時公開（publish）</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- API/CMS設定 -->
+    <div class="wizard-card site-section" id="section-api_cms" style="display:none;">
+      <div class="card-header"><h2>API・CMS 設定</h2></div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="api_endpoint">APIエンドポイント <span class="required">*</span></label>
+          <input type="text" id="api_endpoint" name="api_endpoint"
+                 value="{{ site.api_endpoint if site else '' }}"
+                 placeholder="https://api.example.com/posts">
+        </div>
+
+        <div class="form-group">
+          <label for="api_key">APIキー（Bearer認証）</label>
+          <input type="text" id="api_key" name="api_key"
+                 value="{{ site.api_key if site else '' }}"
+                 placeholder="your-api-key-here">
+          <p class="field-hint">Authorization: Bearer &lt;APIキー&gt; として送信されます</p>
+        </div>
+
+        <div class="form-group">
+          <label for="api_headers">追加ヘッダー（JSON形式）</label>
+          <textarea id="api_headers" name="api_headers" rows="4"
+                    placeholder='{"X-Custom-Header": "value"}'
+                    style="font-family:monospace;">{{ site.api_headers if site else '' }}</textarea>
+          <p class="field-hint">JSON形式で追加のHTTPヘッダーを指定できます</p>
+        </div>
+
+        <div class="form-group">
+          <label for="api_body_template">リクエストボディテンプレート（JSON形式）</label>
+          <textarea id="api_body_template" name="api_body_template" rows="6"
+                    placeholder='{"title": "{{title}}", "content": "{{content}}", "status": "published"}'
+                    style="font-family:monospace;">{{ site.api_body_template if site else '' }}</textarea>
+          <p class="field-hint"><code>{{title}}</code> と <code>{{content}}</code> が記事のタイトル・本文に置換されます</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 静的サイト設定 -->
+    <div class="wizard-card site-section" id="section-static" style="display:none;">
+      <div class="card-header"><h2>静的サイト 設定</h2></div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="output_dir">出力ディレクトリ <span class="required">*</span></label>
+          <input type="text" id="output_dir" name="output_dir"
+                 value="{{ site.output_dir if site else '' }}"
+                 placeholder="/var/www/html/posts">
+          <p class="field-hint">生成されたHTMLファイルを保存するディレクトリのパス</p>
+        </div>
+
+        <div class="form-group">
+          <label for="output_extension">出力ファイル拡張子</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select id="output_extension_select" onchange="syncExtension(this.value)"
+                    style="width:auto;min-width:140px;">
+              <option value=".html"   {% if not site or (site.output_extension or '.html') == '.html' %}selected{% endif %}>.html</option>
+              <option value=".md"     {% if site and site.output_extension == '.md' %}selected{% endif %}>.md（Markdown）</option>
+              <option value=".mdx"    {% if site and site.output_extension == '.mdx' %}selected{% endif %}>.mdx（MDX）</option>
+              <option value=".tsx"    {% if site and site.output_extension == '.tsx' %}selected{% endif %}>.tsx（React）</option>
+              <option value=".jsx"    {% if site and site.output_extension == '.jsx' %}selected{% endif %}>.jsx（React）</option>
+              <option value=".vue"    {% if site and site.output_extension == '.vue' %}selected{% endif %}>.vue（Vue）</option>
+              <option value=".astro"  {% if site and site.output_extension == '.astro' %}selected{% endif %}>.astro（Astro）</option>
+              <option value=".svelte" {% if site and site.output_extension == '.svelte' %}selected{% endif %}>.svelte（Svelte）</option>
+              <option value="custom"  {% if site and site.output_extension and site.output_extension not in ['.html','.md','.mdx','.tsx','.jsx','.vue','.astro','.svelte'] %}selected{% endif %}>カスタム</option>
+            </select>
+            <input type="text" id="output_extension" name="output_extension"
+                   value="{{ site.output_extension if site and site.output_extension else '.html' }}"
+                   placeholder=".html" style="width:120px;">
+          </div>
+          <p class="field-hint">拡張子に応じてファイル内容が自動フォーマットされます（例: .tsx → Reactコンポーネント、.md → Markdownフロントマター付き）</p>
+        </div>
+
+        <div class="form-group">
+          <label for="deploy_command">デプロイコマンド</label>
+          <input type="text" id="deploy_command" name="deploy_command"
+                 value="{{ site.deploy_command if site else '' }}"
+                 placeholder="git add -A && git commit -m 'new post' && git push">
+          <p class="field-hint">ファイル生成後に実行するシェルコマンド（省略可）</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- テンプレートファイル -->
+    <div class="wizard-card">
+      <div class="card-header"><h2>テンプレートファイル（オプション）</h2></div>
+      <div class="card-body">
+
+        {% if site and site.template_file %}
+        <div class="template-status template-set" style="margin-bottom:16px;">
+          <span class="template-icon">✓</span>
+          <div>
+            <div class="template-name">テンプレート登録済み</div>
+            <div class="template-hint">記事生成時にこのテンプレートが適用されます。</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label for="template_file_upload">HTMLテンプレートファイル</label>
+          <input type="file" id="template_file_upload" name="template_file"
+                 accept=".html,.htm"
+                 style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                        padding:10px 14px;color:var(--text);width:100%;cursor:pointer;">
+          <p class="field-hint">
+            HTMLファイル内の <code>{{content}}</code> に記事本文が挿入されます。
+            {% if site and site.template_file %}新しいファイルを選択すると差し替えられます。{% endif %}
+          </p>
+        </div>
+
+        <div class="template-guide">
+          <h4>テンプレートの書き方</h4>
+          <p>HTML ファイル内の記事を挿入したい場所に <code>&#123;&#123;content&#125;&#125;</code> を記述してください。</p>
+          <pre class="template-example">&lt;div class="article-wrapper"&gt;
+  &lt;style&gt;
+    .article-wrapper h2 &#123; color: #333; &#125;
+    .article-wrapper p  &#123; line-height: 1.9; &#125;
+  &lt;/style&gt;
+  &#123;&#123;content&#125;&#125;
+&lt;/div&gt;</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- アクション -->
+    <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:40px;">
+      <a href="/companies/{{ company_id }}" class="btn btn-secondary btn-lg">キャンセル</a>
+      <button type="submit" class="btn btn-primary btn-lg">保存する</button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+const SECTIONS = ['wordpress', 'api_cms', 'static'];
+
+function switchSiteType(type) {
+  SECTIONS.forEach(s => {
+    const el = document.getElementById('section-' + s);
+    if (el) el.style.display = (s === type) ? '' : 'none';
+  });
+}
+
+function syncExtension(selected) {
+  const input = document.getElementById('output_extension');
+  if (!input) return;
+  if (selected === 'custom') {
+    input.focus();
+  } else {
+    input.value = selected;
+  }
+}
+
+// 初期表示
+(function() {
+  const sel = document.getElementById('site_type');
+  if (sel) switchSiteType(sel.value);
+
+  // セレクトとテキスト入力の初期同期
+  const extInput = document.getElementById('output_extension');
+  const extSelect = document.getElementById('output_extension_select');
+  if (extInput && extSelect) {
+    const knownExts = ['.html', '.md', '.mdx', '.tsx', '.jsx', '.vue', '.astro', '.svelte'];
+    if (!knownExts.includes(extInput.value)) {
+      extSelect.value = 'custom';
+    }
+    // テキスト入力の変更でセレクトを「カスタム」に戻す
+    extInput.addEventListener('input', () => {
+      const knownExts = ['.html', '.md', '.mdx', '.tsx', '.jsx', '.vue', '.astro', '.svelte'];
+      extSelect.value = knownExts.includes(extInput.value) ? extInput.value : 'custom';
+    });
+  }
+})();
+</script>
+{% endblock %}

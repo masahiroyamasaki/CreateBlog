@@ -1,0 +1,28 @@
+# 環境変数・機密情報
+.env
+*.json
+!requirements*.txt
+
+# Google認証ファイル
+credentials.json
+authorized_user.json
+gcp_service_account.json
+client_secret_*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# データベース
+*.db
+*.sqlite
+
+# アップロードファイル
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db

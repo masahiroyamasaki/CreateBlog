@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="view-page">
+  <div class="view-header">
+    <a href="/" class="btn btn-secondary">← 一覧に戻る</a>
+    <span class="post-date">{{ post.created_at[:10] }}</span>
+  </div>
+
+  <article class="article-body" id="article-content">
+    {{ post.content | safe }}
+  </article>
+
+  {% if post.tags %}
+  <div class="post-tags view-tags">
+    {% for tag in post.tags.split(',') %}
+    <span class="tag">{{ tag.strip() }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="report-tabs">
+    <button class="tab-btn active" onclick="showTab('content-check')">内容チェックレポート</button>
+    <button class="tab-btn" onclick="showTab('legal-check')">リーガルチェックレポート</button>
+  </div>
+
+  <div class="tab-content active" id="tab-content-check">
+    <div class="report-body" id="content-check-body"></div>
+  </div>
+  <div class="tab-content" id="tab-legal-check">
+    <div class="report-body" id="legal-check-body"></div>
+  </div>
+</div>
+
+<script>
+  const contentCheck = {{ post.content_check | tojson }};
+  const legalCheck = {{ post.legal_check | tojson }};
+
+  document.getElementById('article-content').innerHTML = marked.parse({{ post.content | tojson }});
+  document.getElementById('content-check-body').innerHTML = marked.parse(contentCheck || '（チェック結果なし）');
+  document.getElementById('legal-check-body').innerHTML = marked.parse(legalCheck || '（チェック結果なし）');
+
+  function showTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`#tab-${name}`).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+</script>
+{% endblock %}

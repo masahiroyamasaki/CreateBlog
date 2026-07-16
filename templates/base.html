@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI ブログエージェント{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="site-title">AI ブログエージェント</a>
+      <nav>
+        <a href="/companies" class="nav-link">会社一覧</a>
+        <a href="/" class="nav-link">記事一覧</a>
+        <a href="/create" class="nav-link btn-primary">+ 新規作成</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>Powered by Claude API</span>
+    </div>
+  </footer>
+</body>
+</html>

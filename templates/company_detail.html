@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/companies" class="btn btn-secondary">← 会社一覧</a>
+      <h1>{{ company.name }}</h1>
+      <span class="badge {% if company.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+        {% if company.is_active %}有効{% else %}無効{% endif %}
+      </span>
+    </div>
+    <a href="/companies/{{ company.id }}/edit" class="btn btn-secondary">編集</a>
+  </div>
+
+  <!-- 会社情報カード -->
+  <div class="wizard-card">
+    <div class="card-header"><h2>会社情報</h2></div>
+    <div class="card-body">
+      <dl class="info-list">
+        <dt>ブログ URL</dt>
+        <dd>
+          {% if company.blog_url %}
+            <a href="{{ company.blog_url }}" target="_blank">{{ company.blog_url }} ↗</a>
+          {% else %}
+            <span class="text-muted">未設定</span>
+          {% endif %}
+        </dd>
+        <dt>確認メール送信先</dt>
+        <dd>
+          {% if company.review_email %}
+            <a href="mailto:{{ company.review_email }}">{{ company.review_email }}</a>
+          {% else %}
+            <span class="text-muted">未設定</span>
+            <a href="/companies/{{ company.id }}/edit" class="field-hint" style="margin-left:8px;">設定する →</a>
+          {% endif %}
+        </dd>
+        <dt>デフォルト設定</dt>
+        <dd>トーン: {{ company.tone }} ／ 文字数: {{ company.word_count }}文字</dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- サイト管理 -->
+  <div class="wizard-card">
+    <div class="card-header">
+      <h2>サイト管理</h2>
+      <a href="/companies/{{ company.id }}/sites/new" class="btn btn-primary btn-sm" style="margin-left:auto;">
+        + サイトを追加
+      </a>
+    </div>
+    <div class="card-body">
+      {% set sites = sites_list if sites_list is defined else [] %}
+      {% if sites %}
+      <div class="site-cards-grid">
+        {% for site in sites %}
+        <div class="site-card">
+          <div class="site-card-header">
+            <span class="site-card-name">{{ site.name }}</span>
+            {% if site.site_type == 'wordpress' %}
+              <span class="badge badge-wp">WordPress</span>
+            {% elif site.site_type == 'api_cms' %}
+              <span class="badge badge-api">API・CMS</span>
+            {% elif site.site_type == 'static' %}
+              <span class="badge badge-static">静的サイト</span>
+            {% endif %}
+          </div>
+          <div class="site-card-meta">
+            <span>テンプレート: {% if site.template_file %}<span style="color:var(--success);">✓ あり</span>{% else %}なし{% endif %}</span>
+            <span class="badge {% if site.is_active %}badge-active{% else %}badge-inactive{% endif %}" style="font-size:11px;">
+              {% if site.is_active %}有効{% else %}無効{% endif %}
+            </span>
+          </div>
+          <div class="site-card-actions">
+            <a href="/sites/{{ site.id }}/edit" class="btn btn-sm btn-secondary">編集</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">まだサイトが登録されていません。
+        <a href="/companies/{{ company.id }}/sites/new">サイトを追加する →</a>
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- パイプライン実行 -->
+  <div class="wizard-card">
+    <div class="card-header"><h2>パイプライン実行</h2></div>
+    <div class="card-body">
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        スプレッドシートからトピックを取得し、AI記事生成→チェック→投稿までを自動実行します。
+      </p>
+
+      {% set active_sites = sites | selectattr('is_active') | list %}
+      {% if active_sites or (company.wp_url and company.wp_username and company.wp_password) %}
+      <div class="form-group" style="max-width:360px;">
+        <label for="pipeline-site-select">投稿先サイト</label>
+        <select id="pipeline-site-select">
+          {% if company.wp_url and company.wp_username and company.wp_password %}
+          <option value="">会社のWordPress設定（デフォルト）</option>
+          {% endif %}
+          {% for site in active_sites %}
+          <option value="{{ site.id }}"
+            {% if loop.first and not (company.wp_url and company.wp_username and company.wp_password) %}selected{% endif %}>
+            {{ site.name }}（{% if site.site_type == 'wordpress' %}WordPress{% elif site.site_type == 'api_cms' %}API・CMS{% else %}静的サイト{% endif %}）
+          </option>
+          {% endfor %}
+        </select>
+        {% if not (company.wp_url and company.wp_username and company.wp_password) and active_sites %}
+        <p class="field-hint" style="color:var(--success);">✓ 登録済みサイトが自動選択されています</p>
+        {% endif %}
+      </div>
+      {% else %}
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;
+                  padding:12px 16px;margin-bottom:16px;font-size:13px;color:#991b1b;">
+        投稿先サイトが未設定です。先に「サイトを追加」からサイトを登録してください。
+      </div>
+      {% endif %}
+
+      <button class="btn btn-success btn-lg pipeline-run-btn" id="pipeline-run-btn"
+              onclick="runPipeline()" style="font-size:16px;padding:14px 36px;">
+        パイプラインを実行
+      </button>
+
+      <!-- 実行状態表示エリア -->
+      <div class="pipeline-runner hidden" id="pipeline-runner">
+        <div class="pipeline-runner-header">
+          <span class="pipeline-runner-title" id="pipeline-runner-title">実行中...</span>
+          <span class="pipeline-step-badge" id="pipeline-step-badge"></span>
+        </div>
+        <div class="pipeline-log-list" id="pipeline-log-list"></div>
+        <div class="pipeline-result hidden" id="pipeline-result"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- テンプレート管理 -->
+  <div class="wizard-card">
+    <div class="card-header"><h2>テンプレートファイル管理</h2></div>
+    <div class="card-body">
+
+      {% if company.template_file %}
+      <div class="template-status template-set">
+        <span class="template-icon">✓</span>
+        <div>
+          <div class="template-name">テンプレート登録済み</div>
+          <div class="template-hint">記事生成時にこのテンプレートが適用されます。</div>
+        </div>
+      </div>
+      <div class="action-buttons" style="margin-top:16px;">
+        <form action="/companies/{{ company.id }}/upload-template" method="POST"
+              enctype="multipart/form-data" style="display:inline-flex;gap:8px;align-items:center;">
+          <label class="btn btn-secondary" style="cursor:pointer;margin:0;">
+            テンプレートを差し替え
+            <input type="file" name="template_file" accept=".html,.htm"
+                   style="display:none;" onchange="this.form.submit()">
+          </label>
+        </form>
+        <button class="btn btn-danger btn-sm" onclick="deleteTemplate({{ company.id }})">
+          テンプレートを削除
+        </button>
+      </div>
+
+      {% else %}
+      <div class="template-status template-none">
+        <span class="template-icon-none">📄</span>
+        <div>
+          <div class="template-name">テンプレート未登録</div>
+          <div class="template-hint">HTML テンプレートをアップロードすると、記事をそのデザインで出力・投稿できます。</div>
+        </div>
+      </div>
+      <form action="/companies/{{ company.id }}/upload-template" method="POST"
+            enctype="multipart/form-data" style="margin-top:16px;">
+        <div class="upload-area" id="upload-area"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleDrop(event)">
+          <div class="upload-icon">⬆</div>
+          <div class="upload-text">HTML ファイルをドロップ、または</div>
+          <label class="btn btn-primary" style="cursor:pointer;margin-top:8px;">
+            ファイルを選択
+            <input type="file" id="template-file-input" name="template_file"
+                   accept=".html,.htm" style="display:none;"
+                   onchange="showFileName(this)">
+          </label>
+          <div class="upload-filename hidden" id="upload-filename"></div>
+          <button type="submit" class="btn btn-success hidden" id="upload-submit-btn">
+            このファイルをアップロード
+          </button>
+        </div>
+      </form>
+      <div class="template-guide">
+        <h4>テンプレートの書き方</h4>
+        <p>HTML ファイル内の記事を挿入したい場所に <code>&#123;&#123;content&#125;&#125;</code> を記述してください。</p>
+        <pre class="template-example">&lt;div class="article-wrapper"&gt;
+  &lt;style&gt;
+    .article-wrapper h2 &#123; color: #333; border-left: 4px solid #0066cc; padding-left: 12px; &#125;
+    .article-wrapper p  &#123; line-height: 1.9; &#125;
+  &lt;/style&gt;
+  &#123;&#123;content&#125;&#125;
+&lt;/div&gt;</pre>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- 記事生成アクション -->
+  <div class="wizard-card">
+    <div class="card-header"><h2>記事を生成する</h2></div>
+    <div class="card-body">
+      <div class="action-buttons">
+        <a href="/create?company_id={{ company.id }}" class="btn btn-primary btn-lg">
+          記事を作成する
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生成済み記事一覧 -->
+  <div class="wizard-card">
+    <div class="card-header"><h2>生成済み記事</h2></div>
+    <div class="card-body">
+      {% if posts %}
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>タイトル</th><th>タグ</th><th>作成日</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            {% for post in posts %}
+            <tr>
+              <td><a href="/view/{{ post.id }}">{{ post.title }}</a></td>
+              <td>
+                {% if post.tags %}
+                  {% for tag in post.tags.split(',') %}
+                  <span class="tag">{{ tag.strip() }}</span>
+                  {% endfor %}
+                {% endif %}
+              </td>
+              <td class="text-muted">{{ post.created_at[:10] }}</td>
+              <td>
+                <a href="/view/{{ post.id }}" class="btn btn-sm">表示</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted">まだ記事がありません。</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function showFileName(input) {
+  const name = input.files[0]?.name || '';
+  if (!name) return;
+  document.getElementById('upload-filename').textContent = '選択中: ' + name;
+  document.getElementById('upload-filename').classList.remove('hidden');
+  document.getElementById('upload-submit-btn').classList.remove('hidden');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-area').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById('template-file-input');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  showFileName(input);
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('テンプレートを削除しますか？')) return;
+  const res = await fetch(`/companies/${id}/delete-template`, { method: 'POST' });
+  if ((await res.json()).success) location.reload();
+}
+
+// ===== パイプライン実行 =====
+
+let _pipelinePolling = null;
+
+const STEP_LABELS = {
+  starting:        '起動中...',
+  init:            '初期化中',
+  sheets_read:     'スプレッドシート読み込み中',
+  blog_creator:    'ブログ記事生成中（1〜2分）',
+  content_checker: 'コンテンツチェック中',
+  legal_checker:   '法務チェック中',
+  final_creator:   '最終記事生成中（1〜2分）',
+  save_post:       '記事を保存中',
+  image_gen:       'トップ画像を生成中（Imagen AI）',
+  get_site:        'サイト情報を取得中',
+  post:            '投稿処理を開始',
+  post_converting: 'コンテンツを変換中',
+  post_wp_api:     'WordPress APIに送信中（サーバー処理中）',
+  post_cms_api:    'APIエンドポイントに送信中',
+  post_file_write: 'HTMLファイルを書き出し中',
+  post_deploying:  'デプロイコマンドを実行中',
+  sheets_write:    'スプレッドシートを更新中',
+  notify:          '通知メール送信中',
+  done:            '完了',
+};
+
+async function runPipeline() {
+  const companyId = {{ company.id }};
+  const siteSelect = document.getElementById('pipeline-site-select');
+  const siteId = siteSelect ? siteSelect.value : '';
+
+  const runBtn = document.getElementById('pipeline-run-btn');
+  const runner = document.getElementById('pipeline-runner');
+  const logList = document.getElementById('pipeline-log-list');
+  const resultEl = document.getElementById('pipeline-result');
+  const titleEl = document.getElementById('pipeline-runner-title');
+  const stepBadge = document.getElementById('pipeline-step-badge');
+
+  // UIリセット
+  runBtn.disabled = true;
+  runner.classList.remove('hidden');
+  logList.innerHTML = '';
+  resultEl.classList.add('hidden');
+  resultEl.innerHTML = '';
+  titleEl.textContent = '実行中...';
+  stepBadge.textContent = '';
+
+  // パイプライン開始
+  let run_id;
+  try {
+    const body = { company_id: companyId };
+    if (siteId) body.site_id = parseInt(siteId);
+    const res = await fetch('/api/run-pipeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.run_id) {
+      showPipelineError(resultEl, data.reason || '実行開始に失敗しました');
+      runBtn.disabled = false;
+      return;
+    }
+    run_id = data.run_id;
+  } catch (e) {
+    showPipelineError(resultEl, '通信エラー: ' + e.message);
+    runBtn.disabled = false;
+    return;
+  }
+
+  addLogItem(logList, 'info', 'パイプラインを開始しました（記事生成には5〜10分かかります）');
+
+  // ポーリング（3秒ごと）
+  let prevStep = null;
+  _pipelinePolling = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/pipeline-status/${run_id}`);
+      const data = await res.json();
+
+      const step = data.step || '';
+      const status = data.status || 'running';
+
+      // ステップが変わったらログに追加
+      if (step && step !== prevStep) {
+        const label = STEP_LABELS[step] || step;
+        addLogItem(logList, 'step', label);
+        stepBadge.textContent = label;
+        prevStep = step;
+      }
+
+      if (status === 'success' || status === 'error') {
+        clearInterval(_pipelinePolling);
+        _pipelinePolling = null;
+        runBtn.disabled = false;
+
+        const result = data.result || {};
+        if (status === 'success' && result.success) {
+          titleEl.textContent = '完了';
+          stepBadge.textContent = '';
+          addLogItem(logList, 'success', '投稿が完了しました！');
+          showPipelineSuccess(resultEl, result);
+        } else {
+          titleEl.textContent = 'エラー';
+          stepBadge.textContent = '';
+          const reason = result.reason || '不明なエラーが発生しました';
+          addLogItem(logList, 'error', 'エラー: ' + reason);
+          showPipelineError(resultEl, reason);
+        }
+      }
+    } catch (e) {
+      // ポーリングエラーは無視（再試行）
+    }
+  }, 3000);
+}
+
+function addLogItem(container, type, text) {
+  const item = document.createElement('div');
+  item.className = 'pipeline-log-item pipeline-log-' + type;
+  const icons = { info: 'ℹ', step: '▶', success: '✓', error: '✗', warning: '⚠' };
+  item.innerHTML = `<span class="pipeline-log-icon">${icons[type] || '·'}</span><span>${text}</span>`;
+  container.appendChild(item);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showPipelineSuccess(el, result) {
+  el.classList.remove('hidden');
+  const link = result.post_result?.link || '';
+  const postId = result.post_id || '';
+  el.innerHTML = `
+    <div class="pipeline-result-card pipeline-result-success">
+      <div style="font-size:28px;margin-bottom:8px;">✓</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px;">投稿完了</div>
+      ${result.title ? `<div style="font-size:14px;color:var(--text-muted);margin-bottom:10px;">${result.title}</div>` : ''}
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+        ${postId ? `<a href="/view/${postId}" class="btn btn-sm btn-secondary">記事を表示</a>` : ''}
+        ${link ? `<a href="${link}" target="_blank" class="btn btn-sm btn-success">投稿先を確認 ↗</a>` : ''}
+      </div>
+    </div>`;
+}
+
+function showPipelineError(el, reason) {
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="pipeline-result-card pipeline-result-error">
+      <div style="font-size:28px;margin-bottom:8px;">✗</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;">エラーが発生しました</div>
+      <div style="font-size:13px;color:var(--text-muted);">${reason}</div>
+    </div>`;
+}
+</script>
+{% endblock %}

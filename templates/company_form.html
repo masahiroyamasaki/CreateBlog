@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}{% if company %}{{ company.name }} を編集{% else %}会社を追加{% endif %} — AI ブログエージェント{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-header">
+    <h1>{% if company %}会社を編集{% else %}会社を追加{% endif %}</h1>
+    <a href="{% if company %}/companies/{{ company.id }}{% else %}/companies{% endif %}" class="btn btn-secondary">← 戻る</a>
+  </div>
+
+  <div class="wizard-card">
+    <div class="card-body">
+      <form method="POST">
+
+        <!-- 基本情報 -->
+        <div class="form-group">
+          <label for="name">会社名 <span class="required">*</span></label>
+          <input type="text" id="name" name="name"
+                 value="{{ company.name if company else '' }}"
+                 placeholder="例: 株式会社サンプル" required>
+        </div>
+
+        <div class="form-group">
+          <label for="blog_url">ブログ URL</label>
+          <input type="text" id="blog_url" name="blog_url"
+                 value="{{ company.blog_url if company else '' }}"
+                 placeholder="例: https://example.com/blog">
+        </div>
+
+        <div class="form-group">
+          <label for="review_email">
+            確認メール送信先
+            <span class="email-from-badge">送信元: yamasaki@rk-rpa.com</span>
+          </label>
+          <input type="email" id="review_email" name="review_email"
+                 value="{{ company.review_email if company else '' }}"
+                 placeholder="例: customer@example.com">
+          <p class="field-hint">記事生成後に確認依頼メールを送るお客様のメールアドレスです。</p>
+        </div>
+
+        <div class="form-group">
+          <label for="spreadsheet_url">Google スプレッドシート URL</label>
+          <input type="text" id="spreadsheet_url" name="spreadsheet_url"
+                 value="{{ company.spreadsheet_url if company else '' }}"
+                 placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit">
+          <p class="field-hint">URL を貼り付けると ID を自動抽出します。</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tone">デフォルトトーン</label>
+            <select id="tone" name="tone">
+              {% set cur_tone = company.tone if company else '標準' %}
+              <option value="標準"    {% if cur_tone == '標準'    %}selected{% endif %}>標準</option>
+              <option value="カジュアル" {% if cur_tone == 'カジュアル' %}selected{% endif %}>カジュアル</option>
+              <option value="フォーマル" {% if cur_tone == 'フォーマル' %}selected{% endif %}>フォーマル</option>
+              <option value="学術的"  {% if cur_tone == '学術的'  %}selected{% endif %}>学術的</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="word_count">デフォルト文字数</label>
+            <select id="word_count" name="word_count">
+              {% set cur_wc = company.word_count if company else '1200' %}
+              <option value="800"  {% if cur_wc == '800'  %}selected{% endif %}>800文字</option>
+              <option value="1200" {% if cur_wc == '1200' %}selected{% endif %}>1200文字</option>
+              <option value="2000" {% if cur_wc == '2000' %}selected{% endif %}>2000文字</option>
+              <option value="3000" {% if cur_wc == '3000' %}selected{% endif %}>3000文字</option>
+            </select>
+          </div>
+        </div>
+
+        {% if company %}
+        <div class="form-group">
+          <label class="toggle-label">
+            <input type="checkbox" name="is_active" value="1"
+                   {% if company.is_active %}checked{% endif %}>
+            <span class="toggle-text">有効</span>
+          </label>
+        </div>
+        {% endif %}
+
+        <!-- WordPress 設定 -->
+        <div class="form-section">
+          <h3 class="section-title">WordPress 連携設定</h3>
+
+          <div class="form-group">
+            <label for="wp_url">WordPress サイト URL</label>
+            <input type="text" id="wp_url" name="wp_url"
+                   value="{{ company.wp_url if company else '' }}"
+                   placeholder="https://example.com">
+            <p class="field-hint">WordPressをインストールしているサイトのURLを入力してください。</p>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wp_username">ユーザー名</label>
+              <input type="text" id="wp_username" name="wp_username"
+                     value="{{ company.wp_username if company else '' }}"
+                     placeholder="WordPress のログイン名"
+                     autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="wp_password">アプリケーションパスワード</label>
+              <input type="password" id="wp_password" name="wp_password"
+                     value="{{ company.wp_password if company else '' }}"
+                     placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                     autocomplete="new-password">
+              <p class="field-hint">WordPress 管理画面 → ユーザー → プロフィール → アプリケーションパスワード で発行</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>投稿ステータス</label>
+            {% set cur_wps = company.wp_status if company and company.wp_status else 'draft' %}
+            <div style="display:flex;gap:16px;margin-top:8px;">
+              <label class="toggle-label">
+                <input type="radio" name="wp_status" value="draft"
+                       {% if cur_wps == 'draft' %}checked{% endif %}>
+                <span class="toggle-text">下書き（推奨）</span>
+              </label>
+              <label class="toggle-label">
+                <input type="radio" name="wp_status" value="publish"
+                       {% if cur_wps == 'publish' %}checked{% endif %}>
+                <span class="toggle-text">即時公開</span>
+              </label>
+            </div>
+            <p class="field-hint">「下書き」は人が確認してから公開できます。</p>
+          </div>
+
+          {% if company and company.wp_url %}
+          <div class="form-group">
+            <button type="button" class="btn btn-secondary" onclick="testWpConnection()">
+              接続テスト
+            </button>
+            <span id="wp-test-result" style="margin-left:12px;font-size:13px;"></span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- 画像生成設定 -->
+        <div class="form-section">
+          <h3 class="section-title">AI 画像生成設定（Google Cloud Imagen）</h3>
+
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" name="image_generation_enabled" value="1"
+                     id="image-gen-enabled"
+                     {% if company and company.image_generation_enabled %}checked{% endif %}
+                     onchange="toggleImageGen(this.checked)">
+              <span class="toggle-text">ブログ生成時にトップ画像を自動生成する</span>
+            </label>
+            <p class="field-hint">
+              Google Cloud Vertex AI の Imagen 3 を使用して 16:9 のトップ画像を 1 枚生成します。<br>
+              事前に <code>gcp_service_account.json</code>（サービスアカウントキー）をアプリと同じフォルダに配置してください。
+            </p>
+          </div>
+
+          <div id="image-gen-options"
+               style="{% if not company or not company.image_generation_enabled %}display:none{% endif %}">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="gcp_project_id">GCP プロジェクト ID <span class="required">*</span></label>
+                <input type="text" id="gcp_project_id" name="gcp_project_id"
+                       value="{{ company.gcp_project_id if company and company.gcp_project_id else '' }}"
+                       placeholder="my-gcp-project-id">
+                <p class="field-hint">Google Cloud Console のプロジェクト ID</p>
+              </div>
+              <div class="form-group">
+                <label for="gcp_location">リージョン</label>
+                <select id="gcp_location" name="gcp_location">
+                  {% set cur_loc = company.gcp_location if company and company.gcp_location else 'us-central1' %}
+                  <option value="us-central1" {% if cur_loc == 'us-central1' %}selected{% endif %}>us-central1（推奨）</option>
+                  <option value="us-east4"    {% if cur_loc == 'us-east4'    %}selected{% endif %}>us-east4</option>
+                  <option value="europe-west4"{% if cur_loc == 'europe-west4'%}selected{% endif %}>europe-west4</option>
+                  <option value="asia-northeast1" {% if cur_loc == 'asia-northeast1' %}selected{% endif %}>asia-northeast1（東京）</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="info-box" style="background:var(--bg3);border:1px solid var(--border);
+                 border-radius:8px;padding:14px 16px;font-size:13px;line-height:1.7;">
+              <strong>セットアップ手順</strong>
+              <ol style="margin:8px 0 0 16px;padding:0;">
+                <li>Google Cloud Console で <strong>Vertex AI API</strong> を有効化</li>
+                <li>サービスアカウントを作成し <strong>Vertex AI ユーザー</strong> ロールを付与</li>
+                <li>キーを JSON 形式でダウンロードし、<code>gcp_service_account.json</code> として保存</li>
+                <li>上記のプロジェクト ID を入力して保存</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- スケジュール設定 -->
+        <div class="form-section">
+          <h3 class="section-title">スケジュール設定</h3>
+
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" name="schedule_enabled" value="1" id="schedule-enabled"
+                     {% if company and company.schedule_enabled %}checked{% endif %}
+                     onchange="toggleSchedule(this.checked)">
+              <span class="toggle-text">スケジュール実行を有効にする</span>
+            </label>
+          </div>
+
+          <div id="schedule-options"
+               style="{% if not company or not company.schedule_enabled %}display:none{% endif %}">
+            <div class="form-group">
+              <label>実行する曜日（2日以上選択）</label>
+              {% set days_selected = (company.schedule_days if company and company.schedule_days else '').split(',') %}
+              <div class="day-picker">
+                {% for val, lbl in [('1','月'),('2','火'),('3','水'),('4','木'),('5','金'),('6','土'),('7','日')] %}
+                <label class="day-btn">
+                  <input type="checkbox" name="schedule_days" value="{{ val }}"
+                         {% if val in days_selected %}checked{% endif %}>
+                  <span>{{ lbl }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="schedule_time">実行時間</label>
+              <input type="time" id="schedule_time" name="schedule_time"
+                     value="{{ company.schedule_time if company and company.schedule_time else '09:00' }}"
+                     style="max-width:160px">
+            </div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <a href="{% if company %}/companies/{{ company.id }}{% else %}/companies{% endif %}"
+             class="btn btn-secondary">キャンセル</a>
+          <button type="submit" class="btn btn-primary btn-lg">
+            {% if company %}変更を保存{% else %}会社を追加{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleSchedule(enabled) {
+  document.getElementById('schedule-options').style.display = enabled ? '' : 'none';
+}
+
+function toggleImageGen(enabled) {
+  document.getElementById('image-gen-options').style.display = enabled ? '' : 'none';
+}
+
+async function testWpConnection() {
+  const resultEl = document.getElementById('wp-test-result');
+  resultEl.textContent = '接続中...';
+  resultEl.style.color = 'var(--text-muted)';
+
+  const company_id = location.pathname.split('/')[2];
+  const res = await fetch('/api/wp-test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ company_id }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    resultEl.textContent = `✓ 接続成功（ユーザー: ${data.name}）`;
+    resultEl.style.color = 'var(--success)';
+  } else {
+    resultEl.textContent = `✗ ${data.reason}`;
+    resultEl.style.color = 'var(--danger)';
+  }
+}
+</script>
+{% endblock %}

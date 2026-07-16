@@ -1,0 +1,63 @@
+{% extends "designer/base.html" %}
+{% block title %}投稿一覧 — {{ client.name }}{% endblock %}
+{% block page_title %}投稿一覧{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ダッシュボード</a>
+{% endblock %}
+
+{% block content %}
+<!-- ステータスフィルタ -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+  {% for s, label in [('','すべて'),('draft','下書き'),('approved','承認済み'),('scheduled','予約中'),('posted','投稿済み'),('failed','失敗')] %}
+  <a href="{{ url_for('designer.post_list', client_id=client.id, status=s) }}"
+     class="btn btn-sm {% if status_filter == s %}btn-primary{% else %}btn-secondary{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    {% if posts %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>タイトル</th>
+          <th>ステータス</th>
+          <th>画像</th>
+          <th>予約日時</th>
+          <th>作成日</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in posts %}
+        <tr>
+          <td>
+            <div style="font-weight:600;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              {{ p.title or '（タイトルなし）' }}
+            </div>
+            {% if p.wp_post_url %}
+            <a href="{{ p.wp_post_url }}" target="_blank" style="font-size:11px;color:var(--primary);">WP 記事 ↗</a>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-{{ p.status_color }}">{{ p.status_label }}</span></td>
+          <td style="color:var(--muted);font-size:12px;">{{ p.images.count() }}枚</td>
+          <td style="font-size:12px;color:var(--muted);">
+            {% if p.scheduled_at %}{{ p.scheduled_at.strftime('%m/%d %H:%M') }}{% else %}—{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--muted);">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
+          <td>
+            <a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">編集・投稿</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      投稿がありません。<br>
+      <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" style="color:var(--primary);">記事ネタを追加</a> してバッチ生成を実行してください。
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

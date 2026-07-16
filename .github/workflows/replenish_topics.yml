@@ -1,0 +1,38 @@
+name: Replenish Topic Queue
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # 毎週月曜 JST 09:00 (UTC 00:00)
+  workflow_dispatch:
+    inputs:
+      client_id:
+        description: 'クライアント ID（省略で全社）'
+        required: false
+
+jobs:
+  replenish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run replenish batch
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          CLIENT_ARG=""
+          if [ -n "${{ github.event.inputs.client_id }}" ]; then
+            CLIENT_ARG="--client-id=${{ github.event.inputs.client_id }}"
+          fi
+          python -m batch.replenish_topics $CLIENT_ARG
