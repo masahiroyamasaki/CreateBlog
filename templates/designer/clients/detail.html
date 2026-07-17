@@ -46,19 +46,19 @@
     <table class="table">
       <thead>
         <tr>
+          <th></th>
           <th>タイトル</th>
           <th>ステータス</th>
           <th>作成日</th>
-          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for p in posts %}
         <tr>
+          <td><a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">詳細</a></td>
           <td style="font-weight:600;">{{ p.title or '（タイトルなし）' }}</td>
           <td><span class="badge badge-{{ p.status_color }}">{{ p.status_label }}</span></td>
           <td style="color:var(--muted);font-size:12px;">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
-          <td><a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">詳細</a></td>
         </tr>
         {% endfor %}
       </tbody>

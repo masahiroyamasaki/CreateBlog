@@ -67,6 +67,15 @@
           </div>
           {% else %}
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              {% if current_user.role == 'admin' %}
+              <a href="{{ url_for('designer.topic_generate_ui', client_id=client.id, topic_id=t.id) }}" class="btn btn-generate btn-sm">AI生成</a>
+              {% endif %}
+              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
+              <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
+                <button type="submit" class="btn btn-danger btn-sm">削除</button>
+              </form>
+            </div>
             <span class="drag-handle">⠿</span>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -85,15 +94,6 @@
                   <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">キャンセル</button>
                 </div>
               </div>
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              {% if current_user.role == 'admin' %}
-              <a href="{{ url_for('designer.topic_generate_ui', client_id=client.id, topic_id=t.id) }}" class="btn btn-generate btn-sm">AI生成</a>
-              {% endif %}
-              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
-              <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
-                <button type="submit" class="btn btn-danger btn-sm">削除</button>
-              </form>
             </div>
           </div>
           {% endif %}
