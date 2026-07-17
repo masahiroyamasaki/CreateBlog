@@ -138,7 +138,15 @@
     <div class="card">
       <div class="card-header"><h2>今すぐ投稿</h2></div>
       <div class="card-body">
+        {% if client.platform_type == 'wordpress' %}
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">WordPress への公開を即時実行します。</p>
+        {% elif client.platform_type == 'instagram' %}
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Instagram への投稿を即時実行します。</p>
+        {% elif client.platform_type == 'custom_hp' %}
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">投稿済みとしてマークします（独自HP への掲載は手動で行ってください）。</p>
+        {% else %}
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">WordPress への公開 + Instagram への投稿を即時実行します。</p>
+        {% endif %}
         <button class="btn btn-success" style="width:100%;" id="publish-btn" onclick="publishNow()">投稿する</button>
         <div id="publish-result" style="margin-top:12px;font-size:13px;display:none;"></div>
       </div>
@@ -234,7 +242,16 @@ updateCharCount();
 
 // 今すぐ投稿
 async function publishNow() {
-  if (!confirm('WordPress と Instagram に今すぐ投稿しますか？')) return;
+  {% if client.platform_type == 'wordpress' %}
+  const confirmMsg = 'WordPress に今すぐ投稿しますか？';
+  {% elif client.platform_type == 'instagram' %}
+  const confirmMsg = 'Instagram に今すぐ投稿しますか？';
+  {% elif client.platform_type == 'custom_hp' %}
+  const confirmMsg = '投稿済みとしてマークしますか？';
+  {% else %}
+  const confirmMsg = 'WordPress と Instagram に今すぐ投稿しますか？';
+  {% endif %}
+  if (!confirm(confirmMsg)) return;
   const btn = document.getElementById('publish-btn');
   const resultEl = document.getElementById('publish-result');
   btn.disabled = true;

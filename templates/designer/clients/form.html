@@ -25,9 +25,8 @@
         <p class="section-title">投稿先プラットフォーム</p>
         <label>投稿タイプ</label>
         <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections()">
-          <option value="wordpress_instagram" {% if not client or client.platform_type == 'wordpress_instagram' %}selected{% endif %}>WordPress + Instagram</option>
-          <option value="wordpress" {% if client and client.platform_type == 'wordpress' %}selected{% endif %}>WordPress のみ</option>
-          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram のみ</option>
+          <option value="wordpress" {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
+          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram</option>
           <option value="custom_hp" {% if client and client.platform_type == 'custom_hp' %}selected{% endif %}>独自HP</option>
         </select>
       </div>

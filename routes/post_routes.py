@@ -210,28 +210,32 @@ def post_schedule(client_id: int, post_id: int):
         flash("日時の形式が正しくありません", "error")
         return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
 
+    pt = client.platform_type or "wordpress"
     post.publish_mode = "scheduled"
     post.scheduled_at = scheduled_at
     post.status = "scheduled"
     db.session.commit()
 
-    # WordPress に予約投稿を即座に送信（wp-cron が指定日時に自動公開）
-    result = wp_client.post_article(
-        endpoint=client.wp_endpoint,
-        username=client.wp_username,
-        app_password=client.wp_app_password,
-        title=post.title,
-        body_html=post.body_html,
-        publish_mode="scheduled",
-        scheduled_at=scheduled_at,
-    )
-    if result.get("success"):
-        post.wp_post_id = str(result.get("wp_post_id", ""))
-        post.wp_post_url = result.get("wp_post_url", "")
-        db.session.commit()
-        flash(f"{scheduled_at.strftime('%Y/%m/%d %H:%M')} に予約しました", "success")
+    if pt in ("wordpress", "wordpress_instagram"):
+        from config import decrypt_field
+        result = wp_client.post_article(
+            endpoint=client.wp_endpoint,
+            username=client.wp_username,
+            app_password=decrypt_field(client.wp_app_password),
+            title=post.title,
+            body_html=post.body_html,
+            publish_mode="scheduled",
+            scheduled_at=scheduled_at,
+        )
+        if result.get("success"):
+            post.wp_post_id = str(result.get("wp_post_id", ""))
+            post.wp_post_url = result.get("wp_post_url", "")
+            db.session.commit()
+            flash(f"{scheduled_at.strftime('%Y/%m/%d %H:%M')} に予約しました", "success")
+        else:
+            flash(f"WordPress 予約に失敗: {result.get('reason')}", "error")
     else:
-        flash(f"WordPress 予約に失敗: {result.get('reason')}", "error")
+        flash(f"{scheduled_at.strftime('%Y/%m/%d %H:%M')} に予約しました", "success")
 
     return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
 
@@ -241,49 +245,95 @@ def post_schedule(client_id: int, post_id: int):
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/publish", methods=["POST"])
 @login_required
 def post_publish(client_id: int, post_id: int):
-    """WordPress + Instagram に即時投稿する"""
+    """platform_type に応じた投稿先に即時投稿する"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     post = Post.query.get_or_404(post_id)
     if post.client_id != client_id:
         abort(403)
 
-    errors = []
-
-    # ── WordPress 投稿 ────────────────────────────────────
     from config import decrypt_field
-    wp_result = wp_client.post_article(
-        endpoint=client.wp_endpoint,
-        username=client.wp_username,
-        app_password=decrypt_field(client.wp_app_password),
-        title=post.title,
-        body_html=post.body_html,
-        publish_mode="immediate",
-    )
-    if wp_result.get("success"):
-        post.wp_post_id = str(wp_result.get("wp_post_id", ""))
-        post.wp_post_url = wp_result.get("wp_post_url", "")
-    else:
-        errors.append(f"WordPress: {wp_result.get('reason')}")
+    pt = client.platform_type or "wordpress"
 
-    # ── Instagram 投稿 ───────────────────────────────────
-    ig_result = _publish_to_instagram(client, post)
-    if ig_result.get("success"):
-        post.ig_media_id = ig_result.get("media_id", "")
-    else:
-        errors.append(f"Instagram: {ig_result.get('reason')}")
+    # ── WordPress ─────────────────────────────────────────
+    if pt == "wordpress":
+        result = wp_client.post_article(
+            endpoint=client.wp_endpoint,
+            username=client.wp_username,
+            app_password=decrypt_field(client.wp_app_password),
+            title=post.title,
+            body_html=post.body_html,
+            publish_mode="immediate",
+        )
+        if result.get("success"):
+            post.wp_post_id    = str(result.get("wp_post_id", ""))
+            post.wp_post_url   = result.get("wp_post_url", "")
+            post.status        = "posted"
+            post.posted_at     = datetime.utcnow()
+            post.error_message = ""
+            db.session.commit()
+            return jsonify({"success": True, "wp_url": post.wp_post_url})
+        else:
+            post.status = "failed"
+            post.error_message = result.get("reason", "WordPress 投稿失敗")
+            db.session.commit()
+            return jsonify({"success": False, "reason": post.error_message})
 
-    if errors:
-        post.status = "failed"
-        post.error_message = "\n".join(errors)
+    # ── Instagram ─────────────────────────────────────────
+    elif pt == "instagram":
+        result = _publish_to_instagram(client, post)
+        if result.get("success"):
+            post.ig_media_id   = result.get("media_id", "")
+            post.status        = "posted"
+            post.posted_at     = datetime.utcnow()
+            post.error_message = ""
+            db.session.commit()
+            return jsonify({"success": True})
+        else:
+            post.status = "failed"
+            post.error_message = result.get("reason", "Instagram 投稿失敗")
+            db.session.commit()
+            return jsonify({"success": False, "reason": post.error_message})
+
+    # ── 独自HP（投稿済みマーク）──────────────────────────
+    elif pt == "custom_hp":
+        post.status        = "posted"
+        post.posted_at     = datetime.utcnow()
+        post.error_message = ""
         db.session.commit()
-        return jsonify({"success": False, "reason": "\n".join(errors)})
+        return jsonify({"success": True})
 
-    post.status = "posted"
-    post.posted_at = datetime.utcnow()
-    post.error_message = ""
-    db.session.commit()
-    return jsonify({"success": True, "wp_url": post.wp_post_url})
+    # ── 旧: wordpress_instagram（後方互換）───────────────
+    else:
+        errors = []
+        wp_result = wp_client.post_article(
+            endpoint=client.wp_endpoint,
+            username=client.wp_username,
+            app_password=decrypt_field(client.wp_app_password),
+            title=post.title,
+            body_html=post.body_html,
+            publish_mode="immediate",
+        )
+        if wp_result.get("success"):
+            post.wp_post_id  = str(wp_result.get("wp_post_id", ""))
+            post.wp_post_url = wp_result.get("wp_post_url", "")
+        else:
+            errors.append(f"WordPress: {wp_result.get('reason')}")
+        ig_result = _publish_to_instagram(client, post)
+        if ig_result.get("success"):
+            post.ig_media_id = ig_result.get("media_id", "")
+        else:
+            errors.append(f"Instagram: {ig_result.get('reason')}")
+        if errors:
+            post.status = "failed"
+            post.error_message = "\n".join(errors)
+            db.session.commit()
+            return jsonify({"success": False, "reason": "\n".join(errors)})
+        post.status        = "posted"
+        post.posted_at     = datetime.utcnow()
+        post.error_message = ""
+        db.session.commit()
+        return jsonify({"success": True, "wp_url": post.wp_post_url})
 
 
 def _build_caption(post: Post, client: Client) -> str:
