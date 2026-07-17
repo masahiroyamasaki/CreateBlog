@@ -98,7 +98,7 @@ class Post(db.Model):
     body_html = db.Column(db.Text, default="")
     ig_caption = db.Column(db.Text, default="")
     status = db.Column(
-        db.Enum("draft", "approved", "scheduled", "posted", "failed"),
+        db.Enum("creating", "draft", "approved", "scheduled", "posted", "failed"),
         default="draft", nullable=False,
     )
     publish_mode = db.Column(db.Enum("immediate", "scheduled"))
@@ -126,6 +126,7 @@ class Post(db.Model):
     @property
     def status_label(self) -> str:
         return {
+            "creating": "作成中",
             "draft": "下書き",
             "approved": "承認済み",
             "scheduled": "予約中",
@@ -136,6 +137,7 @@ class Post(db.Model):
     @property
     def status_color(self) -> str:
         return {
+            "creating": "purple",
             "draft": "gray",
             "approved": "blue",
             "scheduled": "orange",
@@ -168,7 +170,7 @@ class TopicQueue(db.Model):
     title = db.Column(db.String(255), default="")
     outline = db.Column(db.Text, default="")
     sort_order = db.Column(db.Integer, default=0)
-    status = db.Column(db.Enum("pending", "generated"), default="pending", nullable=False)
+    status = db.Column(db.Enum("pending", "processing", "generated"), default="pending", nullable=False)
     created_by = db.Column(db.Enum("designer", "ai_auto"), default="designer", nullable=False)
     created_by_designer_id = db.Column(db.Integer, db.ForeignKey("designers.id"))
     generated_post_id = db.Column(db.Integer, db.ForeignKey("posts_ig.id"))

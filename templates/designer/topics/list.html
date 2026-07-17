@@ -20,7 +20,21 @@
 </style>
 {% endblock %}
 
+{% block head %}
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: 6px; }
+.topic-processing { opacity: .75; background: linear-gradient(135deg, var(--bg3), #f0f0ff) !important; border-color: var(--primary) !important; }
+</style>
+{% endblock %}
+
 {% block content %}
+{% if processing_count > 0 %}
+<div class="alert" style="background:#ede9fe;border-color:#a78bfa;color:#5b21b6;display:flex;align-items:center;gap:10px;">
+  <span class="spinner"></span>
+  <span>{{ processing_count }} 件のネタをAI生成中です。このページは自動更新されます。</span>
+</div>
+{% endif %}
 {% if pending_count < 5 %}
 <div class="alert alert-warning">⚠️ 記事ネタが {{ pending_count }} 件しかありません。自動補充バッチが週1回実行されますが、不足している場合は下記から手動追加してください。</div>
 {% endif %}
@@ -43,6 +57,20 @@
         <div id="topic-list" style="display:flex;flex-direction:column;gap:8px;">
           {% if topics %}
           {% for t in topics %}
+          {% if t.status == 'processing' %}
+          <div class="topic-item topic-processing" id="topic-{{ t.id }}" style="cursor:default;">
+            <span class="spinner"></span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="topic-title">{{ t.title }}</span>
+                <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:10px;">AI生成中...</span>
+              </div>
+              {% if t.outline %}
+              <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% else %}
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
             <span class="drag-handle">⠿</span>
             <div style="flex:1;min-width:0;">
@@ -73,6 +101,7 @@
               </form>
             </div>
           </div>
+          {% endif %}
           {% endfor %}
           {% else %}
           <div class="empty">ネタがありません。右のフォームから追加してください。</div>
@@ -105,6 +134,11 @@
 {% block scripts %}
 <script>
 const clientId = {{ client.id }};
+const processingCount = {{ processing_count }};
+// 処理中のネタがあれば10秒ごとに自動更新
+if (processingCount > 0) {
+  setTimeout(() => location.reload(), 10000);
+}
 let dragSrc = null;
 
 document.querySelectorAll('.topic-item').forEach(item => {

@@ -25,11 +25,13 @@ def post_list(client_id: int):
     if status_filter:
         q = q.filter_by(status=status_filter)
     posts = q.order_by(Post.created_at.desc()).all()
+    creating_count = Post.query.filter_by(client_id=client_id, status="creating").count()
     return render_template(
         "designer/posts/list.html",
         client=client,
         posts=posts,
         status_filter=status_filter,
+        creating_count=creating_count,
     )
 
 

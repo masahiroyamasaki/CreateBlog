@@ -23,16 +23,19 @@ def topic_list(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     topics = (
-        TopicQueue.query.filter_by(client_id=client_id, status="pending")
+        TopicQueue.query.filter_by(client_id=client_id)
+        .filter(TopicQueue.status.in_(["pending", "processing"]))
         .order_by(TopicQueue.sort_order, TopicQueue.id)
         .all()
     )
-    pending_count = len(topics)
+    pending_count = sum(1 for t in topics if t.status == "pending")
+    processing_count = sum(1 for t in topics if t.status == "processing")
     return render_template(
         "designer/topics/list.html",
         client=client,
         topics=topics,
         pending_count=pending_count,
+        processing_count=processing_count,
     )
 
 
@@ -234,21 +237,37 @@ def topic_generate(client_id: int, topic_id: int):
     if topic.client_id != client_id:
         abort(403)
     if topic.status != "pending":
-        return jsonify({"success": False, "reason": "このネタはすでに生成済みです"})
+        return jsonify({"success": False, "reason": "このネタはすでに生成済みか処理中です"})
+
+    # 即座にDBへ処理中マーク＋プレースホルダー投稿を作成（ページ離脱後も状態が見える）
+    topic.status = "processing"
+    placeholder = Post(
+        client_id=client_id,
+        created_by_designer_id=current_user.id,
+        title=topic.title,
+        outline=topic.outline or "",
+        body_html="",
+        ig_caption="",
+        status="creating",
+    )
+    db.session.add(placeholder)
+    db.session.flush()
+    post_id = placeholder.id
+    topic.generated_post_id = post_id
+    db.session.commit()
 
     run_id = str(uuid.uuid4())
     _generation_runs[run_id] = {
         "status": "running",
         "step": "init",
         "step_num": 0,
-        "post_id": None,
+        "post_id": post_id,
         "error": None,
     }
 
     # バックグラウンドスレッドに渡す値を先に取り出す
     app = current_app._get_current_object()
     client_id_val = client.id
-    client_name = client.name
     topic_id_val = topic.id
     topic_title = topic.title
     topic_outline = topic.outline or ""
@@ -313,34 +332,41 @@ def topic_generate(client_id: int, topic_id: int):
             )
             ig_caption = ig_resp.content[0].text.strip()
 
-            # Step 6: 保存
+            # Step 6: プレースホルダーを更新して完成
             run.update(step="saving", step_num=6)
             body_html = _md.markdown(final_content, extensions=["extra", "toc"])
 
             with app.app_context():
-                post = Post(
-                    client_id=client_id_val,
-                    created_by_designer_id=designer_id,
-                    title=topic_title,
-                    outline=topic_outline,
-                    body_html=body_html,
-                    ig_caption=ig_caption,
-                    status="draft",
-                )
-                db.session.add(post)
-                db.session.flush()
+                post = Post.query.get(post_id)
+                if post:
+                    post.body_html = body_html
+                    post.ig_caption = ig_caption
+                    post.status = "draft"
 
                 topic_obj = TopicQueue.query.get(topic_id_val)
                 if topic_obj:
                     topic_obj.status = "generated"
-                    topic_obj.generated_post_id = post.id
                 db.session.commit()
-                run["post_id"] = post.id
+                run["post_id"] = post_id
 
             run.update(status="done", step="done", step_num=6)
 
         except Exception as e:
             run.update(status="error", error=str(e))
+            # エラー時は元のステータスに戻す
+            with app.app_context():
+                try:
+                    post = Post.query.get(post_id)
+                    if post:
+                        post.status = "failed"
+                        post.error_message = str(e)
+                    topic_obj = TopicQueue.query.get(topic_id_val)
+                    if topic_obj:
+                        topic_obj.status = "pending"
+                        topic_obj.generated_post_id = None
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"success": True, "run_id": run_id})
