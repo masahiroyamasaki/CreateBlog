@@ -2,60 +2,101 @@
 {% block title %}{% if client %}設定編集{% else %}企業追加{% endif %}{% endblock %}
 {% block page_title %}{% if client %}{{ client.name }} — 設定編集{% else %}企業を追加{% endif %}{% endblock %}
 
+{% block head %}
+<style>
+.section-block { margin-top: 24px; }
+.section-title { font-size:13px;font-weight:700;color:var(--muted);margin:0 0 14px;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;border-bottom:1px solid var(--border); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card" style="max-width:640px;">
+<div class="card" style="max-width:660px;">
   <div class="card-body">
     <form method="POST">
+
+      <!-- 企業名 -->
       <div class="form-group">
         <label>企業名 *</label>
         <input class="form-control" type="text" name="name" value="{{ client.name if client else '' }}" required placeholder="例: 株式会社サンプル">
       </div>
 
-      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">WordPress 設定</h3>
-      <div class="form-group">
-        <label>WordPress エンドポイント</label>
-        <input class="form-control" type="text" name="wp_endpoint" value="{{ client.wp_endpoint if client else '' }}" placeholder="https://example.com">
+      <!-- 投稿先プラットフォーム -->
+      <div class="form-group section-block">
+        <p class="section-title">投稿先プラットフォーム</p>
+        <label>投稿タイプ</label>
+        <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections()">
+          <option value="wordpress_instagram" {% if not client or client.platform_type == 'wordpress_instagram' %}selected{% endif %}>WordPress + Instagram</option>
+          <option value="wordpress" {% if client and client.platform_type == 'wordpress' %}selected{% endif %}>WordPress のみ</option>
+          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram のみ</option>
+          <option value="custom_hp" {% if client and client.platform_type == 'custom_hp' %}selected{% endif %}>独自HP</option>
+        </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+      <!-- 独自HP セクション -->
+      <div class="section-block" id="section-custom-hp">
+        <p class="section-title">独自HP 設定</p>
         <div class="form-group">
-          <label>ユーザー名</label>
-          <input class="form-control" type="text" name="wp_username" value="{{ client.wp_username if client else '' }}" autocomplete="off">
+          <label>サイトURL</label>
+          <input class="form-control" type="url" name="custom_url" value="{{ client.custom_url if client and client.custom_url else '' }}" placeholder="https://example.com">
+          <p class="hint">参考情報として保存されます。</p>
+        </div>
+      </div>
+
+      <!-- WordPress セクション -->
+      <div class="section-block" id="section-wordpress">
+        <p class="section-title">WordPress 設定</p>
+        <div class="form-group">
+          <label>WordPress エンドポイント</label>
+          <input class="form-control" type="text" name="wp_endpoint" value="{{ client.wp_endpoint if client else '' }}" placeholder="https://example.com">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="form-group">
+            <label>ユーザー名</label>
+            <input class="form-control" type="text" name="wp_username" value="{{ client.wp_username if client else '' }}" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>アプリケーションパスワード</label>
+            <input class="form-control" type="password" name="wp_app_password" placeholder="{% if client %}変更する場合のみ入力{% else %}xxxx xxxx xxxx{% endif %}" autocomplete="new-password">
+          </div>
+        </div>
+      </div>
+
+      <!-- Instagram セクション -->
+      <div class="section-block" id="section-instagram">
+        <p class="section-title">Instagram 設定</p>
+        <div class="form-group">
+          <label>IG ビジネスアカウント ID（IG User ID）</label>
+          <input class="form-control" type="text" name="ig_business_account_id" value="{{ client.ig_business_account_id if client else '' }}" placeholder="17841400000000000">
         </div>
         <div class="form-group">
-          <label>アプリケーションパスワード</label>
-          <input class="form-control" type="password" name="wp_app_password" placeholder="{% if client %}変更する場合のみ入力{% else %}xxxx xxxx xxxx{% endif %}" autocomplete="new-password">
+          <label>長期アクセストークン</label>
+          <input class="form-control" type="password" name="ig_access_token" placeholder="{% if client %}変更する場合のみ入力{% else %}EAAxxxxxxx...{% endif %}">
+        </div>
+        <div class="form-group">
+          <label>固定ハッシュタグ（投稿キャプションに自動追加）</label>
+          <textarea class="form-control" name="ig_hashtags" rows="4" placeholder="#サンプル&#10;#ハッシュタグ&#10;#一行に一つ入力" style="font-size:14px;">{{ client.ig_hashtags if client else '' }}</textarea>
+          <p class="hint">1行に1つ入力。すべての投稿のキャプション末尾に自動で追加されます。</p>
         </div>
       </div>
 
-      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">Instagram 設定</h3>
-      <div class="form-group">
-        <label>IG ビジネスアカウント ID（IG User ID）</label>
-        <input class="form-control" type="text" name="ig_business_account_id" value="{{ client.ig_business_account_id if client else '' }}" placeholder="17841400000000000">
-      </div>
-      <div class="form-group">
-        <label>長期アクセストークン</label>
-        <input class="form-control" type="password" name="ig_access_token" placeholder="{% if client %}変更する場合のみ入力{% else %}EAAxxxxxxx...{% endif %}">
-      </div>
-
-      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">記事テーマ設定</h3>
-      <div class="form-group">
-        <label>記事テーマ（ネタ自動生成に使用）</label>
-        <textarea class="form-control" name="themes" rows="5" placeholder="例：RPA導入事例&#10;業務効率化&#10;DX推進&#10;AI活用" style="font-size:14px;">{{ client.themes if client and client.themes else '' }}</textarea>
-        <p class="hint">1行に1テーマ。このテーマをもとにAIが記事ネタを自動生成します。</p>
+      <!-- 記事テーマ（共通） -->
+      <div class="section-block">
+        <p class="section-title">記事テーマ設定</p>
+        <div class="form-group">
+          <label>記事テーマ（ネタ自動生成に使用）</label>
+          <textarea class="form-control" name="themes" rows="5" placeholder="例：RPA導入事例&#10;業務効率化&#10;DX推進&#10;AI活用" style="font-size:14px;">{{ client.themes if client and client.themes else '' }}</textarea>
+          <p class="hint">1行に1テーマ。このテーマをもとにAIが記事ネタを自動生成します。</p>
+        </div>
       </div>
 
-      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">Instagram ハッシュタグ設定</h3>
-      <div class="form-group">
-        <label>固定ハッシュタグ（投稿キャプションに自動追加）</label>
-        <textarea class="form-control" name="ig_hashtags" rows="4" placeholder="#サンプル&#10;#ハッシュタグ&#10;#一行に一つ入力" style="font-size:14px;">{{ client.ig_hashtags if client else '' }}</textarea>
-        <p class="hint">1行に1つ入力してください。すべての投稿のキャプション末尾に自動で追加されます。</p>
-      </div>
-
-      <h3 style="font-size:13px;font-weight:700;color:var(--muted);margin:24px 0 14px;text-transform:uppercase;letter-spacing:.05em;">スケジュール設定</h3>
-      <div class="form-group" style="max-width:200px;">
-        <label>デフォルト投稿時刻</label>
-        <input class="form-control" type="time" name="default_post_time" value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
-        <p class="hint">日付だけ選んで予約するときのデフォルト時刻</p>
+      <!-- スケジュール設定（共通） -->
+      <div class="section-block">
+        <p class="section-title">スケジュール設定</p>
+        <div class="form-group" style="max-width:200px;">
+          <label>デフォルト投稿時刻</label>
+          <input class="form-control" type="time" name="default_post_time" value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
+          <p class="hint">日付だけ選んで予約するときのデフォルト時刻</p>
+        </div>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:28px;">
@@ -65,4 +106,21 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateSections() {
+  const pt = document.getElementById('platform_type').value;
+  const showWp = (pt === 'wordpress' || pt === 'wordpress_instagram');
+  const showIg = (pt === 'instagram' || pt === 'wordpress_instagram');
+  const showCustom = (pt === 'custom_hp');
+
+  document.getElementById('section-wordpress').style.display = showWp ? '' : 'none';
+  document.getElementById('section-instagram').style.display = showIg ? '' : 'none';
+  document.getElementById('section-custom-hp').style.display = showCustom ? '' : 'none';
+}
+// 初期表示
+updateSections();
+</script>
 {% endblock %}

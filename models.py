@@ -48,11 +48,13 @@ class Client(db.Model):
     wp_endpoint = db.Column(db.String(255), default="")
     wp_username = db.Column(db.String(255), default="")
     wp_app_password = db.Column(db.String(255), default="")   # 暗号化保存
+    platform_type = db.Column(db.String(50), default="wordpress_instagram")  # wordpress / instagram / wordpress_instagram / custom_hp
     ig_business_account_id = db.Column(db.String(255), default="")
     ig_access_token = db.Column(db.Text, default="")          # 暗号化保存
     ig_token_expires_at = db.Column(db.DateTime)
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
+    custom_url = db.Column(db.String(255), default="")        # 独自HP URL
     default_post_time = db.Column(db.Time)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

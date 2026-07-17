@@ -55,6 +55,7 @@ def client_new():
     if request.method == "POST":
         client = Client(
             name=request.form["name"],
+            platform_type=request.form.get("platform_type", "wordpress_instagram"),
             wp_endpoint=request.form.get("wp_endpoint", ""),
             wp_username=request.form.get("wp_username", ""),
             wp_app_password=encrypt_field(request.form.get("wp_app_password", "")),
@@ -62,6 +63,7 @@ def client_new():
             ig_access_token=encrypt_field(request.form.get("ig_access_token", "")),
             ig_hashtags=request.form.get("ig_hashtags", ""),
             themes=request.form.get("themes", ""),
+            custom_url=request.form.get("custom_url", ""),
             default_post_time=request.form.get("default_post_time") or None,
         )
         db.session.add(client)
@@ -82,6 +84,7 @@ def client_edit(client_id: int):
     _assert_access(client)
     if request.method == "POST":
         client.name = request.form["name"]
+        client.platform_type = request.form.get("platform_type", "wordpress_instagram")
         client.wp_endpoint = request.form.get("wp_endpoint", "")
         client.wp_username = request.form.get("wp_username", "")
         new_wp_pass = request.form.get("wp_app_password", "")
@@ -93,6 +96,7 @@ def client_edit(client_id: int):
             client.ig_access_token = encrypt_field(new_ig_token)
         client.ig_hashtags = request.form.get("ig_hashtags", "")
         client.themes = request.form.get("themes", "")
+        client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None
         db.session.commit()
         flash("変更を保存しました", "success")
