@@ -1,7 +1,12 @@
 """routes/post_routes.py — 投稿コンテンツの管理・公開"""
 import os
 import uuid as _uuid_mod
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_JST = timezone(timedelta(hours=9))
+
+def _now_jst() -> datetime:
+    return datetime.now(_JST).replace(tzinfo=None)
 from flask import render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import login_required, current_user
 from models import db, Client, Post, PostImage
@@ -71,7 +76,7 @@ def post_save(client_id: int, post_id: int):
     post.body_html = request.form.get("body_html", post.body_html)
     post.ig_caption = request.form.get("ig_caption", post.ig_caption)
     post.created_by_designer_id = current_user.id
-    post.updated_at = datetime.utcnow()
+    post.updated_at = _now_jst()
     db.session.commit()
     flash("変更を保存しました", "success")
     return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
@@ -269,7 +274,7 @@ def post_publish(client_id: int, post_id: int):
             post.wp_post_id    = str(result.get("wp_post_id", ""))
             post.wp_post_url   = result.get("wp_post_url", "")
             post.status        = "posted"
-            post.posted_at     = datetime.utcnow()
+            post.posted_at     = _now_jst()
             post.error_message = ""
             db.session.commit()
             return jsonify({"success": True, "wp_url": post.wp_post_url})
@@ -285,7 +290,7 @@ def post_publish(client_id: int, post_id: int):
         if result.get("success"):
             post.ig_media_id   = result.get("media_id", "")
             post.status        = "posted"
-            post.posted_at     = datetime.utcnow()
+            post.posted_at     = _now_jst()
             post.error_message = ""
             db.session.commit()
             return jsonify({"success": True})
@@ -298,7 +303,7 @@ def post_publish(client_id: int, post_id: int):
     # ── 独自HP（投稿済みマーク）──────────────────────────
     elif pt == "custom_hp":
         post.status        = "posted"
-        post.posted_at     = datetime.utcnow()
+        post.posted_at     = _now_jst()
         post.error_message = ""
         db.session.commit()
         return jsonify({"success": True})
@@ -330,7 +335,7 @@ def post_publish(client_id: int, post_id: int):
             db.session.commit()
             return jsonify({"success": False, "reason": "\n".join(errors)})
         post.status        = "posted"
-        post.posted_at     = datetime.utcnow()
+        post.posted_at     = _now_jst()
         post.error_message = ""
         db.session.commit()
         return jsonify({"success": True, "wp_url": post.wp_post_url})

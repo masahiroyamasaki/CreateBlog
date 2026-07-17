@@ -1,6 +1,8 @@
 """models.py — SQLAlchemy モデル定義（MySQL）"""
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask_sqlalchemy import SQLAlchemy
+
+_JST = timezone(timedelta(hours=9))
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -147,10 +149,11 @@ class Post(db.Model):
 
     @property
     def is_overdue(self) -> bool:
+        now_jst = datetime.now(_JST).replace(tzinfo=None)
         return (
             self.status == "scheduled"
             and self.scheduled_at is not None
-            and self.scheduled_at < datetime.utcnow()
+            and self.scheduled_at < now_jst
         )
 
 

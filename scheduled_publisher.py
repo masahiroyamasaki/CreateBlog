@@ -4,9 +4,17 @@ VPS の cron から毎分呼び出す:
   * * * * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask publish-scheduled >> /var/log/blog-scheduled.log 2>&1
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
+
+JST = timezone(timedelta(hours=9))
+
+
+def _now_jst() -> datetime:
+    """現在の JST 時刻をタイムゾーンなし（naive）で返す。
+    ブラウザ入力値（JST naive）と比較するために使用する。"""
+    return datetime.now(JST).replace(tzinfo=None)
 
 
 def publish_due_posts(app, db) -> int:
@@ -19,7 +27,7 @@ def publish_due_posts(app, db) -> int:
         import wp_client as wp_mod
         from config import decrypt_field
 
-        now = datetime.utcnow()
+        now = _now_jst()
         due_posts = Post.query.filter(
             Post.status == "scheduled",
             Post.scheduled_at <= now,
