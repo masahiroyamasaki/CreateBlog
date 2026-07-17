@@ -19,6 +19,7 @@
 .tab.active { border-color: var(--primary); color: var(--text); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+#upload-zone:hover, #upload-zone.drag-active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
 </style>
 {% endblock %}
 
@@ -73,8 +74,34 @@
     <div class="card">
       <div class="card-header">
         <h2>投稿画像（カルーセル対応、最大10枚）</h2>
+        <span style="font-size:12px;color:var(--muted);">{{ post.images.count() }} / 10 枚</span>
       </div>
       <div class="card-body">
+
+        <!-- アップロードゾーン -->
+        <div id="upload-zone"
+             onclick="document.getElementById('file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-active')"
+             ondragleave="this.classList.remove('drag-active')"
+             ondrop="handleDrop(event)"
+             style="border:2px dashed var(--border);border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;margin-bottom:14px;transition:border-color .15s,background .15s;">
+          <input type="file" id="file-input" multiple accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="uploadFiles(this.files)">
+          <div style="font-size:28px;margin-bottom:6px;">🖼️</div>
+          <div style="font-size:14px;font-weight:600;">クリックまたはドラッグ＆ドロップ</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">PNG / JPG / GIF / WebP・複数枚同時OK</div>
+        </div>
+
+        <!-- アップロード進捗 -->
+        <div id="upload-progress" style="display:none;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;">
+            <span id="upload-status">アップロード中...</span>
+          </div>
+          <div style="background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;">
+            <div id="upload-bar" style="background:var(--primary);height:100%;width:0%;transition:width .4s;"></div>
+          </div>
+        </div>
+
+        <!-- 画像リスト -->
         <div id="image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
           {% for img in post.image_list %}
           <div class="img-card" draggable="true" data-id="{{ img.id }}" id="img-{{ img.id }}">
@@ -82,19 +109,23 @@
             <img src="{{ img.image_url }}" alt="" onerror="this.style.display='none'">
             <div style="flex:1;min-width:0;">
               <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.image_url }}</div>
-              <div style="font-size:11px;color:var(--muted);">順序: {{ img.sort_order }}</div>
+              <div style="font-size:11px;color:var(--muted);">{{ loop.index }}枚目</div>
             </div>
             <button class="btn btn-danger btn-sm" onclick="deleteImage({{ img.id }})">削除</button>
           </div>
           {% else %}
-          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">画像がありません</div>
+          <div id="no-image-msg" style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">画像がありません</div>
           {% endfor %}
         </div>
 
-        <div style="display:flex;gap:8px;">
-          <input class="form-control" type="url" id="new-image-url" placeholder="https://example.com/image.png" style="flex:1;">
-          <button class="btn btn-secondary" onclick="addImage()">追加</button>
-        </div>
+        <!-- URLから追加（折りたたみ） -->
+        <details>
+          <summary style="font-size:12px;color:var(--muted);cursor:pointer;user-select:none;">URLから直接追加</summary>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input class="form-control" type="url" id="new-image-url" placeholder="https://example.com/image.png" style="flex:1;">
+            <button class="btn btn-secondary" onclick="addImage()">追加</button>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -232,7 +263,53 @@ document.getElementById('schedule-form').addEventListener('submit', function(e) 
   }
 });
 
-// 画像管理
+// ─── 画像アップロード ────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-active');
+  uploadFiles(e.dataTransfer.files);
+}
+
+async function uploadFiles(files) {
+  if (!files || files.length === 0) return;
+  const progressEl = document.getElementById('upload-progress');
+  const statusEl   = document.getElementById('upload-status');
+  const barEl      = document.getElementById('upload-bar');
+
+  progressEl.style.display = '';
+  statusEl.textContent = `${files.length} 件をアップロード中...`;
+  barEl.style.width = '20%';
+
+  const fd = new FormData();
+  for (const f of files) fd.append('images', f);
+
+  try {
+    barEl.style.width = '60%';
+    const res  = await fetch(`/designer/clients/${clientId}/posts/${postId}/images/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    barEl.style.width = '100%';
+
+    if (data.success && data.uploaded.length > 0) {
+      statusEl.textContent = `${data.uploaded.length} 件アップロード完了！`;
+      showToast(`${data.uploaded.length} 件の画像を追加しました`);
+      // ページリロードして画像リストを更新
+      setTimeout(() => location.reload(), 800);
+    } else {
+      const msg = data.reason || '対応していない形式の画像があります';
+      statusEl.textContent = 'エラー: ' + msg;
+      showToast(msg, 'error');
+      setTimeout(() => { progressEl.style.display = 'none'; }, 3000);
+    }
+  } catch (err) {
+    statusEl.textContent = 'エラー: ' + err.message;
+    showToast('通信エラー: ' + err.message, 'error');
+    setTimeout(() => { progressEl.style.display = 'none'; }, 3000);
+  }
+  // ファイル入力をリセット（同じファイルを再選択できるよう）
+  document.getElementById('file-input').value = '';
+}
+
+// ─── URLから追加 ─────────────────────────────────────────────────────────────
 async function addImage() {
   const url = document.getElementById('new-image-url').value.trim();
   if (!url) return;

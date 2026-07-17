@@ -1,11 +1,21 @@
 """routes/post_routes.py — 投稿コンテンツの管理・公開"""
+import os
+import uuid as _uuid_mod
 from datetime import datetime
-from flask import render_template, request, redirect, url_for, flash, jsonify, abort
+from flask import render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import login_required, current_user
 from models import db, Client, Post, PostImage
 from routes import designer_bp
 import instagram as ig_client
 import wp_client
+
+_ALLOWED_EXTS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def _upload_base():
+    return os.path.join(current_app.root_path, 'static', 'uploads')
+
+def _allowed_image(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in _ALLOWED_EXTS
 
 
 def _assert_access(client: Client):
@@ -90,6 +100,49 @@ def post_image_add(client_id: int, post_id: int):
     return jsonify({"success": True, "id": img.id})
 
 
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/images/upload", methods=["POST"])
+@login_required
+def post_image_upload(client_id: int, post_id: int):
+    """ファイルアップロード → static/uploads/clients/{id}/posts/{id}/ に保存"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    post = Post.query.get_or_404(post_id)
+    if post.client_id != client_id:
+        abort(403)
+
+    files = request.files.getlist('images')
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({"success": False, "reason": "ファイルが選択されていません"})
+
+    current_count = post.images.count()
+    if current_count >= 10:
+        return jsonify({"success": False, "reason": "カルーセルは最大10枚までです"})
+
+    save_dir = os.path.join(_upload_base(), 'clients', str(client_id), 'posts', str(post_id))
+    os.makedirs(save_dir, exist_ok=True)
+
+    last = post.images.order_by(PostImage.sort_order.desc()).first()
+    next_order = (last.sort_order + 1) if last else 1
+    uploaded = []
+
+    for f in files:
+        if f.filename == '' or not _allowed_image(f.filename):
+            continue
+        if current_count + len(uploaded) >= 10:
+            break
+        ext = f.filename.rsplit('.', 1)[1].lower()
+        filename = f"{_uuid_mod.uuid4().hex}.{ext}"
+        f.save(os.path.join(save_dir, filename))
+        image_url = f"/static/uploads/clients/{client_id}/posts/{post_id}/{filename}"
+        img = PostImage(post_id=post_id, image_url=image_url, sort_order=next_order + len(uploaded))
+        db.session.add(img)
+        db.session.flush()
+        uploaded.append({"id": img.id, "url": image_url})
+
+    db.session.commit()
+    return jsonify({"success": True, "uploaded": uploaded})
+
+
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/images/<int:img_id>/delete", methods=["POST"])
 @login_required
 def post_image_delete(client_id: int, post_id: int, img_id: int):
@@ -98,6 +151,14 @@ def post_image_delete(client_id: int, post_id: int, img_id: int):
     img = PostImage.query.get_or_404(img_id)
     if img.post_id != post_id:
         abort(403)
+    # ローカルアップロード画像はファイルも削除
+    if img.image_url.startswith('/static/uploads/'):
+        file_path = os.path.join(current_app.root_path, img.image_url.lstrip('/'))
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
     db.session.delete(img)
     db.session.commit()
     return jsonify({"success": True})
