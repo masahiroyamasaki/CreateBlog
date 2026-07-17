@@ -36,6 +36,9 @@ try:
 
     with app.app_context():
         db.create_all()          # テーブルが存在しなければ作成
+
+    from db_migrate import auto_migrate
+    auto_migrate(app, db)        # モデルと差分があるカラムを自動追加
 except Exception as _mysql_err:
     import logging
     logging.warning(f"MySQL 接続スキップ（既存 SQLite 機能は継続）: {_mysql_err}")
