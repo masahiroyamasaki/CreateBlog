@@ -278,54 +278,75 @@ def topic_generate(client_id: int, topic_id: int):
     def _run():
         run = _generation_runs[run_id]
         try:
-            import anthropic as _anthropic
-            from config import Config
-
-            ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-
-            # ── Instagram: 単体プレーンテキスト生成 ──────────────────────────────
+            # ── Instagram: 4エージェント + IG フォーマッター ──────────────────
             if platform_type == "instagram":
-                run.update(step="ig_post", step_num=1)
-                ig_resp = ai.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=1500,
-                    messages=[{"role": "user", "content": f"""Instagramの投稿文を作成してください。
+                from agents.blog_creator import BlogCreatorAgent
+                from agents.content_checker import ContentCheckerAgent
+                from agents.legal_checker import LegalCheckerAgent
+                from agents.final_creator import FinalCreatorAgent
+                from agents.ig_formatter import IgFormatterAgent
 
-企業名: {client_name}
-投稿トピック: {topic_title}
-補足・方向性: {topic_outline}
+                # Step 1: 下書き作成
+                run.update(step="blog_creator", step_num=1)
+                draft = "".join(BlogCreatorAgent().stream({
+                    "topic": topic_title,
+                    "keywords": topic_outline,
+                    "tone": "標準",
+                    "word_count": "1200",
+                    "existing_posts": [],
+                }))
 
-条件:
-- 日本語
-- 本文は200〜400文字程度（読みやすい長さ）
-- 改行を活用して視覚的に読みやすくする
-- 絵文字を適度に使って親しみやすさを出す
-- 投稿内容に関連するハッシュタグを5〜10個、本文の後ろに付ける
-- 出力はキャプション本文とハッシュタグのみ（タイトルや説明文は不要）"""}],
-                )
-                ig_caption = ig_resp.content[0].text.strip()
+                # Step 2: コンテンツチェック
+                run.update(step="content_checker", step_num=2)
+                content_check = "".join(ContentCheckerAgent().stream({"draft": draft}))
 
-                run.update(step="saving", step_num=2)
+                # Step 3: リーガルチェック
+                run.update(step="legal_checker", step_num=3)
+                legal_check = "".join(LegalCheckerAgent().stream({"draft": draft}))
+
+                # Step 4: 最終記事生成
+                run.update(step="final_creator", step_num=4)
+                final_content = "".join(FinalCreatorAgent().stream({
+                    "draft": draft,
+                    "content_check": content_check,
+                    "legal_check": legal_check,
+                    "topic": topic_title,
+                    "keywords": topic_outline,
+                    "tone": "標準",
+                    "word_count": "1200",
+                }))
+
+                # Step 5: IG フォーマッター（プレーンテキスト 1000文字 + ハッシュタグ）
+                run.update(step="ig_formatter", step_num=5)
+                ig_caption = "".join(IgFormatterAgent().stream({
+                    "blog_content": final_content,
+                    "topic": topic_title,
+                    "client_name": client_name,
+                }))
+
+                # Step 6: 保存
+                run.update(step="saving", step_num=6)
                 with app.app_context():
                     post = Post.query.get(post_id)
                     if post:
-                        post.body_html = ""
-                        post.ig_caption = ig_caption
-                        post.status = "draft"
+                        post.body_html  = ""
+                        post.ig_caption = ig_caption.strip()
+                        post.status     = "draft"
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"
                     db.session.commit()
                     run["post_id"] = post_id
 
-                run.update(status="done", step="done", step_num=2)
+                run.update(status="done", step="done", step_num=6)
 
-            # ── WordPress / その他: 4エージェントパイプライン ──────────────────
+            # ── WordPress / その他: 4エージェント + IGフォーマッター ──────────
             else:
                 from agents.blog_creator import BlogCreatorAgent
                 from agents.content_checker import ContentCheckerAgent
                 from agents.legal_checker import LegalCheckerAgent
                 from agents.final_creator import FinalCreatorAgent
+                from agents.ig_formatter import IgFormatterAgent
                 import markdown as _md
 
                 # Step 1: 下書き作成
@@ -358,22 +379,13 @@ def topic_generate(client_id: int, topic_id: int):
                     "word_count": "1200",
                 }))
 
-                # Step 5: IGキャプション生成
+                # Step 5: IGキャプション生成（1000文字 + ハッシュタグ）
                 run.update(step="ig_caption", step_num=5)
-                ig_resp = ai.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=1024,
-                    messages=[{"role": "user", "content": f"""以下のブログ記事をもとに、Instagramキャプションを作成してください。
-- 日本語・2200文字以内
-- 記事の要点を魅力的にまとめる
-- ハッシュタグは含めない（別途自動追加されます）
-- キャプション本文のみ出力
-
----
-{final_content[:3000]}
----"""}],
-                )
-                ig_caption = ig_resp.content[0].text.strip()
+                ig_caption = "".join(IgFormatterAgent().stream({
+                    "blog_content": final_content,
+                    "topic": topic_title,
+                    "client_name": client_name,
+                }))
 
                 # Step 6: プレースホルダーを更新して完成
                 run.update(step="saving", step_num=6)
@@ -382,9 +394,9 @@ def topic_generate(client_id: int, topic_id: int):
                 with app.app_context():
                     post = Post.query.get(post_id)
                     if post:
-                        post.body_html = body_html
-                        post.ig_caption = ig_caption
-                        post.status = "draft"
+                        post.body_html  = body_html
+                        post.ig_caption = ig_caption.strip()
+                        post.status     = "draft"
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"

@@ -2,7 +2,7 @@ import os
 import secrets
 import threading
 import uuid
-from datetime import date
+from datetime import date, datetime
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, url_for
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -574,6 +574,20 @@ def pipeline_status(run_id):
     if not run:
         return jsonify({"error": "run_id が見つかりません"}), 404
     return jsonify(run)
+
+
+@app.cli.command("publish-scheduled")
+def publish_scheduled_cmd():
+    """予約済みInstagram/独自HP投稿を自動実行（cron から毎分呼び出す）"""
+    try:
+        from scheduled_publisher import publish_due_posts
+        from models import db as _db
+        n = publish_due_posts(app, _db)
+        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] Published {n} posts")
+    except Exception as e:
+        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] ERROR: {e}")
+        import sys
+        sys.exit(1)
 
 
 if __name__ == "__main__":
