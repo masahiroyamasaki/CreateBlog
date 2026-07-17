@@ -59,10 +59,17 @@
           <td>
             {% if p.status == 'creating' %}<span class="spinner-sm"></span>{% endif %}
             <span class="badge badge-{{ p.status_color }}">{{ p.status_label }}</span>
+            {% if p.is_overdue %}<span class="badge badge-red" style="margin-left:4px;">期限超過</span>{% endif %}
           </td>
           <td style="color:var(--muted);font-size:12px;">{{ p.images.count() }}枚</td>
-          <td style="font-size:12px;color:var(--muted);">
-            {% if p.scheduled_at %}{{ p.scheduled_at.strftime('%m/%d %H:%M') }}{% else %}—{% endif %}
+          <td style="font-size:12px;">
+            {% if p.scheduled_at %}
+              {% if p.is_overdue %}
+              <span style="color:#dc2626;font-weight:600;" title="予定日時を過ぎても未投稿です">⚠ {{ p.scheduled_at.strftime('%m/%d %H:%M') }}</span>
+              {% else %}
+              <span style="color:var(--muted);">{{ p.scheduled_at.strftime('%m/%d %H:%M') }}</span>
+              {% endif %}
+            {% else %}—{% endif %}
           </td>
           <td style="font-size:12px;color:var(--muted);">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
         </tr>

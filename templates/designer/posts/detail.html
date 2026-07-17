@@ -24,6 +24,15 @@
 {% endblock %}
 
 {% block content %}
+{% if post.is_overdue %}
+<div class="alert" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+  <span style="font-size:18px;">⚠</span>
+  <div>
+    <strong>予定日時（{{ post.scheduled_at.strftime('%Y/%m/%d %H:%M') }}）を過ぎていますが、まだ投稿されていません。</strong><br>
+    <span style="font-size:12px;">「今すぐ投稿」ボタンで手動投稿するか、予約を取り消して再設定してください。</span>
+  </div>
+</div>
+{% endif %}
 <div class="panel">
 
   <!-- 左: 編集エリア -->
@@ -33,8 +42,13 @@
     <div class="card">
       <div class="card-body">
         <div class="tab-bar">
+          {% if client.platform_type == 'instagram' %}
+          <div class="tab" onclick="switchTab('body')" style="color:var(--muted);">ブログ本文（未使用）</div>
+          <div class="tab active" onclick="switchTab('ig')">IGキャプション</div>
+          {% else %}
           <div class="tab active" onclick="switchTab('body')">ブログ本文</div>
           <div class="tab" onclick="switchTab('ig')">IGキャプション</div>
+          {% endif %}
         </div>
 
         <form id="save-form" method="POST" action="{{ url_for('designer.post_save', client_id=client.id, post_id=post.id) }}">
@@ -44,7 +58,7 @@
           </div>
 
           <!-- 本文タブ -->
-          <div class="tab-panel active" id="tab-body">
+          <div class="tab-panel {% if client.platform_type != 'instagram' %}active{% endif %}" id="tab-body">
             <div class="tab-bar" style="margin-bottom:10px;">
               <div class="tab active" onclick="switchBodyView('edit')">編集</div>
               <div class="tab" onclick="switchBodyView('preview')">プレビュー</div>
@@ -58,8 +72,13 @@
           </div>
 
           <!-- IG キャプション タブ -->
-          <div class="tab-panel" id="tab-ig">
-            <textarea class="form-control" name="ig_caption" id="f-ig" rows="10" oninput="updateCharCount()" placeholder="Instagram キャプション（最大2200文字）">{{ post.ig_caption }}</textarea>
+          <div class="tab-panel {% if client.platform_type == 'instagram' %}active{% endif %}" id="tab-ig">
+            {% if client.platform_type == 'instagram' and client.ig_hashtags %}
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;padding:8px 10px;background:var(--bg3);border-radius:6px;">
+              💡 投稿時に固定ハッシュタグが自動追加されます。ここには本文と投稿固有のハッシュタグを入力してください。
+            </div>
+            {% endif %}
+            <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if client.platform_type == 'instagram' %}14{% else %}10{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション（最大2200文字）">{{ post.ig_caption }}</textarea>
             <div class="char-count" id="char-count">0 / 2200</div>
           </div>
         </form>

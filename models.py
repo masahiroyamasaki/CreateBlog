@@ -145,6 +145,14 @@ class Post(db.Model):
             "failed": "red",
         }.get(self.status, "gray")
 
+    @property
+    def is_overdue(self) -> bool:
+        return (
+            self.status == "scheduled"
+            and self.scheduled_at is not None
+            and self.scheduled_at < datetime.utcnow()
+        )
+
 
 # ─── 投稿画像（カルーセル対応）─────────────────────────────────────────────
 
