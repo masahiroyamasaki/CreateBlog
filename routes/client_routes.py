@@ -22,9 +22,6 @@ def _assert_access(client: Client):
 @login_required
 def clients():
     client_list = _get_accessible_clients()
-    # 1社のみ担当の場合は自動で詳細へ
-    if len(client_list) == 1:
-        return redirect(url_for("designer.client_detail", client_id=client_list[0].id))
     return render_template("designer/clients/list.html", clients=client_list)
 
 
