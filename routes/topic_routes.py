@@ -109,6 +109,98 @@ def topic_reorder(client_id: int):
     return jsonify({"success": True})
 
 
+# ─── ネタ一括生成（管理者のみ）────────────────────────────────────────────────
+
+@designer_bp.route("/clients/<int:client_id>/topics/generate-ideas", methods=["POST"])
+@login_required
+def generate_ideas(client_id: int):
+    """テーマをもとにAIが記事ネタを10件生成してキューに追加する（管理者のみ）"""
+    if current_user.role != "admin":
+        abort(403)
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+
+    themes = (client.themes or "").strip()
+    if not themes:
+        return jsonify({"success": False, "reason": "企業設定にテーマが登録されていません。先に設定画面でテーマを入力してください。"})
+
+    # 重複回避のため既存のタイトルを収集
+    existing_titles = [t.title for t in TopicQueue.query.filter_by(client_id=client_id).all()]
+    existing_posts  = [p.title for p in Post.query.filter_by(client_id=client_id).all()]
+    avoid_titles = existing_titles + existing_posts
+
+    try:
+        import anthropic as _anthropic
+        from config import Config
+
+        avoid_section = ""
+        if avoid_titles:
+            avoid_section = "\n\n【重複禁止】以下のタイトルと内容が被らないようにすること：\n" + "\n".join(f"- {t}" for t in avoid_titles[:30])
+
+        prompt = f"""あなたはコンテンツプランナーです。
+以下のテーマをもとに、ブログ記事ネタを10件考えてください。
+
+企業名: {client.name}
+テーマ:
+{themes}
+{avoid_section}
+
+条件:
+- 10件すべて異なる切り口にすること
+- 読者の悩みや関心に刺さるタイトルにすること
+- 大枠は記事の方向性を2〜3文で簡潔に記載すること
+
+以下のJSON形式のみで出力してください。他のテキストは一切含めないこと:
+[
+  {{"title": "記事タイトル", "outline": "記事の大枠・方向性"}},
+  ...
+]"""
+
+        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        message = ai.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        text = message.content[0].text
+        m = re.search(r'\[[\s\S]*\]', text)
+        if not m:
+            raise ValueError("AIの応答からJSONが見つかりませんでした")
+        ideas = json.loads(m.group())
+
+        # 末尾のsort_orderを取得
+        last = (
+            TopicQueue.query.filter_by(client_id=client_id, status="pending")
+            .order_by(TopicQueue.sort_order.desc())
+            .first()
+        )
+        next_order = (last.sort_order + 1) if last else 1
+
+        added = 0
+        for idea in ideas:
+            title = (idea.get("title") or "").strip()
+            outline = (idea.get("outline") or "").strip()
+            if not title:
+                continue
+            db.session.add(TopicQueue(
+                client_id=client_id,
+                title=title,
+                outline=outline,
+                sort_order=next_order + added,
+                created_by="ai_auto",
+                created_by_designer_id=current_user.id,
+            ))
+            added += 1
+
+        db.session.commit()
+        return jsonify({"success": True, "added": added})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "reason": str(e)}), 500
+
+
 # ─── AI生成（管理者のみ）──────────────────────────────────────────────────────
 
 @designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/generate-ui")

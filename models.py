@@ -51,7 +51,8 @@ class Client(db.Model):
     ig_business_account_id = db.Column(db.String(255), default="")
     ig_access_token = db.Column(db.Text, default="")          # 暗号化保存
     ig_token_expires_at = db.Column(db.DateTime)
-    ig_hashtags = db.Column(db.Text, default="")              # 固定ハッシュタグ（改行区切り）
+    ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
+    themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     default_post_time = db.Column(db.Time)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

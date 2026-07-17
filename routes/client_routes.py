@@ -64,6 +64,7 @@ def client_new():
             ig_business_account_id=request.form.get("ig_business_account_id", ""),
             ig_access_token=encrypt_field(request.form.get("ig_access_token", "")),
             ig_hashtags=request.form.get("ig_hashtags", ""),
+            themes=request.form.get("themes", ""),
             default_post_time=request.form.get("default_post_time") or None,
         )
         db.session.add(client)
@@ -94,6 +95,7 @@ def client_edit(client_id: int):
         if new_ig_token:
             client.ig_access_token = encrypt_field(new_ig_token)
         client.ig_hashtags = request.form.get("ig_hashtags", "")
+        client.themes = request.form.get("themes", "")
         client.default_post_time = request.form.get("default_post_time") or None
         db.session.commit()
         flash("変更を保存しました", "success")

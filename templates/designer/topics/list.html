@@ -32,7 +32,12 @@
     <div class="card">
       <div class="card-header">
         <h2>未生成のネタ（{{ pending_count }} 件）</h2>
-        <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
+          {% if current_user.role == 'admin' %}
+          <button class="btn btn-generate btn-sm" id="btn-ideas" onclick="generateIdeas()">AIでネタを10件追加</button>
+          {% endif %}
+        </div>
       </div>
       <div class="card-body" style="padding:12px;">
         <div id="topic-list" style="display:flex;flex-direction:column;gap:8px;">
@@ -143,6 +148,32 @@ function saveOrder() {
 function toggleEdit(id) {
   const f = document.getElementById('edit-' + id);
   f.classList.toggle('open');
+}
+
+async function generateIdeas() {
+  const btn = document.getElementById('btn-ideas');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/generate-ideas`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(`${data.added}件のネタを追加しました。ページを更新します...`);
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('エラー: ' + data.reason, 'error');
+      btn.disabled = false;
+      btn.textContent = 'AIでネタを10件追加';
+    }
+  } catch (err) {
+    showToast('通信エラー: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'AIでネタを10件追加';
+  }
 }
 
 async function saveEdit(id) {
