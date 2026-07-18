@@ -20,6 +20,16 @@
         <input class="form-control" type="text" name="name" value="{{ client.name if client else '' }}" required placeholder="例: 株式会社サンプル">
       </div>
 
+      <!-- ステータス -->
+      <div class="form-group">
+        <label>ステータス</label>
+        <select class="form-control" name="client_status">
+          <option value="active"   {% if not client or client.client_status == 'active'   %}selected{% endif %}>稼働中</option>
+          <option value="pending"  {% if client and client.client_status == 'pending'  %}selected{% endif %}>保留中</option>
+          <option value="setting"  {% if client and client.client_status == 'setting'  %}selected{% endif %}>設定中</option>
+        </select>
+      </div>
+
       <!-- 投稿先プラットフォーム -->
       <div class="form-group section-block">
         <p class="section-title">投稿先プラットフォーム</p>

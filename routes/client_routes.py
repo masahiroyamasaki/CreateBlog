@@ -56,6 +56,7 @@ def client_new():
         client = Client(
             name=request.form["name"],
             platform_type=request.form.get("platform_type", "wordpress_instagram"),
+            client_status=request.form.get("client_status", "active"),
             wp_endpoint=request.form.get("wp_endpoint", ""),
             wp_username=request.form.get("wp_username", ""),
             wp_app_password=encrypt_field(request.form.get("wp_app_password", "")),
@@ -85,6 +86,7 @@ def client_edit(client_id: int):
     if request.method == "POST":
         client.name = request.form["name"]
         client.platform_type = request.form.get("platform_type", "wordpress_instagram")
+        client.client_status = request.form.get("client_status", "active")
         client.wp_endpoint = request.form.get("wp_endpoint", "")
         client.wp_username = request.form.get("wp_username", "")
         new_wp_pass = request.form.get("wp_app_password", "")
