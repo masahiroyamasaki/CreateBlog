@@ -324,14 +324,26 @@ def topic_generate(client_id: int, topic_id: int):
                     "client_name": client_name,
                 }))
 
-                # Step 6: 保存
+                # Step 6: 保存 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
                 with app.app_context():
-                    post = Post.query.get(post_id)
+                    from schedule_utils import next_scheduled_at
+                    from models import Post as _Post, Client as _Client
+                    post = _Post.query.get(post_id)
+                    client_obj = _Client.query.get(client_id_val)
                     if post:
                         post.body_html  = ""
                         post.ig_caption = ig_caption.strip()
                         post.status     = "draft"
+                        if client_obj and client_obj.schedule_type:
+                            existing = {
+                                p.scheduled_at.date()
+                                for p in _Post.query.filter(
+                                    _Post.client_id == client_id_val,
+                                    _Post.scheduled_at.isnot(None),
+                                ).all() if p.scheduled_at
+                            }
+                            post.scheduled_at = next_scheduled_at(client_obj, existing)
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"
@@ -387,16 +399,28 @@ def topic_generate(client_id: int, topic_id: int):
                     "client_name": client_name,
                 }))
 
-                # Step 6: プレースホルダーを更新して完成
+                # Step 6: プレースホルダーを更新して完成 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
                 body_html = _md.markdown(final_content, extensions=["extra", "toc"])
 
                 with app.app_context():
-                    post = Post.query.get(post_id)
+                    from schedule_utils import next_scheduled_at
+                    from models import Post as _Post, Client as _Client
+                    post = _Post.query.get(post_id)
+                    client_obj = _Client.query.get(client_id_val)
                     if post:
                         post.body_html  = body_html
                         post.ig_caption = ig_caption.strip()
                         post.status     = "draft"
+                        if client_obj and client_obj.schedule_type:
+                            existing = {
+                                p.scheduled_at.date()
+                                for p in _Post.query.filter(
+                                    _Post.client_id == client_id_val,
+                                    _Post.scheduled_at.isnot(None),
+                                ).all() if p.scheduled_at
+                            }
+                            post.scheduled_at = next_scheduled_at(client_obj, existing)
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"

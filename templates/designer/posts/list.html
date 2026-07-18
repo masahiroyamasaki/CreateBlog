@@ -20,12 +20,22 @@
   <span>{{ creating_count }} 件の投稿をAIが作成中です。完了すると自動的に「下書き」になります。</span>
 </div>
 {% endif %}
-<!-- ステータスフィルタ -->
-<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-  {% for s, label in [('','すべて'),('creating','作成中'),('draft','下書き'),('approved','承認済み'),('scheduled','予約中'),('posted','投稿済み'),('failed','失敗')] %}
-  <a href="{{ url_for('designer.post_list', client_id=client.id, status=s) }}"
-     class="btn btn-sm {% if status_filter == s %}btn-primary{% else %}btn-secondary{% endif %}">{{ label }}</a>
-  {% endfor %}
+<!-- ステータスフィルタ + 一括自動予約 -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% for s, label in [('','すべて'),('creating','作成中'),('draft','下書き'),('approved','承認済み'),('scheduled','予約中'),('posted','投稿済み'),('failed','失敗')] %}
+    <a href="{{ url_for('designer.post_list', client_id=client.id, status=s) }}"
+       class="btn btn-sm {% if status_filter == s %}btn-primary{% else %}btn-secondary{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  {% if client.schedule_type %}
+  <form method="POST" action="{{ url_for('designer.post_auto_schedule', client_id=client.id) }}"
+        onsubmit="return confirm('予約日時が未設定の下書き投稿に、企業スケジュール設定をもとに自動で日時をセットします。よろしいですか？')">
+    <button type="submit" class="btn btn-secondary btn-sm" style="white-space:nowrap;">
+      一括自動予約設定
+    </button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="card">

@@ -30,6 +30,24 @@ def _assert_access(client: Client):
 
 # ──────────────────────────── 投稿一覧 ──────────────────────────────────────
 
+@designer_bp.route("/clients/<int:client_id>/posts/auto-schedule", methods=["POST"])
+@login_required
+def post_auto_schedule(client_id: int):
+    """下書き投稿に予約日時を一括自動設定する"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    from schedule_utils import bulk_auto_schedule
+    drafts = Post.query.filter(
+        Post.client_id == client_id,
+        Post.status.in_(["draft", "approved"]),
+        Post.scheduled_at.is_(None),
+    ).order_by(Post.created_at.asc()).all()
+    count = bulk_auto_schedule(client, drafts)
+    db.session.commit()
+    flash(f"{count} 件の投稿に予約日時を自動設定しました", "success")
+    return redirect(url_for("designer.post_list", client_id=client_id))
+
+
 @designer_bp.route("/clients/<int:client_id>/posts")
 @login_required
 def post_list(client_id: int):
