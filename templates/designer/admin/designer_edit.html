@@ -1,0 +1,48 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ designer.name }} — 編集{% endblock %}
+{% block page_title %}デザイナー編集{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.admin_designer_detail', designer_id=designer.id) }}" class="btn btn-secondary btn-sm">← キャンセル</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <div class="card-body">
+    <form method="POST">
+      <div class="form-group">
+        <label>氏名</label>
+        <input class="form-control" type="text" name="name" value="{{ designer.name }}" required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group">
+          <label>職種</label>
+          <input class="form-control" type="text" name="job_type" value="{{ designer.job_type or '' }}" placeholder="例: Webデザイナー">
+        </div>
+        <div class="form-group">
+          <label>活動地域</label>
+          <input class="form-control" type="text" name="region" value="{{ designer.region or '' }}" placeholder="例: 東京都">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>振込口座</label>
+        <input class="form-control" type="text" name="bank_account" value="{{ designer.bank_account or '' }}" placeholder="○○銀行 ○○支店 普通 1234567">
+      </div>
+      <div class="form-group">
+        <label>権限</label>
+        <select class="form-control" name="role">
+          <option value="designer" {% if designer.role == 'designer' %}selected{% endif %}>デザイナー</option>
+          <option value="admin"    {% if designer.role == 'admin'    %}selected{% endif %}>管理者</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>新しいパスワード（変更する場合のみ入力）</label>
+        <input class="form-control" type="password" name="new_password" minlength="8" autocomplete="new-password" placeholder="8文字以上">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:24px;">
+        <a href="{{ url_for('designer.admin_designer_detail', designer_id=designer.id) }}" class="btn btn-secondary">キャンセル</a>
+        <button type="submit" class="btn btn-primary">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -56,6 +56,10 @@
       </label>
       <button type="submit" class="btn">ログイン</button>
     </form>
+    <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--muted);">
+      アカウントをお持ちでない方は
+      <a href="{{ url_for('designer.register') }}" style="color:var(--primary);text-decoration:none;">新規登録</a>
+    </p>
   </div>
 </body>
 </html>

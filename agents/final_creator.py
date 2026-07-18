@@ -13,12 +13,11 @@ SYSTEM = """あなたはプロの日本語ブログエディターです。
 
 
 class FinalCreatorAgent(BaseAgent):
-    def stream(self, data: dict):
+    def _build_message(self, data: dict) -> str:
         draft = data.get("draft", "")
         content_check = data.get("content_check", "")
         legal_check = data.get("legal_check", "")
-
-        user_message = f"""以下の情報を基に、最終版のブログ記事を作成してください。
+        return f"""以下の情報を基に、最終版のブログ記事を作成してください。
 
 ## 元の下書き
 ---
@@ -37,4 +36,8 @@ class FinalCreatorAgent(BaseAgent):
 
 すべてのフィードバックを反映した最終版記事を Markdown 形式で作成してください。"""
 
-        yield from self._stream(SYSTEM, user_message)
+    def stream(self, data: dict):
+        yield from self._stream(SYSTEM, self._build_message(data))
+
+    def run(self, data: dict) -> str:
+        return self._generate(SYSTEM, self._build_message(data))

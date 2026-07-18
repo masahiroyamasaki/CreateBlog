@@ -1,0 +1,92 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ designer.name }} — デザイナー詳細{% endblock %}
+{% block page_title %}デザイナー詳細{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.admin_designers') }}" class="btn btn-secondary btn-sm">← 一覧に戻る</a>
+  <a href="{{ url_for('designer.admin_designer_edit', designer_id=designer.id) }}" class="btn btn-primary btn-sm">編集</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
+
+  <!-- プロフィール -->
+  <div class="card">
+    <div class="card-header"><h2>プロフィール</h2></div>
+    <div class="card-body" style="font-size:13px;">
+      <table style="width:100%;border-collapse:collapse;">
+        {% for label, value in [
+          ('氏名', designer.name),
+          ('メール', designer.email),
+          ('職種', designer.job_type or '—'),
+          ('活動地域', designer.region or '—'),
+          ('権限', '管理者' if designer.role == 'admin' else 'デザイナー'),
+          ('登録日', designer.created_at.strftime('%Y/%m/%d') if designer.created_at else '—'),
+          ('最終ログイン', designer.last_login_at.strftime('%Y/%m/%d %H:%M') if designer.last_login_at else '—'),
+        ] %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:10px 0;color:var(--muted);width:100px;">{{ label }}</td>
+          <td style="padding:10px 0;font-weight:500;">{{ value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      {% if designer.bank_account %}
+      <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">振込口座</div>
+        <div style="font-weight:500;">{{ designer.bank_account }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 担当企業 -->
+  <div class="card">
+    <div class="card-header">
+      <h2>担当企業一覧</h2>
+      <span style="font-size:12px;color:var(--muted);">{{ clients | length }} 社 / 月額売上 <strong style="color:var(--success);">¥{{ "{:,}".format(total_revenue) }}</strong></span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if clients %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>企業名</th>
+            <th>プラットフォーム</th>
+            <th>ステータス</th>
+            <th>月間投稿数</th>
+            <th>月額料金</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clients %}
+          <tr>
+            <td>
+              <a href="{{ url_for('designer.client_detail', client_id=c.id) }}" style="font-weight:600;color:var(--primary);text-decoration:none;">{{ c.name }}</a>
+            </td>
+            <td>
+              {% if c.platform_type == 'instagram' %}<span class="badge" style="background:#e1306c20;color:#e1306c;">Instagram</span>
+              {% elif c.platform_type == 'wordpress' %}<span class="badge" style="background:#21759b20;color:#21759b;">WordPress</span>
+              {% elif c.platform_type == 'custom_hp' %}<span class="badge badge-gray">独自HP</span>
+              {% else %}<span class="badge badge-gray">{{ c.platform_type }}</span>{% endif %}
+            </td>
+            <td>
+              {% if c.client_status == 'active' %}<span class="badge badge-green">稼働中</span>
+              {% elif c.client_status == 'pending' %}<span class="badge badge-orange">保留中</span>
+              {% else %}<span class="badge badge-gray">設定中</span>{% endif %}
+            </td>
+            <td style="font-size:13px;">{{ c.monthly_post_count }} 件 / 月</td>
+            <td style="font-size:13px;font-weight:600;">
+              {% if c.monthly_fee %}¥{{ "{:,}".format(c.monthly_fee) }}{% else %}<span style="color:var(--muted);">未設定</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">担当企業がありません</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

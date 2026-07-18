@@ -590,6 +590,26 @@ def publish_scheduled_cmd():
         sys.exit(1)
 
 
+@app.cli.command("run-monthly-batch")
+def run_monthly_batch_cmd():
+    """稼働企業ごとに月間投稿数分のネタ＋記事を自動生成（毎月10日 cron から呼び出す）"""
+    try:
+        from batch_monthly import run_monthly_batch
+        from models import db as _db
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 月間バッチ開始")
+        result = run_monthly_batch(app, _db)
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 完了: 企業={result['clients']}, ネタ={result['topics']}, 記事={result['posts']}")
+        if result["errors"]:
+            for e in result["errors"]:
+                print(f"  ERROR: {e}")
+    except Exception as e:
+        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] FATAL: {e}")
+        import sys
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
     app.run(debug=debug, port=5000)

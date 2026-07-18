@@ -32,10 +32,9 @@ SYSTEM = """あなたはプロのコンテンツエディター兼 SEO スペシ
 
 
 class ContentCheckerAgent(BaseAgent):
-    def stream(self, data: dict):
+    def _build_message(self, data: dict) -> str:
         draft = data.get("draft", "")
-
-        user_message = f"""以下のブログ記事を、内容品質・SEO・ファクトチェック・改善提案の4観点でチェックしてください。
+        return f"""以下のブログ記事を、内容品質・SEO・ファクトチェック・改善提案の4観点でチェックしてください。
 
 ---
 {draft}
@@ -43,4 +42,8 @@ class ContentCheckerAgent(BaseAgent):
 
 各観点の詳細な分析レポートを Markdown 形式で作成してください。ファクトチェックは必ず全項目を確認すること。"""
 
-        yield from self._stream(SYSTEM, user_message)
+    def stream(self, data: dict):
+        yield from self._stream(SYSTEM, self._build_message(data))
+
+    def run(self, data: dict) -> str:
+        return self._generate(SYSTEM, self._build_message(data))

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新規登録 — デザイナー管理画面</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --bg2: #1a1d23; --bg3: #252830;
+      --border: #2e323a; --text: #e2e8f0; --muted: #94a3b8;
+      --primary: #6366f1; --primary-h: #4f52c9;
+      --danger: #ef4444; --success: #10b981;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 480px; }
+    h1 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    .sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+    input[type=email], input[type=text], input[type=password] {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--bg3); color: var(--text);
+      font-size: 14px; outline: none; transition: border-color .15s;
+    }
+    input:focus { border-color: var(--primary); }
+    .group { margin-bottom: 18px; }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s; }
+    .btn:hover { background: var(--primary-h); }
+    .alert { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+    .alert-error { background: #ef444420; border: 1px solid #ef4444; color: #fca5a5; }
+    .alert-success { background: #10b98120; border: 1px solid #10b981; color: #6ee7b7; }
+    .login-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+    .login-link a { color: var(--primary); text-decoration: none; }
+    .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 24px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>デザイナー新規登録</h1>
+    <p class="sub">アカウントを作成してください</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'success' if cat == 'success' else 'error' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+
+      <div class="section-label">基本情報</div>
+
+      <div class="group">
+        <label>メールアドレス *</label>
+        <input type="email" name="email" required placeholder="designer@example.com"
+               value="{{ request.form.get('email', '') }}">
+      </div>
+      <div class="group">
+        <label>氏名 *</label>
+        <input type="text" name="name" required placeholder="山田 太郎"
+               value="{{ request.form.get('name', '') }}">
+      </div>
+      <div class="group">
+        <label>活動地域</label>
+        <input type="text" name="region" placeholder="例: 東京都・大阪府"
+               value="{{ request.form.get('region', '') }}">
+      </div>
+      <div class="group">
+        <label>職種</label>
+        <input type="text" name="job_type" placeholder="例: Webデザイナー・SNSマーケター"
+               value="{{ request.form.get('job_type', '') }}">
+      </div>
+      <div class="group">
+        <label>振込口座</label>
+        <input type="text" name="bank_account" placeholder="例: ○○銀行 ○○支店 普通 1234567 ヤマダタロウ"
+               value="{{ request.form.get('bank_account', '') }}">
+        <p class="hint">報酬の振込先口座情報を入力してください</p>
+      </div>
+
+      <div class="section-label">パスワード設定</div>
+
+      <div class="group">
+        <label>パスワード * （8文字以上）</label>
+        <input type="password" name="password" required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="group">
+        <label>パスワード（確認）*</label>
+        <input type="password" name="password2" required minlength="8" autocomplete="new-password">
+      </div>
+
+      <button type="submit" class="btn">登録する</button>
+    </form>
+
+    <p class="login-link">すでにアカウントをお持ちの方は <a href="{{ url_for('designer.login') }}">ログイン</a></p>
+  </div>
+</body>
+</html>

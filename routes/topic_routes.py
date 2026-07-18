@@ -288,41 +288,39 @@ def topic_generate(client_id: int, topic_id: int):
 
                 # Step 1: 下書き作成
                 run.update(step="blog_creator", step_num=1)
-                draft = "".join(BlogCreatorAgent().stream({
+                draft = BlogCreatorAgent().run({
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "word_count": "1200",
                     "existing_posts": [],
-                }))
+                })
 
                 # Step 2: コンテンツチェック
                 run.update(step="content_checker", step_num=2)
-                content_check = "".join(ContentCheckerAgent().stream({"draft": draft}))
+                content_check = ContentCheckerAgent().run({"draft": draft})
 
                 # Step 3: リーガルチェック
                 run.update(step="legal_checker", step_num=3)
-                legal_check = "".join(LegalCheckerAgent().stream({"draft": draft}))
+                legal_check = LegalCheckerAgent().run({"draft": draft})
 
                 # Step 4: 最終記事生成
                 run.update(step="final_creator", step_num=4)
-                final_content = "".join(FinalCreatorAgent().stream({
+                final_content = FinalCreatorAgent().run({
                     "draft": draft,
                     "content_check": content_check,
                     "legal_check": legal_check,
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "word_count": "1200",
-                }))
+                })
 
                 # Step 5: IG フォーマッター（プレーンテキスト 1000文字 + ハッシュタグ）
                 run.update(step="ig_formatter", step_num=5)
-                ig_caption = "".join(IgFormatterAgent().stream({
+                ig_caption = IgFormatterAgent().run({
                     "blog_content": final_content,
                     "topic": topic_title,
                     "client_name": client_name,
-                }))
+                })
 
                 # Step 6: 保存 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
@@ -363,41 +361,39 @@ def topic_generate(client_id: int, topic_id: int):
 
                 # Step 1: 下書き作成
                 run.update(step="blog_creator", step_num=1)
-                draft = "".join(BlogCreatorAgent().stream({
+                draft = BlogCreatorAgent().run({
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "word_count": "1200",
                     "existing_posts": [],
-                }))
+                })
 
                 # Step 2: コンテンツチェック
                 run.update(step="content_checker", step_num=2)
-                content_check = "".join(ContentCheckerAgent().stream({"draft": draft}))
+                content_check = ContentCheckerAgent().run({"draft": draft})
 
                 # Step 3: リーガルチェック
                 run.update(step="legal_checker", step_num=3)
-                legal_check = "".join(LegalCheckerAgent().stream({"draft": draft}))
+                legal_check = LegalCheckerAgent().run({"draft": draft})
 
                 # Step 4: 最終記事生成
                 run.update(step="final_creator", step_num=4)
-                final_content = "".join(FinalCreatorAgent().stream({
+                final_content = FinalCreatorAgent().run({
                     "draft": draft,
                     "content_check": content_check,
                     "legal_check": legal_check,
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "word_count": "1200",
-                }))
+                })
 
                 # Step 5: IGキャプション生成（1000文字 + ハッシュタグ）
                 run.update(step="ig_caption", step_num=5)
-                ig_caption = "".join(IgFormatterAgent().stream({
+                ig_caption = IgFormatterAgent().run({
                     "blog_content": final_content,
                     "topic": topic_title,
                     "client_name": client_name,
-                }))
+                })
 
                 # Step 6: プレースホルダーを更新して完成 + スケジュール自動設定
                 run.update(step="saving", step_num=6)

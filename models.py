@@ -19,6 +19,9 @@ class Designer(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.Enum("designer", "admin"), default="designer", nullable=False)
+    bank_account = db.Column(db.String(255), default="")   # 振込口座
+    region = db.Column(db.String(100), default="")         # 活動地域
+    job_type = db.Column(db.String(100), default="")       # 職種
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime)
 
@@ -58,9 +61,13 @@ class Client(db.Model):
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
+    monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数
+    monthly_fee = db.Column(db.Integer, default=0)              # 月額料金（円）
     schedule_type = db.Column(db.String(10), default="weekly")  # weekly / monthly
-    schedule_day_of_week = db.Column(db.Integer, default=0)     # 0=月〜6=日
-    schedule_day_of_month = db.Column(db.Integer, default=1)    # 1〜31
+    schedule_day_of_week = db.Column(db.Integer, default=0)     # 旧: 単一曜日（後方互換）
+    schedule_day_of_month = db.Column(db.Integer, default=1)    # 旧: 単一日付（後方互換）
+    schedule_days_of_week = db.Column(db.Text, default="0")     # カンマ区切り "0,2,4"
+    schedule_days_of_month = db.Column(db.Text, default="1")    # カンマ区切り "1,8,15,22"
     default_post_time = db.Column(db.Time)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

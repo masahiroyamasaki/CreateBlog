@@ -43,14 +43,13 @@ SYSTEM = """あなたは「RKパートナーズ」のブランドに精通した
 
 
 class BlogCreatorAgent(BaseAgent):
-    def stream(self, data: dict):
+    def _build_message(self, data: dict) -> str:
         topic = data.get("topic", "")
         keywords = data.get("keywords", "")
         tone = data.get("tone", "標準")
-        word_count = data.get("word_count", "1200")
+        word_count = data.get("word_count", "テーマに合わせた適切な長さで書ききること（読み物系は3000〜5000字目安）")
         existing_posts = data.get("existing_posts", [])
 
-        # 既存記事をコンテキストとして整形（STEP 1用）
         if existing_posts:
             posts_section = "\n\n---\n\n## 【STEP 1参照】直近の既存記事（最大5件）\n"
             for i, post in enumerate(existing_posts, 1):
@@ -59,7 +58,7 @@ class BlogCreatorAgent(BaseAgent):
         else:
             posts_section = "\n\n（既存記事なし：RKパートナーズのデフォルトスタイルで作成）"
 
-        user_message = f"""以下の条件でブログ記事を作成してください。
+        return f"""以下の条件でブログ記事を作成してください。
 
 ## テーマ・トピック
 {topic}
@@ -67,10 +66,14 @@ class BlogCreatorAgent(BaseAgent):
 ## 伝える内容（読者に届けたいメッセージ・エピソード）
 {keywords}
 
-## 文字数目安・トーン
-{word_count}文字 ／ トーン: {tone}
+## 文字数・トーン
+{word_count} ／ トーン: {tone}
 {posts_section}
 
 6ステップに従い、Markdown 形式で記事を出力してください。"""
 
-        yield from self._stream(SYSTEM, user_message)
+    def stream(self, data: dict):
+        yield from self._stream(SYSTEM, self._build_message(data))
+
+    def run(self, data: dict) -> str:
+        return self._generate(SYSTEM, self._build_message(data))

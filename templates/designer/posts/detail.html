@@ -108,23 +108,12 @@
 
             <!-- ハッシュタグ編集欄 -->
             <div style="margin-top:12px;">
-              <label style="font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;">
-                ハッシュタグ
-                <span style="font-weight:400;font-size:11px;">（この投稿専用。企業固定タグと合わせて投稿されます）</span>
-              </label>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);">ハッシュタグ</label>
               <textarea class="form-control" name="ig_hashtags_post" id="f-ig-hashtags" rows="3"
                         oninput="updateHashtagPreview()"
-                        placeholder="#サンプル&#10;#投稿固有タグ"
-                        style="font-size:13px;margin-top:6px;">{{ post.ig_hashtags_post or '' }}</textarea>
+                        placeholder="#サンプル&#10;#ハッシュタグ"
+                        style="font-size:13px;margin-top:6px;">{{ post.ig_hashtags_post or client.ig_hashtags or '' }}</textarea>
             </div>
-
-            <!-- 固定ハッシュタグ表示 -->
-            {% if client.ig_hashtags %}
-            <div style="margin-top:10px;padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:12px;color:var(--muted);">
-              <span style="font-weight:600;">企業固定タグ（自動追加）：</span>
-              {{ client.ig_hashtags | replace('\n', ' ') }}
-            </div>
-            {% endif %}
 
             <!-- 投稿プレビュー -->
             <div style="margin-top:10px;">
@@ -323,11 +312,9 @@ function updateCharCount() {
 
 function updateHashtagPreview() {
   const caption  = document.getElementById('f-ig')?.value || '';
-  const postTags = document.getElementById('f-ig-hashtags')?.value.trim() || '';
-  const clientTags = {{ (client.ig_hashtags or '') | tojson }};
+  const hashtags = document.getElementById('f-ig-hashtags')?.value.trim() || '';
   let preview = caption;
-  if (postTags)   preview = preview.trimEnd() + '\n\n' + postTags;
-  if (clientTags) preview = preview.trimEnd() + '\n'   + clientTags;
+  if (hashtags) preview = preview.trimEnd() + '\n\n' + hashtags;
   const el = document.getElementById('ig-preview');
   if (el) el.textContent = preview;
 }

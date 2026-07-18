@@ -20,14 +20,29 @@
         <input class="form-control" type="text" name="name" value="{{ client.name if client else '' }}" required placeholder="例: 株式会社サンプル">
       </div>
 
-      <!-- ステータス -->
+      <!-- ステータス + 月間投稿数 + 月額料金 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
       <div class="form-group">
         <label>ステータス</label>
         <select class="form-control" name="client_status">
-          <option value="active"   {% if not client or client.client_status == 'active'   %}selected{% endif %}>稼働中</option>
-          <option value="pending"  {% if client and client.client_status == 'pending'  %}selected{% endif %}>保留中</option>
-          <option value="setting"  {% if client and client.client_status == 'setting'  %}selected{% endif %}>設定中</option>
+          <option value="active"  {% if not client or client.client_status == 'active'  %}selected{% endif %}>稼働中</option>
+          <option value="pending" {% if client and client.client_status == 'pending' %}selected{% endif %}>保留中</option>
+          <option value="setting" {% if client and client.client_status == 'setting' %}selected{% endif %}>設定中</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>月間投稿数（契約数）</label>
+        <input class="form-control" type="number" name="monthly_post_count" min="1" max="31"
+               value="{{ client.monthly_post_count if client and client.monthly_post_count else 4 }}">
+        <p class="hint">自動生成バッチで使用</p>
+      </div>
+      <div class="form-group">
+        <label>月額料金（円）</label>
+        <input class="form-control" type="number" name="monthly_fee" min="0"
+               value="{{ client.monthly_fee if client and client.monthly_fee else 0 }}"
+               placeholder="0">
+        <p class="hint">売上・報酬計算に使用</p>
+      </div>
       </div>
 
       <!-- 投稿先プラットフォーム -->
@@ -110,47 +125,60 @@
               <input type="radio" name="schedule_type" value="weekly"
                      {% if not client or (client.schedule_type or 'weekly') == 'weekly' %}checked{% endif %}
                      onchange="updateScheduleUI()">
-              毎週
+              毎週（曜日指定）
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;">
               <input type="radio" name="schedule_type" value="monthly"
                      {% if client and client.schedule_type == 'monthly' %}checked{% endif %}
                      onchange="updateScheduleUI()">
-              毎月
+              毎月（日付指定）
             </label>
           </div>
         </div>
 
-        <!-- 毎週: 曜日選択 -->
+        <!-- 毎週: 複数曜日チェックボックス -->
         <div class="form-group" id="weekly-selector">
-          <label>曜日</label>
-          <select class="form-control" name="schedule_day_of_week" style="max-width:160px;">
-            {% set dow = client.schedule_day_of_week if client and client.schedule_day_of_week is not none else 0 %}
-            {% for i, label in [(0,'月曜日'),(1,'火曜日'),(2,'水曜日'),(3,'木曜日'),(4,'金曜日'),(5,'土曜日'),(6,'日曜日')] %}
-            <option value="{{ i }}" {% if dow == i %}selected{% endif %}>{{ label }}</option>
+          <label>投稿する曜日（複数選択可）</label>
+          {% set sel_dows = (client.schedule_days_of_week or '0').split(',') if client else ['0'] %}
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+            {% for i, lbl in [(0,'月'),(1,'火'),(2,'水'),(3,'木'),(4,'金'),(5,'土'),(6,'日')] %}
+            <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-weight:400;font-size:12px;">
+              <input type="checkbox" name="schedule_days_of_week" value="{{ i }}"
+                     {% if (i|string) in sel_dows %}checked{% endif %}
+                     style="width:18px;height:18px;accent-color:var(--primary);">
+              {{ lbl }}
+            </label>
             {% endfor %}
-          </select>
+          </div>
+          <p class="hint">例: 月・水・金にチェックで週3回投稿</p>
         </div>
 
-        <!-- 毎月: 日付選択 -->
+        <!-- 毎月: 複数日付チェックボックス -->
         <div class="form-group" id="monthly-selector" style="display:none;">
-          <label>日付</label>
-          <select class="form-control" name="schedule_day_of_month" style="max-width:120px;">
-            {% set dom = client.schedule_day_of_month if client and client.schedule_day_of_month else 1 %}
+          <label>投稿する日付（複数選択可）</label>
+          {% set sel_doms = (client.schedule_days_of_month or '1').split(',') if client else ['1'] %}
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px;max-width:360px;">
             {% for i in range(1, 32) %}
-            <option value="{{ i }}" {% if dom == i %}selected{% endif %}>{{ i }}日</option>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-weight:400;font-size:11px;padding:4px;border:1px solid var(--border);border-radius:6px;{% if (i|string) in sel_doms %}background:color-mix(in srgb,var(--primary) 15%,transparent);border-color:var(--primary);{% endif %}">
+              <input type="checkbox" name="schedule_days_of_month" value="{{ i }}"
+                     {% if (i|string) in sel_doms %}checked{% endif %}
+                     style="width:14px;height:14px;accent-color:var(--primary);"
+                     onchange="highlightDate(this)">
+              {{ i }}
+            </label>
             {% endfor %}
-          </select>
+          </div>
+          <p class="hint">例: 1日・8日・15日・22日にチェックで月4回投稿</p>
         </div>
 
         <!-- 投稿時刻 -->
-        <div class="form-group" style="max-width:160px;">
+        <div class="form-group" style="max-width:160px;margin-top:16px;">
           <label>投稿時刻</label>
           <input class="form-control" type="time" name="default_post_time"
                  value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
         </div>
 
-        <p class="hint">投稿予約を自動設定するときのデフォルト曜日・日付・時刻です。</p>
+        <p class="hint">投稿予約を自動設定するときのデフォルトスケジュールです。</p>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:28px;">
@@ -180,8 +208,33 @@ function updateScheduleUI() {
   document.getElementById('monthly-selector').style.display = isWeekly ? 'none' : '';
 }
 
+function highlightDate(checkbox) {
+  const label = checkbox.closest('label');
+  if (checkbox.checked) {
+    label.style.background = 'color-mix(in srgb,var(--primary) 15%,transparent)';
+    label.style.borderColor = 'var(--primary)';
+  } else {
+    label.style.background = '';
+    label.style.borderColor = 'var(--border)';
+  }
+}
+
 // 初期表示
 updateSections();
 updateScheduleUI();
+
+// 送信前: 曜日・日付が1つも選択されていなければデフォルトをセット
+document.querySelector('form').addEventListener('submit', function() {
+  const weeklyChecked  = document.querySelectorAll('input[name="schedule_days_of_week"]:checked').length;
+  const monthlyChecked = document.querySelectorAll('input[name="schedule_days_of_month"]:checked').length;
+  if (weeklyChecked === 0) {
+    const first = document.querySelector('input[name="schedule_days_of_week"]');
+    if (first) first.checked = true;
+  }
+  if (monthlyChecked === 0) {
+    const first = document.querySelector('input[name="schedule_days_of_month"]');
+    if (first) first.checked = true;
+  }
+});
 </script>
 {% endblock %}

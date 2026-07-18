@@ -53,10 +53,13 @@ def client_new():
     if current_user.role != "admin":
         abort(403)
     if request.method == "POST":
+        stype = request.form.get("schedule_type", "weekly")
         client = Client(
             name=request.form["name"],
             platform_type=request.form.get("platform_type", "wordpress_instagram"),
             client_status=request.form.get("client_status", "active"),
+            monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
+            monthly_fee=int(request.form.get("monthly_fee", 0) or 0),
             wp_endpoint=request.form.get("wp_endpoint", ""),
             wp_username=request.form.get("wp_username", ""),
             wp_app_password=encrypt_field(request.form.get("wp_app_password", "")),
@@ -65,9 +68,9 @@ def client_new():
             ig_hashtags=request.form.get("ig_hashtags", ""),
             themes=request.form.get("themes", ""),
             custom_url=request.form.get("custom_url", ""),
-            schedule_type=request.form.get("schedule_type", "weekly"),
-            schedule_day_of_week=int(request.form.get("schedule_day_of_week", 0)),
-            schedule_day_of_month=int(request.form.get("schedule_day_of_month", 1)),
+            schedule_type=stype,
+            schedule_days_of_week=",".join(request.form.getlist("schedule_days_of_week")) or "0",
+            schedule_days_of_month=",".join(request.form.getlist("schedule_days_of_month")) or "1",
             default_post_time=request.form.get("default_post_time") or None,
         )
         db.session.add(client)
@@ -90,9 +93,11 @@ def client_edit(client_id: int):
         client.name = request.form["name"]
         client.platform_type = request.form.get("platform_type", "wordpress_instagram")
         client.client_status = request.form.get("client_status", "active")
+        client.monthly_post_count = int(request.form.get("monthly_post_count", 4) or 4)
+        client.monthly_fee = int(request.form.get("monthly_fee", 0) or 0)
         client.schedule_type = request.form.get("schedule_type", "weekly")
-        client.schedule_day_of_week = int(request.form.get("schedule_day_of_week", 0))
-        client.schedule_day_of_month = int(request.form.get("schedule_day_of_month", 1))
+        client.schedule_days_of_week = ",".join(request.form.getlist("schedule_days_of_week")) or "0"
+        client.schedule_days_of_month = ",".join(request.form.getlist("schedule_days_of_month")) or "1"
         client.wp_endpoint = request.form.get("wp_endpoint", "")
         client.wp_username = request.form.get("wp_username", "")
         new_wp_pass = request.form.get("wp_app_password", "")

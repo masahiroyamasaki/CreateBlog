@@ -361,14 +361,11 @@ def post_publish(client_id: int, post_id: int):
 
 
 def _build_caption(post: Post, client: Client) -> str:
-    """キャプション + 投稿固有タグ + 企業固定タグを結合して返す"""
+    """キャプション + ハッシュタグを結合して返す"""
     caption = post.ig_caption or ""
-    post_tags = (post.ig_hashtags_post or "").strip()
-    client_tags = (client.ig_hashtags or "").strip()
-    if post_tags:
-        caption = caption.rstrip() + "\n\n" + post_tags
-    if client_tags:
-        caption = caption.rstrip() + "\n" + client_tags
+    hashtags = (post.ig_hashtags_post or "").strip()
+    if hashtags:
+        caption = caption.rstrip() + "\n\n" + hashtags
     return caption
 
 

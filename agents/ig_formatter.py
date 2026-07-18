@@ -16,21 +16,24 @@ SYSTEM = """あなたはInstagramマーケターです。
 
 
 class IgFormatterAgent(BaseAgent):
-    def stream(self, data: dict):
+    def _build_message(self, data: dict) -> str:
         blog_content = data.get("blog_content", "")
         topic = data.get("topic", "")
         client_name = data.get("client_name", "")
-
-        user_message = f"""以下のブログ記事をInstagram投稿文に変換してください。
+        return f"""以下のブログ記事をInstagram投稿文に変換してください。
 
 企業名: {client_name}
 トピック: {topic}
 
 ## ブログ記事
 ---
-{blog_content[:4000]}
+{blog_content}
 ---
 
 Instagram投稿文（本文1000文字前後＋ハッシュタグ）を出力してください。"""
 
-        yield from self._stream(SYSTEM, user_message)
+    def stream(self, data: dict):
+        yield from self._stream(SYSTEM, self._build_message(data))
+
+    def run(self, data: dict) -> str:
+        return self._generate(SYSTEM, self._build_message(data))

@@ -1,4 +1,4 @@
-"""routes/auth_routes.py — ログイン / ログアウト"""
+"""routes/auth_routes.py — ログイン / 新規登録 / ログアウト"""
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -27,6 +27,46 @@ def login():
         flash("メールアドレスまたはパスワードが正しくありません", "error")
 
     return render_template("designer/login.html")
+
+
+@designer_bp.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("designer.clients"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        name = request.form.get("name", "").strip()
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+        bank_account = request.form.get("bank_account", "").strip()
+        region = request.form.get("region", "").strip()
+        job_type = request.form.get("job_type", "").strip()
+
+        if not email or not name or not password:
+            flash("メールアドレス・氏名・パスワードは必須です", "error")
+        elif password != password2:
+            flash("パスワードが一致しません", "error")
+        elif len(password) < 8:
+            flash("パスワードは8文字以上にしてください", "error")
+        elif Designer.query.filter_by(email=email).first():
+            flash("このメールアドレスはすでに登録されています", "error")
+        else:
+            designer = Designer(
+                name=name,
+                email=email,
+                bank_account=bank_account,
+                region=region,
+                job_type=job_type,
+                role="designer",
+            )
+            designer.set_password(password)
+            db.session.add(designer)
+            db.session.commit()
+            flash("登録が完了しました。ログインしてください。", "success")
+            return redirect(url_for("designer.login"))
+
+    return render_template("designer/register.html")
 
 
 @designer_bp.route("/logout")
