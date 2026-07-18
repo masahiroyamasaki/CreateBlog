@@ -99,6 +99,7 @@ class Post(db.Model):
     outline = db.Column(db.Text, default="")
     body_html = db.Column(db.Text, default="")
     ig_caption = db.Column(db.Text, default="")
+    ig_hashtags_post = db.Column(db.Text, default="")  # 投稿固有ハッシュタグ
     status = db.Column(
         db.Enum("creating", "draft", "approved", "scheduled", "posted", "failed"),
         default="draft", nullable=False,

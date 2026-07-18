@@ -90,9 +90,12 @@ def _do_instagram(client, post, ig_client, decrypt_field) -> dict:
         return {"success": False, "reason": "投稿画像がありません"}
 
     caption = post.ig_caption or ""
-    hashtags = (client.ig_hashtags or "").strip()
-    if hashtags:
-        caption = caption.rstrip() + "\n\n" + hashtags
+    post_tags = (post.ig_hashtags_post or "").strip()
+    client_tags = (client.ig_hashtags or "").strip()
+    if post_tags:
+        caption = caption.rstrip() + "\n\n" + post_tags
+    if client_tags:
+        caption = caption.rstrip() + "\n" + client_tags
 
     if len(images) == 1:
         return ig_client.post_single_image(

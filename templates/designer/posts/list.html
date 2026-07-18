@@ -36,6 +36,7 @@
         <tr>
           <th></th>
           <th>タイトル</th>
+          <th>投稿先</th>
           <th>ステータス</th>
           <th>画像</th>
           <th>予約日時</th>
@@ -54,6 +55,17 @@
             </div>
             {% if p.wp_post_url %}
             <a href="{{ p.wp_post_url }}" target="_blank" style="font-size:11px;color:var(--primary);">WP 記事 ↗</a>
+            {% endif %}
+          </td>
+          <td>
+            {% if client.platform_type == 'instagram' %}
+            <span class="badge" style="background:#e1306c;color:#fff;">Instagram</span>
+            {% elif client.platform_type == 'wordpress' %}
+            <span class="badge" style="background:#21759b;color:#fff;">WordPress</span>
+            {% elif client.platform_type == 'custom_hp' %}
+            <span class="badge badge-gray">独自HP</span>
+            {% else %}
+            <span class="badge badge-gray">{{ client.platform_type }}</span>
             {% endif %}
           </td>
           <td>

@@ -73,13 +73,34 @@
 
           <!-- IG キャプション タブ -->
           <div class="tab-panel {% if client.platform_type == 'instagram' %}active{% endif %}" id="tab-ig">
-            {% if client.platform_type == 'instagram' and client.ig_hashtags %}
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;padding:8px 10px;background:var(--bg3);border-radius:6px;">
-              💡 投稿時に固定ハッシュタグが自動追加されます。ここには本文と投稿固有のハッシュタグを入力してください。
+            <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if client.platform_type == 'instagram' %}12{% else %}9{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション本文（最大2200文字）">{{ post.ig_caption }}</textarea>
+            <div class="char-count" id="char-count">0 / 2200</div>
+
+            <!-- ハッシュタグ編集欄 -->
+            <div style="margin-top:12px;">
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;">
+                ハッシュタグ
+                <span style="font-weight:400;font-size:11px;">（この投稿専用。企業固定タグと合わせて投稿されます）</span>
+              </label>
+              <textarea class="form-control" name="ig_hashtags_post" id="f-ig-hashtags" rows="3"
+                        oninput="updateHashtagPreview()"
+                        placeholder="#サンプル&#10;#投稿固有タグ"
+                        style="font-size:13px;margin-top:6px;">{{ post.ig_hashtags_post or '' }}</textarea>
+            </div>
+
+            <!-- 固定ハッシュタグ表示 -->
+            {% if client.ig_hashtags %}
+            <div style="margin-top:10px;padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:12px;color:var(--muted);">
+              <span style="font-weight:600;">企業固定タグ（自動追加）：</span>
+              {{ client.ig_hashtags | replace('\n', ' ') }}
             </div>
             {% endif %}
-            <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if client.platform_type == 'instagram' %}14{% else %}10{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション（最大2200文字）">{{ post.ig_caption }}</textarea>
-            <div class="char-count" id="char-count">0 / 2200</div>
+
+            <!-- 投稿プレビュー -->
+            <div style="margin-top:10px;">
+              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">投稿プレビュー</div>
+              <div id="ig-preview" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;color:#111;max-height:180px;overflow-y:auto;line-height:1.7;"></div>
+            </div>
           </div>
         </form>
 
@@ -256,6 +277,18 @@ function updateCharCount() {
   const el = document.getElementById('char-count');
   el.textContent = `${len} / 2200`;
   el.classList.toggle('over', len > 2200);
+  updateHashtagPreview();
+}
+
+function updateHashtagPreview() {
+  const caption  = document.getElementById('f-ig')?.value || '';
+  const postTags = document.getElementById('f-ig-hashtags')?.value.trim() || '';
+  const clientTags = {{ (client.ig_hashtags or '') | tojson }};
+  let preview = caption;
+  if (postTags)   preview = preview.trimEnd() + '\n\n' + postTags;
+  if (clientTags) preview = preview.trimEnd() + '\n'   + clientTags;
+  const el = document.getElementById('ig-preview');
+  if (el) el.textContent = preview;
 }
 updateCharCount();
 

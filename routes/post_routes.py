@@ -75,6 +75,7 @@ def post_save(client_id: int, post_id: int):
     post.title = request.form.get("title", post.title)
     post.body_html = request.form.get("body_html", post.body_html)
     post.ig_caption = request.form.get("ig_caption", post.ig_caption)
+    post.ig_hashtags_post = request.form.get("ig_hashtags_post", post.ig_hashtags_post or "")
     post.created_by_designer_id = current_user.id
     post.updated_at = _now_jst()
     db.session.commit()
@@ -342,11 +343,14 @@ def post_publish(client_id: int, post_id: int):
 
 
 def _build_caption(post: Post, client: Client) -> str:
-    """キャプションに固定ハッシュタグを末尾追加して返す"""
+    """キャプション + 投稿固有タグ + 企業固定タグを結合して返す"""
     caption = post.ig_caption or ""
-    hashtags = (client.ig_hashtags or "").strip()
-    if hashtags:
-        caption = caption.rstrip() + "\n\n" + hashtags
+    post_tags = (post.ig_hashtags_post or "").strip()
+    client_tags = (client.ig_hashtags or "").strip()
+    if post_tags:
+        caption = caption.rstrip() + "\n\n" + post_tags
+    if client_tags:
+        caption = caption.rstrip() + "\n" + client_tags
     return caption
 
 
