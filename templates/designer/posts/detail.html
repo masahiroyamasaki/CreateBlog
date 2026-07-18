@@ -9,7 +9,6 @@
 {% block head %}
 <style>
 .panel { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
-.preview-html { background: #fff; color: #111; padding: 24px; border-radius: 8px; font-size: 14px; line-height: 1.8; max-height: 400px; overflow-y: auto; }
 .img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; cursor: grab; }
 .img-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
 .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
@@ -20,6 +19,33 @@
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 #upload-zone:hover, #upload-zone.drag-active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+/* ── ブログ本文プレビュー ── */
+.preview-html {
+  background: #fff; color: #1a1a1a; padding: 28px 32px;
+  border-radius: 8px; border: 1px solid var(--border);
+  font-size: 15px; line-height: 1.9; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+}
+.preview-html h1 { font-size: 1.7em; font-weight: 700; margin: 0 0 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; line-height: 1.4; }
+.preview-html h2 { font-size: 1.35em; font-weight: 700; margin: 32px 0 12px; padding: 8px 14px; background: #f3f4f6; border-left: 4px solid var(--primary); border-radius: 0 4px 4px 0; line-height: 1.4; }
+.preview-html h3 { font-size: 1.1em; font-weight: 700; margin: 24px 0 10px; color: #374151; }
+.preview-html h4, .preview-html h5, .preview-html h6 { font-size: 1em; font-weight: 700; margin: 16px 0 8px; }
+.preview-html p { margin: 0 0 16px; }
+.preview-html ul, .preview-html ol { margin: 0 0 16px; padding-left: 28px; }
+.preview-html li { margin-bottom: 6px; }
+.preview-html ul li { list-style: disc; }
+.preview-html ol li { list-style: decimal; }
+.preview-html blockquote { margin: 20px 0; padding: 12px 20px; background: #f9fafb; border-left: 4px solid #d1d5db; color: #6b7280; border-radius: 0 4px 4px 0; }
+.preview-html code { font-family: 'Courier New', monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #be185d; }
+.preview-html pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; }
+.preview-html pre code { background: none; padding: 0; color: inherit; font-size: 13px; }
+.preview-html a { color: var(--primary); text-decoration: underline; }
+.preview-html strong { font-weight: 700; }
+.preview-html em { font-style: italic; }
+.preview-html hr { border: none; border-top: 1px solid #e5e7eb; margin: 28px 0; }
+.preview-html table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.preview-html th { background: #f3f4f6; font-weight: 600; padding: 10px 14px; border: 1px solid #e5e7eb; text-align: left; }
+.preview-html td { padding: 10px 14px; border: 1px solid #e5e7eb; }
 </style>
 {% endblock %}
 
@@ -67,6 +93,10 @@
               <textarea class="form-control" name="body_html" id="f-body" rows="16" style="font-family:monospace;font-size:12px;">{{ post.body_html }}</textarea>
             </div>
             <div id="body-preview-area" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:12px;color:var(--muted);" id="body-char-info"></span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyBodyText()">テキストコピー</button>
+              </div>
               <div class="preview-html" id="body-preview-content">{{ post.body_html | safe }}</div>
             </div>
           </div>
@@ -269,7 +299,18 @@ function switchBodyView(view) {
   document.querySelectorAll('#tab-body .tab').forEach((t,i) => t.classList.toggle('active', i === (view === 'edit' ? 0 : 1)));
   document.getElementById('body-edit-area').style.display = view === 'edit' ? '' : 'none';
   document.getElementById('body-preview-area').style.display = view === 'preview' ? '' : 'none';
-  if (view === 'preview') document.getElementById('body-preview-content').innerHTML = document.getElementById('f-body').value;
+  if (view === 'preview') {
+    const html = document.getElementById('f-body').value;
+    document.getElementById('body-preview-content').innerHTML = html;
+    const text = document.getElementById('body-preview-content').innerText || '';
+    const info = document.getElementById('body-char-info');
+    if (info) info.textContent = `約 ${text.replace(/\s/g,'').length} 文字`;
+  }
+}
+
+function copyBodyText() {
+  const text = document.getElementById('body-preview-content').innerText || '';
+  navigator.clipboard.writeText(text).then(() => showToast('本文テキストをコピーしました'));
 }
 
 function updateCharCount() {
