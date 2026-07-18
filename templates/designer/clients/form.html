@@ -100,12 +100,57 @@
 
       <!-- スケジュール設定（共通） -->
       <div class="section-block">
-        <p class="section-title">スケジュール設定</p>
-        <div class="form-group" style="max-width:200px;">
-          <label>デフォルト投稿時刻</label>
-          <input class="form-control" type="time" name="default_post_time" value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
-          <p class="hint">日付だけ選んで予約するときのデフォルト時刻</p>
+        <p class="section-title">デフォルト投稿スケジュール</p>
+
+        <!-- 毎週 / 毎月 切り替え -->
+        <div class="form-group">
+          <label>繰り返し</label>
+          <div style="display:flex;gap:16px;margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;">
+              <input type="radio" name="schedule_type" value="weekly"
+                     {% if not client or (client.schedule_type or 'weekly') == 'weekly' %}checked{% endif %}
+                     onchange="updateScheduleUI()">
+              毎週
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;">
+              <input type="radio" name="schedule_type" value="monthly"
+                     {% if client and client.schedule_type == 'monthly' %}checked{% endif %}
+                     onchange="updateScheduleUI()">
+              毎月
+            </label>
+          </div>
         </div>
+
+        <!-- 毎週: 曜日選択 -->
+        <div class="form-group" id="weekly-selector">
+          <label>曜日</label>
+          <select class="form-control" name="schedule_day_of_week" style="max-width:160px;">
+            {% set dow = client.schedule_day_of_week if client and client.schedule_day_of_week is not none else 0 %}
+            {% for i, label in [(0,'月曜日'),(1,'火曜日'),(2,'水曜日'),(3,'木曜日'),(4,'金曜日'),(5,'土曜日'),(6,'日曜日')] %}
+            <option value="{{ i }}" {% if dow == i %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- 毎月: 日付選択 -->
+        <div class="form-group" id="monthly-selector" style="display:none;">
+          <label>日付</label>
+          <select class="form-control" name="schedule_day_of_month" style="max-width:120px;">
+            {% set dom = client.schedule_day_of_month if client and client.schedule_day_of_month else 1 %}
+            {% for i in range(1, 32) %}
+            <option value="{{ i }}" {% if dom == i %}selected{% endif %}>{{ i }}日</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- 投稿時刻 -->
+        <div class="form-group" style="max-width:160px;">
+          <label>投稿時刻</label>
+          <input class="form-control" type="time" name="default_post_time"
+                 value="{{ client.default_post_time.strftime('%H:%M') if client and client.default_post_time else '10:00' }}">
+        </div>
+
+        <p class="hint">投稿予約を自動設定するときのデフォルト曜日・日付・時刻です。</p>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:28px;">
@@ -124,12 +169,19 @@ function updateSections() {
   const showWp = (pt === 'wordpress' || pt === 'wordpress_instagram');
   const showIg = (pt === 'instagram' || pt === 'wordpress_instagram');
   const showCustom = (pt === 'custom_hp');
-
   document.getElementById('section-wordpress').style.display = showWp ? '' : 'none';
   document.getElementById('section-instagram').style.display = showIg ? '' : 'none';
   document.getElementById('section-custom-hp').style.display = showCustom ? '' : 'none';
 }
+
+function updateScheduleUI() {
+  const isWeekly = document.querySelector('input[name="schedule_type"]:checked')?.value === 'weekly';
+  document.getElementById('weekly-selector').style.display  = isWeekly ? '' : 'none';
+  document.getElementById('monthly-selector').style.display = isWeekly ? 'none' : '';
+}
+
 // 初期表示
 updateSections();
+updateScheduleUI();
 </script>
 {% endblock %}

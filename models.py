@@ -58,6 +58,9 @@ class Client(db.Model):
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
+    schedule_type = db.Column(db.String(10), default="weekly")  # weekly / monthly
+    schedule_day_of_week = db.Column(db.Integer, default=0)     # 0=月〜6=日
+    schedule_day_of_month = db.Column(db.Integer, default=1)    # 1〜31
     default_post_time = db.Column(db.Time)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

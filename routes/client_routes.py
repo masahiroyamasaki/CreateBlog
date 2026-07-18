@@ -65,6 +65,9 @@ def client_new():
             ig_hashtags=request.form.get("ig_hashtags", ""),
             themes=request.form.get("themes", ""),
             custom_url=request.form.get("custom_url", ""),
+            schedule_type=request.form.get("schedule_type", "weekly"),
+            schedule_day_of_week=int(request.form.get("schedule_day_of_week", 0)),
+            schedule_day_of_month=int(request.form.get("schedule_day_of_month", 1)),
             default_post_time=request.form.get("default_post_time") or None,
         )
         db.session.add(client)
@@ -87,6 +90,9 @@ def client_edit(client_id: int):
         client.name = request.form["name"]
         client.platform_type = request.form.get("platform_type", "wordpress_instagram")
         client.client_status = request.form.get("client_status", "active")
+        client.schedule_type = request.form.get("schedule_type", "weekly")
+        client.schedule_day_of_week = int(request.form.get("schedule_day_of_week", 0))
+        client.schedule_day_of_month = int(request.form.get("schedule_day_of_month", 1))
         client.wp_endpoint = request.form.get("wp_endpoint", "")
         client.wp_username = request.form.get("wp_username", "")
         new_wp_pass = request.form.get("wp_app_password", "")
