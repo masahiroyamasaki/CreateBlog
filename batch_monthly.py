@@ -1,7 +1,10 @@
-"""batch_monthly.py — 毎月10日の投稿ネタ＋記事自動生成バッチ
+"""batch_monthly.py — 月次自動生成バッチ
 
 VPS cron 設定:
-  0 9 10 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-batch >> /var/log/blog-monthly.log 2>&1
+  # 毎月1日9時: ネタ生成
+  0 9 1 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-ideas >> /var/log/blog-monthly.log 2>&1
+  # 毎月10日9時: 記事生成
+  0 9 10 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-articles >> /var/log/blog-monthly.log 2>&1
 """
 import re
 import json
@@ -12,12 +15,12 @@ logger = logging.getLogger(__name__)
 _JST = timezone(timedelta(hours=9))
 
 
-def run_monthly_batch(app, db) -> dict:
-    """全稼働企業に対して月間投稿数分のネタ生成 → 記事生成を実行する。"""
-    result = {"clients": 0, "topics": 0, "posts": 0, "errors": []}
+def run_monthly_ideas_batch(app, db) -> dict:
+    """毎月1日: 全稼働企業に対して月間投稿数分のネタを生成する。"""
+    result = {"clients": 0, "topics": 0, "errors": []}
 
     with app.app_context():
-        from models import Client, TopicQueue, Post
+        from models import Client
         from config import Config
         import anthropic as _anthropic
 
@@ -32,7 +35,6 @@ def run_monthly_batch(app, db) -> dict:
             logger.info(f"[{client.name}] ネタ {count} 件生成開始")
             result["clients"] += 1
 
-            # ── Step 1: ネタを count 件生成 ────────────────────────────────
             try:
                 new_topics = _generate_ideas(client, ai, count, db)
                 result["topics"] += len(new_topics)
@@ -41,11 +43,36 @@ def run_monthly_batch(app, db) -> dict:
                 msg = f"[{client.name}] ネタ生成エラー: {e}"
                 logger.error(msg)
                 result["errors"].append(msg)
+
+    return result
+
+
+def run_monthly_articles_batch(app, db) -> dict:
+    """毎月10日: 未生成のネタから記事を生成する。"""
+    result = {"clients": 0, "posts": 0, "errors": []}
+
+    with app.app_context():
+        from models import Client, TopicQueue
+        from config import Config
+        import anthropic as _anthropic
+
+        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        clients = Client.query.filter_by(client_status="active").all()
+
+        for client in clients:
+            pending = (
+                TopicQueue.query
+                .filter_by(client_id=client.id, status="pending")
+                .order_by(TopicQueue.sort_order)
+                .all()
+            )
+            if not pending:
+                logger.info(f"[{client.name}] 未生成ネタなし、スキップ")
                 continue
 
-            # ── Step 2: 各ネタから記事を生成 ──────────────────────────────
+            result["clients"] += 1
             pt = client.platform_type or "wordpress"
-            for topic in new_topics:
+            for topic in pending:
                 try:
                     _generate_post(client, topic, pt, ai, app, db)
                     result["posts"] += 1
@@ -74,6 +101,13 @@ def _generate_ideas(client, ai, count: int, db) -> list:
     )
     avoid = "\n\n【重複禁止】\n" + "\n".join(f"- {t}" for t in existing_titles[:30]) if existing_titles else ""
 
+    theme_list = [t.strip() for t in themes.splitlines() if t.strip()]
+    theme_count = len(theme_list)
+    theme_note = (
+        f"テーマは {theme_count} 種類あります。{count}件の中でできるだけ均等に各テーマを使ってください。"
+        if theme_count > 1 else ""
+    )
+
     prompt = f"""あなたはコンテンツプランナーです。
 以下のテーマをもとに、投稿ネタを{count}件考えてください。
 
@@ -82,10 +116,20 @@ def _generate_ideas(client, ai, count: int, db) -> list:
 {themes}
 {avoid}
 
-条件:
-- {count}件すべて異なる切り口にすること
-- 読者の悩みや関心に刺さるタイトルにすること
-- 大枠は投稿の方向性を2〜3文で簡潔に記載すること
+【重要な条件】
+1. テーマの分散: {theme_note}1つのテーマに偏らないこと。
+2. タイトル表現の多様化: 同じ書き出し・言い回しを2件以上使わないこと。
+   以下の形式をバランスよく混在させること:
+   - How-to型    : 「〇〇する3つの方法」「〇〇のコツ」
+   - 疑問型      : 「〇〇できていますか？」「なぜ〇〇なのか」
+   - リスト型    : 「〇〇な人の特徴5選」「〇〇に必要なもの」
+   - 比較型      : 「〇〇vs〇〇」「〇〇と〇〇の違い」
+   - ストーリー型: 「〇〇を変えたら〇〇になった」「〇〇してわかったこと」
+   - 断言型      : 「〇〇はもう古い」「実は〇〇が重要だった」
+   - 共感型      : 「〇〇で悩んでいる方へ」「〇〇あるある」
+3. 切り口の多様化: 初心者向け・上級者向け・季節トレンド・よくある失敗・プロの視点など角度を変えること。
+4. 読者の悩みや関心に刺さるタイトルにすること。
+5. 大枠は投稿の方向性を2〜3文で簡潔に記載すること。
 
 以下のJSON形式のみで出力してください。他のテキストは一切含めないこと:
 [

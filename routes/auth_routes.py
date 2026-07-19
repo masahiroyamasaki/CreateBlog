@@ -39,6 +39,7 @@ def register():
         name = request.form.get("name", "").strip()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
+        business_name = request.form.get("business_name", "").strip()
         bank_account = request.form.get("bank_account", "").strip()
         region = request.form.get("region", "").strip()
         job_type = request.form.get("job_type", "").strip()
@@ -55,6 +56,7 @@ def register():
             designer = Designer(
                 name=name,
                 email=email,
+                business_name=business_name,
                 bank_account=bank_account,
                 region=region,
                 job_type=job_type,

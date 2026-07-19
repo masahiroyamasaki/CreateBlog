@@ -157,7 +157,8 @@ def post_image_upload(client_id: int, post_id: int):
         ext = f.filename.rsplit('.', 1)[1].lower()
         filename = f"{_uuid_mod.uuid4().hex}.{ext}"
         f.save(os.path.join(save_dir, filename))
-        image_url = f"/static/uploads/clients/{client_id}/posts/{post_id}/{filename}"
+        base_url = os.getenv("BASE_URL", "").rstrip("/")
+        image_url = f"{base_url}/static/uploads/clients/{client_id}/posts/{post_id}/{filename}"
         img = PostImage(post_id=post_id, image_url=image_url, sort_order=next_order + len(uploaded))
         db.session.add(img)
         db.session.flush()

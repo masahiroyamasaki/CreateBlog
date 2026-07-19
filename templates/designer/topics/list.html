@@ -30,10 +30,6 @@
   <span>{{ processing_count }} 件のネタをAI生成中です。このページは自動更新されます。</span>
 </div>
 {% endif %}
-{% if pending_count < 5 %}
-<div class="alert alert-warning">⚠️ 記事ネタが {{ pending_count }} 件しかありません。自動補充バッチが週1回実行されますが、不足している場合は下記から手動追加してください。</div>
-{% endif %}
-
 <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
 
   <!-- ネタ一覧 -->
@@ -44,7 +40,10 @@
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
           {% if current_user.role == 'admin' %}
-          <button class="btn btn-generate btn-sm" id="btn-ideas" onclick="generateIdeas()">AIでネタを10件追加</button>
+          <button class="btn btn-primary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
+            <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
+            AIでネタ生成
+          </button>
           {% endif %}
         </div>
       </div>
@@ -179,29 +178,26 @@ function toggleEdit(id) {
   f.classList.toggle('open');
 }
 
-async function generateIdeas() {
-  const btn = document.getElementById('btn-ideas');
+async function generateAiIdea() {
+  const btn = document.getElementById('ai-idea-btn');
+  const spinner = document.getElementById('ai-idea-spinner');
   btn.disabled = true;
-  btn.textContent = '生成中...';
-
+  spinner.style.display = 'inline-block';
   try {
-    const res = await fetch(`/designer/clients/${clientId}/topics/generate-ideas`, {
-      method: 'POST',
-    });
+    const res = await fetch(`/designer/clients/${clientId}/topics/ai-idea`, {method: 'POST'});
     const data = await res.json();
-
     if (data.success) {
-      showToast(`${data.added}件のネタを追加しました。ページを更新します...`);
-      setTimeout(() => location.reload(), 1500);
+      showToast(`「${data.topic.title}」を追加しました`);
+      setTimeout(() => location.reload(), 800);
     } else {
-      showToast('エラー: ' + data.reason, 'error');
+      showToast(data.reason || 'エラーが発生しました', 'error');
       btn.disabled = false;
-      btn.textContent = 'AIでネタを10件追加';
+      spinner.style.display = 'none';
     }
-  } catch (err) {
-    showToast('通信エラー: ' + err.message, 'error');
+  } catch(e) {
+    showToast('通信エラー', 'error');
     btn.disabled = false;
-    btn.textContent = 'AIでネタを10件追加';
+    spinner.style.display = 'none';
   }
 }
 

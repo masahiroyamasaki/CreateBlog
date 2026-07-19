@@ -19,6 +19,7 @@ class Designer(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.Enum("designer", "admin"), default="designer", nullable=False)
+    business_name = db.Column(db.String(255), default="")  # 屋号・法人名
     bank_account = db.Column(db.String(255), default="")   # 振込口座
     region = db.Column(db.String(100), default="")         # 活動地域
     job_type = db.Column(db.String(100), default="")       # 職種
@@ -66,8 +67,8 @@ class Client(db.Model):
     schedule_type = db.Column(db.String(10), default="weekly")  # weekly / monthly
     schedule_day_of_week = db.Column(db.Integer, default=0)     # 旧: 単一曜日（後方互換）
     schedule_day_of_month = db.Column(db.Integer, default=1)    # 旧: 単一日付（後方互換）
-    schedule_days_of_week = db.Column(db.Text, default="0")     # カンマ区切り "0,2,4"
-    schedule_days_of_month = db.Column(db.Text, default="1")    # カンマ区切り "1,8,15,22"
+    schedule_days_of_week = db.Column(db.String(255), default="0")   # カンマ区切り "0,2,4"
+    schedule_days_of_month = db.Column(db.String(255), default="1") # カンマ区切り "1,8,15,22"
     default_post_time = db.Column(db.Time)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -110,7 +111,7 @@ class Post(db.Model):
     outline = db.Column(db.Text, default="")
     body_html = db.Column(db.Text, default="")
     ig_caption = db.Column(db.Text, default="")
-    ig_hashtags_post = db.Column(db.Text, default="")  # 投稿固有ハッシュタグ
+    ig_hashtags_post = db.Column(db.Text)               # 投稿固有ハッシュタグ
     status = db.Column(
         db.Enum("creating", "draft", "approved", "scheduled", "posted", "failed"),
         default="draft", nullable=False,
@@ -202,3 +203,15 @@ class TopicQueue(db.Model):
     client = db.relationship("Client", back_populates="topics")
     designer = db.relationship("Designer", foreign_keys=[created_by_designer_id])
     generated_post = db.relationship("Post", back_populates="topic", foreign_keys=[generated_post_id])
+
+
+# ─── 料金プラン ────────────────────────────────────────────────────────────────
+
+class PricingPlan(db.Model):
+    __tablename__ = "pricing_plans"
+
+    id = db.Column(db.Integer, primary_key=True)
+    platform_type = db.Column(db.String(50), nullable=False)
+    monthly_posts = db.Column(db.Integer, nullable=False)
+    monthly_fee = db.Column(db.Integer, nullable=False)
+    sort_order = db.Column(db.Integer, default=0)

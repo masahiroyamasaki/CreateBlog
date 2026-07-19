@@ -13,6 +13,10 @@
         <label>氏名</label>
         <input class="form-control" type="text" name="name" value="{{ designer.name }}" required>
       </div>
+      <div class="form-group">
+        <label>屋号・法人名</label>
+        <input class="form-control" type="text" name="business_name" value="{{ designer.business_name or '' }}" placeholder="例: 山田デザイン事務所 / 株式会社サンプル">
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div class="form-group">
           <label>職種</label>
@@ -27,6 +31,7 @@
         <label>振込口座</label>
         <input class="form-control" type="text" name="bank_account" value="{{ designer.bank_account or '' }}" placeholder="○○銀行 ○○支店 普通 1234567">
       </div>
+      {% if current_user.role == 'admin' %}
       <div class="form-group">
         <label>権限</label>
         <select class="form-control" name="role">
@@ -34,6 +39,7 @@
           <option value="admin"    {% if designer.role == 'admin'    %}selected{% endif %}>管理者</option>
         </select>
       </div>
+      {% endif %}
       <div class="form-group">
         <label>新しいパスワード（変更する場合のみ入力）</label>
         <input class="form-control" type="password" name="new_password" minlength="8" autocomplete="new-password" placeholder="8文字以上">

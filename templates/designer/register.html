@@ -61,6 +61,12 @@
                value="{{ request.form.get('name', '') }}">
       </div>
       <div class="group">
+        <label>屋号・法人名</label>
+        <input type="text" name="business_name" placeholder="例: 山田デザイン事務所 / 株式会社サンプル"
+               value="{{ request.form.get('business_name', '') }}">
+        <p class="hint">個人の場合は屋号、法人の場合は法人名を入力してください</p>
+      </div>
+      <div class="group">
         <label>活動地域</label>
         <input type="text" name="region" placeholder="例: 東京都・大阪府"
                value="{{ request.form.get('region', '') }}">

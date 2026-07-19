@@ -110,6 +110,9 @@
       <a href="{{ url_for('designer.admin_designers') }}" class="nav-link {% if 'admin_designer' in request.endpoint %}active{% endif %}">
         👥 デザイナー一覧
       </a>
+      <a href="{{ url_for('designer.admin_pricing') }}" class="nav-link {% if 'admin_pricing' in request.endpoint %}active{% endif %}">
+        💴 料金プラン
+      </a>
       {% endif %}
       {% if client is defined and client %}
       <div class="nav-section" style="margin-top:8px;">{{ client.name }}</div>

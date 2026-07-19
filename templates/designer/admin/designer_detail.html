@@ -16,6 +16,7 @@
       <table style="width:100%;border-collapse:collapse;">
         {% for label, value in [
           ('氏名', designer.name),
+          ('屋号・法人名', designer.business_name or '—'),
           ('メール', designer.email),
           ('職種', designer.job_type or '—'),
           ('活動地域', designer.region or '—'),

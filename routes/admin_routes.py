@@ -1,7 +1,7 @@
 """routes/admin_routes.py — 管理者専用画面"""
 from flask import render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
-from models import db, Designer, Client, Post, DesignerClient
+from models import db, Designer, Client, Post, DesignerClient, PricingPlan
 from routes import designer_bp
 
 
@@ -63,13 +63,15 @@ def admin_designer_edit(designer_id: int):
     designer = Designer.query.get_or_404(designer_id)
 
     if request.method == "POST":
-        designer.name        = request.form.get("name", designer.name).strip()
-        designer.region      = request.form.get("region", "").strip()
-        designer.job_type    = request.form.get("job_type", "").strip()
-        designer.bank_account = request.form.get("bank_account", "").strip()
-        new_role = request.form.get("role", "designer")
-        if new_role in ("designer", "admin"):
-            designer.role = new_role
+        designer.name          = request.form.get("name", designer.name).strip()
+        designer.business_name = request.form.get("business_name", "").strip()
+        designer.region        = request.form.get("region", "").strip()
+        designer.job_type      = request.form.get("job_type", "").strip()
+        designer.bank_account  = request.form.get("bank_account", "").strip()
+        if current_user.role == "admin":
+            new_role = request.form.get("role", "designer")
+            if new_role in ("designer", "admin"):
+                designer.role = new_role
         new_pass = request.form.get("new_password", "").strip()
         if new_pass:
             if len(new_pass) < 8:
@@ -81,3 +83,63 @@ def admin_designer_edit(designer_id: int):
         return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
 
     return render_template("designer/admin/designer_edit.html", designer=designer)
+
+
+# ─── 料金プラン管理 ────────────────────────────────────────────────────────────
+
+_PLATFORM_LABELS = {
+    "instagram": "Instagram",
+    "wordpress": "WordPress",
+    "custom_hp": "独自HP",
+}
+
+
+@designer_bp.route("/admin/pricing")
+@login_required
+def admin_pricing():
+    _admin_only()
+    plans = PricingPlan.query.order_by(PricingPlan.platform_type, PricingPlan.sort_order).all()
+    return render_template("designer/admin/pricing.html", plans=plans, platform_labels=_PLATFORM_LABELS)
+
+
+@designer_bp.route("/admin/pricing/new", methods=["GET", "POST"])
+@login_required
+def admin_pricing_new():
+    _admin_only()
+    if request.method == "POST":
+        pt = request.form.get("platform_type", "instagram")
+        posts = int(request.form.get("monthly_posts", 4) or 4)
+        fee = int(request.form.get("monthly_fee", 0) or 0)
+        last = PricingPlan.query.filter_by(platform_type=pt).order_by(PricingPlan.sort_order.desc()).first()
+        sort_order = (last.sort_order + 1) if last else 0
+        db.session.add(PricingPlan(platform_type=pt, monthly_posts=posts, monthly_fee=fee, sort_order=sort_order))
+        db.session.commit()
+        flash("料金プランを追加しました", "success")
+        return redirect(url_for("designer.admin_pricing"))
+    return render_template("designer/admin/pricing_edit.html", plan=None, platform_labels=_PLATFORM_LABELS)
+
+
+@designer_bp.route("/admin/pricing/<int:plan_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_pricing_edit(plan_id: int):
+    _admin_only()
+    plan = PricingPlan.query.get_or_404(plan_id)
+    if request.method == "POST":
+        plan.platform_type = request.form.get("platform_type", plan.platform_type)
+        plan.monthly_posts = int(request.form.get("monthly_posts", plan.monthly_posts) or plan.monthly_posts)
+        plan.monthly_fee = int(request.form.get("monthly_fee", plan.monthly_fee) or 0)
+        db.session.commit()
+        flash("料金プランを更新しました", "success")
+        return redirect(url_for("designer.admin_pricing"))
+    return render_template("designer/admin/pricing_edit.html", plan=plan, platform_labels=_PLATFORM_LABELS)
+
+
+@designer_bp.route("/admin/pricing/<int:plan_id>/delete", methods=["POST"])
+@login_required
+def admin_pricing_delete(plan_id: int):
+    _admin_only()
+    plan = PricingPlan.query.get_or_404(plan_id)
+    db.session.delete(plan)
+    db.session.commit()
+    flash("削除しました", "success")
+    return redirect(url_for("designer.admin_pricing"))

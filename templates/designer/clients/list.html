@@ -25,7 +25,9 @@
           <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--muted);font-size:12px;">企業名</th>
           <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--muted);font-size:12px;">ステータス</th>
           <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--muted);font-size:12px;">投稿先</th>
-          <th style="padding:12px 16px;text-align:center;font-weight:600;color:var(--muted);font-size:12px;">ネタキュー</th>
+          {% if current_user.role == 'admin' %}
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--muted);font-size:12px;">担当デザイナー</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -54,12 +56,20 @@
             {% set pt = c.platform_type if c.platform_type else 'wordpress_instagram' %}
             {{ platform_labels.get(pt, pt) }}
           </td>
-          <td style="padding:14px 16px;text-align:center;">
-            {% set pc = c.pending_topic_count %}
-            <span style="color:{% if c.needs_topic_replenishment %}var(--warning){% else %}var(--success){% endif %};font-weight:600;">
-              {{ pc }} 件{% if c.needs_topic_replenishment %} ⚠️{% endif %}
-            </span>
+          {% if current_user.role == 'admin' %}
+          <td style="padding:14px 16px;font-size:12px;">
+            {% set designers = c.assignments.all() %}
+            {% if designers %}
+              {% for a in designers %}
+                <span style="display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;margin:1px;">
+                  {{ a.designer.name }}{% if a.designer.business_name %}<span style="color:var(--muted);font-size:11px;"> / {{ a.designer.business_name }}</span>{% endif %}
+                </span>
+              {% endfor %}
+            {% else %}
+              <span style="color:var(--muted);">未割当</span>
+            {% endif %}
           </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>

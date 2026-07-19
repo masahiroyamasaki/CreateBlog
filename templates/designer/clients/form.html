@@ -20,8 +20,23 @@
         <input class="form-control" type="text" name="name" value="{{ client.name if client else '' }}" required placeholder="例: 株式会社サンプル">
       </div>
 
-      <!-- ステータス + 月間投稿数 + 月額料金 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+      <!-- 担当デザイナー（新規追加時のみ） -->
+      {% if not client and designers is defined %}
+      <div class="form-group">
+        <label>担当デザイナー *</label>
+        <select class="form-control" name="designer_id" required>
+          <option value="">-- デザイナーを選択 --</option>
+          {% for d in designers %}
+          <option value="{{ d.id }}">
+            {{ d.name }}{% if d.business_name %} / {{ d.business_name }}{% endif %} — {{ d.email }}
+          </option>
+          {% endfor %}
+        </select>
+        <p class="hint">デザイナーIDで紐づけます。氏名・屋号・メールアドレスが変わっても関係は維持されます。</p>
+      </div>
+      {% endif %}
+
+      <!-- ステータス -->
       <div class="form-group">
         <label>ステータス</label>
         <select class="form-control" name="client_status">
@@ -30,30 +45,31 @@
           <option value="setting" {% if client and client.client_status == 'setting' %}selected{% endif %}>設定中</option>
         </select>
       </div>
+
+      <!-- 料金プラン（投稿タイプ → 投稿数 → 月額自動計算） -->
+      <div class="form-group section-block">
+        <p class="section-title">料金プラン</p>
+        <label>投稿タイプ</label>
+        <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections(); autoCalcFee();">
+          <option value="wordpress" {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
+          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram</option>
+          <option value="custom_hp" {% if client and client.platform_type == 'custom_hp' %}selected{% endif %}>独自HP</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div class="form-group">
         <label>月間投稿数（契約数）</label>
-        <input class="form-control" type="number" name="monthly_post_count" min="1" max="31"
+        <input class="form-control" type="number" name="monthly_post_count" id="monthly_post_count" min="1" max="31"
                value="{{ client.monthly_post_count if client and client.monthly_post_count else 4 }}">
         <p class="hint">自動生成バッチで使用</p>
       </div>
       <div class="form-group">
         <label>月額料金（円）</label>
-        <input class="form-control" type="number" name="monthly_fee" min="0"
+        <input class="form-control" type="number" name="monthly_fee" id="monthly_fee" min="0"
                value="{{ client.monthly_fee if client and client.monthly_fee else 0 }}"
                placeholder="0">
-        <p class="hint">売上・報酬計算に使用</p>
+        <p class="hint">投稿タイプと投稿数から自動計算</p>
       </div>
-      </div>
-
-      <!-- 投稿先プラットフォーム -->
-      <div class="form-group section-block">
-        <p class="section-title">投稿先プラットフォーム</p>
-        <label>投稿タイプ</label>
-        <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections()">
-          <option value="wordpress" {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
-          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram</option>
-          <option value="custom_hp" {% if client and client.platform_type == 'custom_hp' %}selected{% endif %}>独自HP</option>
-        </select>
       </div>
 
       <!-- 独自HP セクション -->
@@ -192,14 +208,13 @@
 
 {% block scripts %}
 <script>
+const PRICING_PLANS = {{ pricing_plans | tojson }};
+
 function updateSections() {
   const pt = document.getElementById('platform_type').value;
-  const showWp = (pt === 'wordpress' || pt === 'wordpress_instagram');
-  const showIg = (pt === 'instagram' || pt === 'wordpress_instagram');
-  const showCustom = (pt === 'custom_hp');
-  document.getElementById('section-wordpress').style.display = showWp ? '' : 'none';
-  document.getElementById('section-instagram').style.display = showIg ? '' : 'none';
-  document.getElementById('section-custom-hp').style.display = showCustom ? '' : 'none';
+  document.getElementById('section-wordpress').style.display = (pt === 'wordpress') ? '' : 'none';
+  document.getElementById('section-instagram').style.display = (pt === 'instagram') ? '' : 'none';
+  document.getElementById('section-custom-hp').style.display = (pt === 'custom_hp') ? '' : 'none';
 }
 
 function updateScheduleUI() {
@@ -219,19 +234,72 @@ function highlightDate(checkbox) {
   }
 }
 
+function autoCalcFee() {
+  const pt = document.getElementById('platform_type').value;
+  const posts = parseInt(document.getElementById('monthly_post_count').value) || 0;
+  const plans = PRICING_PLANS[pt] || [];
+  const match = plans.find(p => p.posts === posts);
+  if (match) document.getElementById('monthly_fee').value = match.fee;
+}
+
+// ── スケジュールチェック数制限 ──────────────────────────────────────
+function getMaxChecks() {
+  const posts = parseInt(document.getElementById('monthly_post_count').value) || 4;
+  const isWeekly = document.querySelector('input[name="schedule_type"]:checked')?.value === 'weekly';
+  return isWeekly ? Math.max(1, Math.floor(posts / 4)) : posts;
+}
+
+function enforceCheckLimit(changed) {
+  const isWeekly = document.querySelector('input[name="schedule_type"]:checked')?.value === 'weekly';
+  const name = isWeekly ? 'schedule_days_of_week' : 'schedule_days_of_month';
+  const max = getMaxChecks();
+  const checked = [...document.querySelectorAll(`input[name="${name}"]:checked`)];
+  if (checked.length > max) {
+    changed.checked = false;
+    if (!isWeekly) highlightDate(changed);
+    const posts = document.getElementById('monthly_post_count').value;
+    showToast(`月間${posts}件の場合、最大${max}個まで選択できます`, 'error');
+  }
+}
+
+function recheckLimits() {
+  const isWeekly = document.querySelector('input[name="schedule_type"]:checked')?.value === 'weekly';
+  const name = isWeekly ? 'schedule_days_of_week' : 'schedule_days_of_month';
+  const max = getMaxChecks();
+  const checked = [...document.querySelectorAll(`input[name="${name}"]:checked`)];
+  checked.slice(max).forEach(cb => {
+    cb.checked = false;
+    if (!isWeekly) highlightDate(cb);
+  });
+}
+
+// ── イベントリスナー ─────────────────────────────────────────────────
+document.getElementById('monthly_post_count').addEventListener('change', () => {
+  autoCalcFee();
+  recheckLimits();
+});
+document.querySelectorAll('input[name="schedule_type"]').forEach(r =>
+  r.addEventListener('change', () => { updateScheduleUI(); recheckLimits(); })
+);
+document.querySelectorAll('input[name="schedule_days_of_week"]').forEach(cb =>
+  cb.addEventListener('change', function() { enforceCheckLimit(this); })
+);
+document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
+  cb.addEventListener('change', function() { enforceCheckLimit(this); if(this.checked || !this.checked) highlightDate(this); })
+);
+
 // 初期表示
 updateSections();
 updateScheduleUI();
+autoCalcFee();
 
-// 送信前: 曜日・日付が1つも選択されていなければデフォルトをセット
+// 送信前: 未選択ならデフォルトをセット
 document.querySelector('form').addEventListener('submit', function() {
-  const weeklyChecked  = document.querySelectorAll('input[name="schedule_days_of_week"]:checked').length;
-  const monthlyChecked = document.querySelectorAll('input[name="schedule_days_of_month"]:checked').length;
-  if (weeklyChecked === 0) {
+  if (!document.querySelectorAll('input[name="schedule_days_of_week"]:checked').length) {
     const first = document.querySelector('input[name="schedule_days_of_week"]');
     if (first) first.checked = true;
   }
-  if (monthlyChecked === 0) {
+  if (!document.querySelectorAll('input[name="schedule_days_of_month"]:checked').length) {
     const first = document.querySelector('input[name="schedule_days_of_month"]');
     if (first) first.checked = true;
   }

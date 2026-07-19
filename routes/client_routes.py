@@ -1,7 +1,7 @@
 """routes/client_routes.py — 契約企業の管理"""
 from flask import render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
-from models import db, Client, DesignerClient, Post, TopicQueue
+from models import db, Client, DesignerClient, Post, TopicQueue, Designer
 from config import encrypt_field, decrypt_field
 from routes import designer_bp
 
@@ -52,11 +52,12 @@ def client_detail(client_id: int):
 def client_new():
     if current_user.role != "admin":
         abort(403)
+    designers = Designer.query.order_by(Designer.name).all()
     if request.method == "POST":
         stype = request.form.get("schedule_type", "weekly")
         client = Client(
             name=request.form["name"],
-            platform_type=request.form.get("platform_type", "wordpress_instagram"),
+            platform_type=request.form.get("platform_type", "wordpress"),
             client_status=request.form.get("client_status", "active"),
             monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
             monthly_fee=int(request.form.get("monthly_fee", 0) or 0),
@@ -76,12 +77,14 @@ def client_new():
         db.session.add(client)
         db.session.flush()
 
-        # 作成者をアサイン
-        db.session.add(DesignerClient(designer_id=current_user.id, client_id=client.id))
+        # 選択されたデザイナーをアサイン（未選択の場合は作成者）
+        raw_id = request.form.get("designer_id", "").strip()
+        assign_id = int(raw_id) if raw_id else current_user.id
+        db.session.add(DesignerClient(designer_id=assign_id, client_id=client.id))
         db.session.commit()
         flash(f"「{client.name}」を追加しました", "success")
         return redirect(url_for("designer.client_detail", client_id=client.id))
-    return render_template("designer/clients/form.html", client=None)
+    return render_template("designer/clients/form.html", client=None, designers=designers)
 
 
 @designer_bp.route("/clients/<int:client_id>/edit", methods=["GET", "POST"])

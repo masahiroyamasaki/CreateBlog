@@ -39,6 +39,33 @@ try:
 
     from db_migrate import auto_migrate
     auto_migrate(app, db)        # モデルと差分があるカラムを自動追加
+
+    # 料金プランの初期データをシード（テーブルが空の場合のみ）
+    with app.app_context():
+        from models import PricingPlan as _PP
+        if _PP.query.count() == 0:
+            from pricing import PLANS
+            order = 0
+            for pt, plans in PLANS.items():
+                for p in plans:
+                    db.session.add(_PP(platform_type=pt, monthly_posts=p["posts"], monthly_fee=p["fee"], sort_order=order))
+                    order += 1
+            db.session.commit()
+
+    # 料金プランをすべてのテンプレートに自動注入
+    @app.context_processor
+    def _inject_pricing():
+        try:
+            from models import PricingPlan as _PP
+            plans: dict = {}
+            for p in _PP.query.order_by(_PP.platform_type, _PP.sort_order).all():
+                plans.setdefault(p.platform_type, []).append(
+                    {"id": p.id, "posts": p.monthly_posts, "fee": p.monthly_fee}
+                )
+            return {"pricing_plans": plans}
+        except Exception:
+            from pricing import PLANS
+            return {"pricing_plans": PLANS}
 except Exception as _mysql_err:
     import logging
     logging.warning(f"MySQL 接続スキップ（既存 SQLite 機能は継続）: {_mysql_err}")
@@ -590,17 +617,37 @@ def publish_scheduled_cmd():
         sys.exit(1)
 
 
-@app.cli.command("run-monthly-batch")
-def run_monthly_batch_cmd():
-    """稼働企業ごとに月間投稿数分のネタ＋記事を自動生成（毎月10日 cron から呼び出す）"""
+@app.cli.command("run-monthly-ideas")
+def run_monthly_ideas_cmd():
+    """稼働企業ごとに月間投稿数分のネタを生成（毎月1日 cron から呼び出す）"""
     try:
-        from batch_monthly import run_monthly_batch
+        from batch_monthly import run_monthly_ideas_batch
         from models import db as _db
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{ts} UTC] 月間バッチ開始")
-        result = run_monthly_batch(app, _db)
+        print(f"[{ts} UTC] ネタ生成バッチ開始")
+        result = run_monthly_ideas_batch(app, _db)
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{ts} UTC] 完了: 企業={result['clients']}, ネタ={result['topics']}, 記事={result['posts']}")
+        print(f"[{ts} UTC] 完了: 企業={result['clients']}, ネタ={result['topics']}")
+        if result["errors"]:
+            for e in result["errors"]:
+                print(f"  ERROR: {e}")
+    except Exception as e:
+        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] FATAL: {e}")
+        import sys
+        sys.exit(1)
+
+
+@app.cli.command("run-monthly-articles")
+def run_monthly_articles_cmd():
+    """未生成ネタから記事を一括生成（毎月10日 cron から呼び出す）"""
+    try:
+        from batch_monthly import run_monthly_articles_batch
+        from models import db as _db
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 記事生成バッチ開始")
+        result = run_monthly_articles_batch(app, _db)
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 完了: 企業={result['clients']}, 記事={result['posts']}")
         if result["errors"]:
             for e in result["errors"]:
                 print(f"  ERROR: {e}")
