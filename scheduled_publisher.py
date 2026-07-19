@@ -29,7 +29,8 @@ def publish_due_posts(app, db) -> int:
 
         now = _now_jst()
         due_posts = Post.query.filter(
-            Post.status == "scheduled",
+            Post.status == "draft",
+            Post.scheduled_at.isnot(None),
             Post.scheduled_at <= now,
         ).all()
 

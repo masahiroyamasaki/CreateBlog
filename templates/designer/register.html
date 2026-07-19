@@ -76,13 +76,6 @@
         <input type="text" name="job_type" placeholder="例: Webデザイナー・SNSマーケター"
                value="{{ request.form.get('job_type', '') }}">
       </div>
-      <div class="group">
-        <label>振込口座</label>
-        <input type="text" name="bank_account" placeholder="例: ○○銀行 ○○支店 普通 1234567 ヤマダタロウ"
-               value="{{ request.form.get('bank_account', '') }}">
-        <p class="hint">報酬の振込先口座情報を入力してください</p>
-      </div>
-
       <div class="section-label">パスワード設定</div>
 
       <div class="group">

@@ -1,0 +1,67 @@
+{% extends "designer/base.html" %}
+{% block title %}請求書一覧{% endblock %}
+{% block page_title %}請求書管理{% endblock %}
+{% block topbar_actions %}
+  <form method="POST" action="{{ url_for('designer.admin_invoice_generate') }}"
+        onsubmit="return confirm('当月分の請求書を一括生成・送付します。よろしいですか？')">
+    <button type="submit" class="btn btn-primary btn-sm">当月分を一括生成・送付</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'success' if cat == 'success' else ('warning' if cat == 'warning' else 'error') }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <div class="card-header">
+    <h2>請求書一覧（{{ invoices|length }} 件）</h2>
+  </div>
+  {% if invoices %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>請求番号</th>
+        <th>デザイナー</th>
+        <th>対象月</th>
+        <th>請求金額</th>
+        <th>ステータス</th>
+        <th>作成日</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td style="font-family:monospace;font-size:12px;">{{ inv.invoice_number }}</td>
+        <td>
+          <div style="font-weight:600;">{{ inv.designer.name }}</div>
+          <div style="font-size:11px;color:var(--muted);">{{ inv.designer.email }}</div>
+        </td>
+        <td>{{ inv.year }}年{{ inv.month }}月分</td>
+        <td style="font-weight:700;">¥{{ "{:,}".format(inv.total_amount) }}</td>
+        <td>
+          {% if inv.status == 'sent' %}
+          <span class="badge badge-green">送付済み</span>
+          {% else %}
+          <span class="badge badge-gray">下書き</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--muted);">{{ inv.created_at.strftime('%Y/%m/%d') if inv.created_at }}</td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <a href="{{ url_for('designer.admin_invoice_detail', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm">詳細</a>
+            <a href="{{ url_for('designer.admin_invoice_pdf', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm">PDF</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">請求書がありません。「当月分を一括生成・送付」ボタンで作成できます。</div>
+  {% endif %}
+</div>
+{% endblock %}

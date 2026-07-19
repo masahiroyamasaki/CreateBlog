@@ -44,6 +44,8 @@ echo "  -> バックアップ完了"
 echo "[2/4] git pull"
 cd "$APP_DIR"
 git fetch origin
+# ローカルの未コミット変更を退避（.env等は影響なし）
+git stash --quiet || true
 git pull origin master
 echo "  -> pull 完了"
 

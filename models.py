@@ -215,3 +215,40 @@ class PricingPlan(db.Model):
     monthly_posts = db.Column(db.Integer, nullable=False)
     monthly_fee = db.Column(db.Integer, nullable=False)
     sort_order = db.Column(db.Integer, default=0)
+
+
+# ─── 請求書 ───────────────────────────────────────────────────────────────────
+
+class Invoice(db.Model):
+    __tablename__ = "invoices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    designer_id = db.Column(db.Integer, db.ForeignKey("designers.id"), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    total_amount = db.Column(db.Integer, default=0)
+    pdf_path = db.Column(db.String(500), default="")
+    status = db.Column(db.Enum("draft", "sent"), default="draft", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime)
+
+    designer = db.relationship("Designer", backref="invoices")
+    items = db.relationship("InvoiceItem", back_populates="invoice",
+                            cascade="all, delete-orphan", lazy="dynamic")
+
+    @property
+    def invoice_number(self) -> str:
+        return f"INV-{self.year}{self.month:02d}-{self.designer_id:04d}"
+
+
+class InvoiceItem(db.Model):
+    __tablename__ = "invoice_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("clients.id"))
+    client_name = db.Column(db.String(255), default="")
+    description = db.Column(db.String(500), default="")
+    amount = db.Column(db.Integer, default=0)
+
+    invoice = db.relationship("Invoice", back_populates="items")

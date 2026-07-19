@@ -363,6 +363,122 @@ def generate_status(run_id: str):
     return jsonify(run)
 
 
+@designer_bp.route("/clients/<int:client_id>/topics/bulk-generate", methods=["POST"])
+@login_required
+def topic_bulk_generate(client_id: int):
+    """管理者のみ: 未生成の記事ネタを一括で記事に生成する"""
+    if current_user.role != "admin":
+        abort(403)
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+
+    pending_topics = (
+        TopicQueue.query.filter_by(client_id=client_id, status="pending")
+        .order_by(TopicQueue.sort_order)
+        .all()
+    )
+    if not pending_topics:
+        return jsonify({"success": False, "reason": "生成対象のネタがありません"})
+
+    app = current_app._get_current_object()
+    platform_type = client.platform_type or "wordpress"
+    client_name = client.name
+    client_id_val = client.id
+    designer_id = current_user.id
+
+    run_ids = []
+
+    for topic in pending_topics:
+        topic.status = "processing"
+        placeholder = Post(
+            client_id=client_id_val,
+            created_by_designer_id=designer_id,
+            title=topic.title,
+            outline=topic.outline or "",
+            body_html="", ig_caption="", status="creating",
+        )
+        db.session.add(placeholder)
+        db.session.flush()
+        post_id = placeholder.id
+        topic.generated_post_id = post_id
+        db.session.commit()
+
+        run_id = str(uuid.uuid4())
+        _generation_runs[run_id] = {
+            "status": "running", "step": "init",
+            "step_num": 0, "post_id": post_id, "error": None,
+        }
+        run_ids.append(run_id)
+
+        def _run(run_id=run_id, topic_title=topic.title, topic_outline=topic.outline or "",
+                 topic_id_val=topic.id, post_id=post_id,
+                 platform_type=platform_type, client_id_val=client_id_val, client_name=client_name):
+            run = _generation_runs[run_id]
+            try:
+                from agents.blog_creator import BlogCreatorAgent
+                from agents.content_checker import ContentCheckerAgent
+                from agents.legal_checker import LegalCheckerAgent
+                from agents.final_creator import FinalCreatorAgent
+                from agents.ig_formatter import IgFormatterAgent
+                import markdown as _md
+
+                run.update(step="blog_creator", step_num=1)
+                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "existing_posts": []})
+                run.update(step="content_checker", step_num=2)
+                content_check = ContentCheckerAgent().run({"draft": draft})
+                run.update(step="legal_checker", step_num=3)
+                legal_check = LegalCheckerAgent().run({"draft": draft})
+                run.update(step="final_creator", step_num=4)
+                final_content = FinalCreatorAgent().run({"draft": draft, "content_check": content_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準"})
+                run.update(step="ig_caption", step_num=5)
+                ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name})
+                run.update(step="saving", step_num=6)
+
+                body_html = "" if platform_type == "instagram" else _md.markdown(final_content, extensions=["extra", "toc"])
+
+                with app.app_context():
+                    from schedule_utils import next_scheduled_at
+                    from models import Post as _Post, Client as _Client, TopicQueue as _TQ
+                    post = _Post.query.get(post_id)
+                    client_obj = _Client.query.get(client_id_val)
+                    if post:
+                        post.body_html = body_html
+                        post.ig_caption = ig_caption.strip()
+                        post.status = "draft"
+                        if client_obj and client_obj.schedule_type:
+                            existing = {p.scheduled_at.date() for p in _Post.query.filter(_Post.client_id == client_id_val, _Post.scheduled_at.isnot(None)).all() if p.scheduled_at}
+                            post.scheduled_at = next_scheduled_at(client_obj, existing)
+                    tq = _TQ.query.get(topic_id_val)
+                    if tq:
+                        tq.status = "generated"
+                    from models import db as _db
+                    _db.session.commit()
+                    run["post_id"] = post_id
+
+                run.update(status="done", step="done", step_num=6)
+            except Exception as e:
+                run.update(status="error", error=str(e))
+                with app.app_context():
+                    try:
+                        from models import Post as _Post, TopicQueue as _TQ, db as _db
+                        post = _Post.query.get(post_id)
+                        if post:
+                            post.status = "failed"
+                            post.error_message = str(e)
+                        tq = _TQ.query.get(topic_id_val)
+                        if tq:
+                            tq.status = "pending"
+                            tq.generated_post_id = None
+                        _db.session.commit()
+                    except Exception:
+                        from models import db as _db
+                        _db.session.rollback()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    return jsonify({"success": True, "run_ids": run_ids, "count": len(run_ids)})
+
+
 @designer_bp.route("/clients/<int:client_id>/topics/ai-idea", methods=["POST"])
 @login_required
 def topic_ai_idea(client_id: int):

@@ -1,7 +1,8 @@
 """routes/admin_routes.py — 管理者専用画面"""
-from flask import render_template, request, redirect, url_for, flash, abort
+import os
+from flask import render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
-from models import db, Designer, Client, Post, DesignerClient, PricingPlan
+from models import db, Designer, Client, Post, DesignerClient, PricingPlan, Invoice, InvoiceItem
 from routes import designer_bp
 
 
@@ -143,3 +144,70 @@ def admin_pricing_delete(plan_id: int):
     db.session.commit()
     flash("削除しました", "success")
     return redirect(url_for("designer.admin_pricing"))
+
+
+# ─── 請求書管理 ────────────────────────────────────────────────────────────────
+
+@designer_bp.route("/admin/invoices")
+@login_required
+def admin_invoices():
+    _admin_only()
+    invoices = (
+        Invoice.query
+        .join(Designer)
+        .order_by(Invoice.year.desc(), Invoice.month.desc(), Designer.name)
+        .all()
+    )
+    return render_template("designer/admin/invoices.html", invoices=invoices)
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>")
+@login_required
+def admin_invoice_detail(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    items = InvoiceItem.query.filter_by(invoice_id=invoice_id).all()
+    return render_template("designer/admin/invoice_detail.html",
+                           invoice=invoice, items=items)
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/pdf")
+@login_required
+def admin_invoice_pdf(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
+        # PDF が存在しなければ再生成
+        items = InvoiceItem.query.filter_by(invoice_id=invoice_id).all()
+        try:
+            from billing import generate_invoice_pdf
+            pdf_path = generate_invoice_pdf(invoice, items)
+            invoice.pdf_path = pdf_path
+            db.session.commit()
+        except Exception as e:
+            flash(f"PDF生成エラー: {e}", "error")
+            return redirect(url_for("designer.admin_invoice_detail", invoice_id=invoice_id))
+    return send_file(
+        invoice.pdf_path,
+        as_attachment=True,
+        download_name=f"invoice_{invoice.year}{invoice.month:02d}_{invoice.designer.name}.pdf",
+        mimetype="application/pdf",
+    )
+
+
+@designer_bp.route("/admin/invoices/generate", methods=["POST"])
+@login_required
+def admin_invoice_generate():
+    """手動で当月分の請求書を一括生成する。"""
+    _admin_only()
+    try:
+        from batch_monthly import run_monthly_billing_batch
+        from models import db as _db
+        from flask import current_app
+        result = run_monthly_billing_batch(current_app._get_current_object(), _db)
+        if result["errors"]:
+            flash(f"一部エラー: {'; '.join(result['errors'][:3])}", "warning")
+        flash(f"{result['invoices']} 件の請求書を生成しました", "success")
+    except Exception as e:
+        flash(f"エラー: {e}", "error")
+    return redirect(url_for("designer.admin_invoices"))

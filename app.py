@@ -657,6 +657,26 @@ def run_monthly_articles_cmd():
         sys.exit(1)
 
 
+@app.cli.command("run-monthly-billing")
+def run_monthly_billing_cmd():
+    """稼働中企業のデザイナーに請求書を自動作成・送付（毎月1日 cron から呼び出す）"""
+    try:
+        from batch_monthly import run_monthly_billing_batch
+        from models import db as _db
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 請求書バッチ開始")
+        result = run_monthly_billing_batch(app, _db)
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts} UTC] 完了: 請求書={result['invoices']}件")
+        if result["errors"]:
+            for e in result["errors"]:
+                print(f"  ERROR: {e}")
+    except Exception as e:
+        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] FATAL: {e}")
+        import sys
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
     app.run(debug=debug, port=5000)

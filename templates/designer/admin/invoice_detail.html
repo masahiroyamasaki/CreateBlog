@@ -1,0 +1,119 @@
+{% extends "designer/base.html" %}
+{% block title %}請求書 {{ invoice.invoice_number }}{% endblock %}
+{% block page_title %}請求書詳細{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.admin_invoices') }}" class="btn btn-secondary btn-sm">← 請求書一覧</a>
+  <a href="{{ url_for('designer.admin_invoice_pdf', invoice_id=invoice.id) }}" class="btn btn-primary btn-sm">PDF ダウンロード</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+
+  <!-- 請求書プレビュー -->
+  <div class="card">
+    <div class="card-body">
+
+      <!-- ヘッダー -->
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="font-size:22px;font-weight:700;letter-spacing:.1em;">請　求　書</h2>
+      </div>
+
+      <!-- メタ情報 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:20px;font-size:13px;">
+        <div><span style="color:var(--muted);">請求番号:</span> <strong>{{ invoice.invoice_number }}</strong></div>
+        <div style="text-align:right;"><span style="color:var(--muted);">発行日:</span> {{ invoice.created_at.strftime('%Y年%m月%d日') if invoice.created_at else '—' }}</div>
+        <div><span style="color:var(--muted);">対象月:</span> {{ invoice.year }}年{{ invoice.month }}月分</div>
+        <div style="text-align:right;">
+          {% if invoice.status == 'sent' %}
+          <span class="badge badge-green">送付済み</span>
+          {% else %}
+          <span class="badge badge-gray">下書き</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 請求先・請求元 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;">
+          <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:8px;">請求先</div>
+          <div style="font-weight:700;font-size:14px;">{{ invoice.designer.name }} 様</div>
+          {% if invoice.designer.business_name %}
+          <div style="font-size:12px;color:var(--muted);">{{ invoice.designer.business_name }}</div>
+          {% endif %}
+          <div style="font-size:12px;color:var(--muted);">{{ invoice.designer.email }}</div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;">
+          <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:8px;">請求元</div>
+          <div style="font-weight:700;font-size:14px;">RKパートナーズ</div>
+          <div style="font-size:12px;color:var(--muted);">代表　山﨑粛福</div>
+          <div style="font-size:12px;color:var(--muted);">大阪府羽曳野市碓井4-22-5</div>
+          <div style="font-size:12px;color:var(--muted);">info@rk-rpa.com</div>
+        </div>
+      </div>
+
+      <!-- 合計金額 -->
+      <div style="background:var(--primary);border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <span style="color:#fff;font-size:14px;">ご請求金額（税込）</span>
+        <span style="color:#fff;font-size:22px;font-weight:700;">¥{{ "{:,}".format(invoice.total_amount) }}</span>
+      </div>
+
+      <!-- 明細 -->
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:32px;">No.</th>
+            <th>企業名</th>
+            <th>内容</th>
+            <th style="text-align:right;">金額</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td style="text-align:center;color:var(--muted);">{{ loop.index }}</td>
+            <td style="font-weight:600;">{{ item.client_name }}</td>
+            <td style="color:var(--muted);font-size:12px;">{{ item.description }}</td>
+            <td style="text-align:right;font-weight:600;">¥{{ "{:,}".format(item.amount) }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;font-weight:700;">合　計</td>
+            <td style="text-align:right;font-weight:700;font-size:15px;">¥{{ "{:,}".format(invoice.total_amount) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:16px;font-size:12px;color:var(--muted);">※ お支払い期限：翌月末日</p>
+    </div>
+  </div>
+
+  <!-- サイドパネル -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card">
+      <div class="card-header"><h2>送付情報</h2></div>
+      <div class="card-body" style="font-size:13px;">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>ステータス</label>
+          <div>{% if invoice.status == 'sent' %}<span class="badge badge-green">送付済み</span>{% else %}<span class="badge badge-gray">下書き</span>{% endif %}</div>
+        </div>
+        {% if invoice.sent_at %}
+        <div class="form-group" style="margin-bottom:0;">
+          <label>送付日時</label>
+          <div>{{ invoice.sent_at.strftime('%Y/%m/%d %H:%M') }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>操作</h2></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+        <a href="{{ url_for('designer.admin_invoice_pdf', invoice_id=invoice.id) }}"
+           class="btn btn-primary" style="width:100%;justify-content:center;">
+          PDFをダウンロード
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

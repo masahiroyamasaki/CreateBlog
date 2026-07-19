@@ -85,6 +85,81 @@ def run_monthly_articles_batch(app, db) -> dict:
     return result
 
 
+# ── 請求書バッチ ──────────────────────────────────────────────────────────────
+
+def run_monthly_billing_batch(app, db) -> dict:
+    """毎月1日: 稼働中企業に紐づくデザイナー宛の請求書を自動作成・送付する。"""
+    result = {"invoices": 0, "errors": []}
+
+    with app.app_context():
+        from models import Client, Designer, Invoice, InvoiceItem
+        from billing import generate_invoice_pdf
+        from mailer import send_invoice_email
+
+        now = datetime.now(_JST)
+        year, month = now.year, now.month
+
+        # 稼働中企業をデザイナーごとに集計
+        active_clients = Client.query.filter_by(client_status="active").all()
+        designer_clients: dict[int, list] = {}
+        for client in active_clients:
+            for assignment in client.assignments:
+                designer_clients.setdefault(assignment.designer_id, []).append(client)
+
+        for designer_id, clients in designer_clients.items():
+            try:
+                # 同月重複防止
+                if Invoice.query.filter_by(designer_id=designer_id, year=year, month=month).first():
+                    logger.info(f"[billing] Designer {designer_id}: {year}/{month} 請求書作成済み、スキップ")
+                    continue
+
+                total = sum(c.monthly_fee or 0 for c in clients)
+                invoice = Invoice(
+                    designer_id=designer_id,
+                    year=year, month=month,
+                    total_amount=total, status="draft",
+                )
+                db.session.add(invoice)
+                db.session.flush()
+
+                for client in clients:
+                    db.session.add(InvoiceItem(
+                        invoice_id=invoice.id,
+                        client_id=client.id,
+                        client_name=client.name,
+                        description=f"月次ブログ運用代行（{client.monthly_post_count or 4}件/月）",
+                        amount=client.monthly_fee or 0,
+                    ))
+                db.session.commit()
+
+                # PDF生成
+                items_list = InvoiceItem.query.filter_by(invoice_id=invoice.id).all()
+                pdf_path = generate_invoice_pdf(invoice, items_list)
+                invoice.pdf_path = pdf_path
+                db.session.commit()
+
+                # メール送付
+                designer = Designer.query.get(designer_id)
+                if designer and designer.email:
+                    r = send_invoice_email(designer.email, designer.name, invoice, pdf_path)
+                    if r.get("success"):
+                        invoice.status = "sent"
+                        invoice.sent_at = datetime.now(_JST).replace(tzinfo=None)
+                        db.session.commit()
+                        logger.info(f"[billing] Designer {designer_id} ({designer.name}): 送付完了")
+                    else:
+                        logger.warning(f"[billing] メール送付失敗: {r.get('reason')}")
+
+                result["invoices"] += 1
+            except Exception as e:
+                db.session.rollback()
+                msg = f"[billing] Designer {designer_id} エラー: {e}"
+                logger.error(msg)
+                result["errors"].append(msg)
+
+    return result
+
+
 # ── ネタ生成 ─────────────────────────────────────────────────────────────────
 
 def _generate_ideas(client, ai, count: int, db) -> list:

@@ -40,9 +40,13 @@
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
           {% if current_user.role == 'admin' %}
-          <button class="btn btn-primary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
+          <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
             <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
             AIでネタ生成
+          </button>
+          <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()" {% if pending_count == 0 %}disabled{% endif %}>
+            <span id="bulk-gen-spinner" class="spinner-sm" style="display:none;"></span>
+            未生成ネタを一括生成（{{ pending_count }}件）
           </button>
           {% endif %}
         </div>
@@ -68,12 +72,12 @@
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
             <div style="display:flex;gap:6px;flex-shrink:0;">
               {% if current_user.role == 'admin' %}
-              <a href="{{ url_for('designer.topic_generate_ui', client_id=client.id, topic_id=t.id) }}" class="btn btn-generate btn-sm">AI生成</a>
-              {% endif %}
-              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
+              <button class="btn btn-generate btn-sm" onclick="confirmGenerate({{ t.id }})" id="gen-btn-{{ t.id }}">AI生成</button>
               <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
                 <button type="submit" class="btn btn-danger btn-sm">削除</button>
               </form>
+              {% endif %}
+              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
             </div>
             <span class="drag-handle">⠿</span>
             <div style="flex:1;min-width:0;">
@@ -178,6 +182,35 @@ function toggleEdit(id) {
   f.classList.toggle('open');
 }
 
+// AI生成ボタン: localStorage で1回のみ押下制限
+const PRESSED_KEY = `gen_pressed_${clientId}`;
+function _getPressedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(PRESSED_KEY) || '[]')); } catch { return new Set(); }
+}
+function _markPressed(topicId) {
+  const s = _getPressedSet(); s.add(topicId);
+  localStorage.setItem(PRESSED_KEY, JSON.stringify([...s]));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const pressed = _getPressedSet();
+  pressed.forEach(id => {
+    const btn = document.getElementById(`gen-btn-${id}`);
+    if (btn) { btn.disabled = true; btn.title = '生成済みまたは実行済み'; }
+  });
+});
+
+function confirmGenerate(topicId) {
+  const pressed = _getPressedSet();
+  if (pressed.has(topicId)) {
+    showToast('このネタはすでに生成を実行済みです', 'error'); return;
+  }
+  if (!confirm('このボタンは1回のみしか押下できません。実行しますか?')) return;
+  _markPressed(topicId);
+  const btn = document.getElementById(`gen-btn-${topicId}`);
+  if (btn) btn.disabled = true;
+  location.href = `/designer/clients/${clientId}/topics/${topicId}/generate-ui`;
+}
+
 async function generateAiIdea() {
   const btn = document.getElementById('ai-idea-btn');
   const spinner = document.getElementById('ai-idea-spinner');
@@ -196,6 +229,38 @@ async function generateAiIdea() {
     }
   } catch(e) {
     showToast('通信エラー', 'error');
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+const BULK_KEY = `bulk_pressed_${clientId}`;
+async function bulkGenerate() {
+  if (localStorage.getItem(BULK_KEY)) {
+    showToast('一括生成はすでに実行済みです', 'error'); return;
+  }
+  const count = {{ pending_count }};
+  if (!confirm(`このボタンは1回のみしか押下できません。未生成ネタ${count}件を一括で記事に生成しますか?`)) return;
+  localStorage.setItem(BULK_KEY, '1');
+  const btn = document.getElementById('bulk-gen-btn');
+  const spinner = document.getElementById('bulk-gen-spinner');
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/bulk-generate`, {method: 'POST'});
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${data.count}件の記事生成を開始しました。しばらくお待ちください。`);
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      showToast(data.reason || 'エラーが発生しました', 'error');
+      localStorage.removeItem(BULK_KEY);
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    }
+  } catch(e) {
+    showToast('通信エラー', 'error');
+    localStorage.removeItem(BULK_KEY);
     btn.disabled = false;
     spinner.style.display = 'none';
   }
