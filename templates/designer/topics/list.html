@@ -70,6 +70,12 @@
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
               {% endif %}
             </div>
+            <form method="POST"
+                  action="{{ url_for('designer.topic_force_reset', client_id=client.id, topic_id=t.id) }}"
+                  onsubmit="return confirm('生成を強制終了してネタをキューに戻しますか？\n（生成中の記事は破棄されます）');"
+                  style="flex-shrink:0;">
+              <button type="submit" class="btn btn-danger btn-sm">強制終了</button>
+            </form>
           </div>
           {% else %}
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">

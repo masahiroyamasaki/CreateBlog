@@ -609,6 +609,29 @@ def topic_bulk_generate(client_id: int):
     return jsonify({"success": True, "run_ids": run_ids, "count": len(run_ids)})
 
 
+@designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/force-reset", methods=["POST"])
+@login_required
+def topic_force_reset(client_id: int, topic_id: int):
+    """生成中でスタックしたネタを強制的に pending に戻す。"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    topic = TopicQueue.query.get_or_404(topic_id)
+    if topic.client_id != client_id:
+        abort(403)
+    if topic.status != "processing":
+        flash("このネタは生成中ではありません", "warning")
+        return redirect(url_for("designer.topic_list", client_id=client_id))
+    if topic.generated_post_id:
+        stuck_post = Post.query.get(topic.generated_post_id)
+        if stuck_post and stuck_post.status == "creating":
+            db.session.delete(stuck_post)
+    topic.status = "pending"
+    topic.generated_post_id = None
+    db.session.commit()
+    flash("生成を強制終了し、ネタをキューに戻しました", "success")
+    return redirect(url_for("designer.topic_list", client_id=client_id))
+
+
 @designer_bp.route("/clients/<int:client_id>/topics/ai-idea", methods=["POST"])
 @login_required
 def topic_ai_idea(client_id: int):

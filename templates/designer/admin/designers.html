@@ -31,8 +31,13 @@
       <div style="font-size:20px;font-weight:700;color:var(--success);">¥{{ "{:,}".format(stats | sum(attribute='total_revenue')) }}</div>
     </div>
     <div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">総契約投稿数 / 月</div>
-      <div style="font-size:20px;font-weight:700;">{{ stats | sum(attribute='total_posts') }} 件</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">総合計運用社数</div>
+      <div style="font-size:20px;font-weight:700;">{{ stats | sum(attribute='total_clients') }} 社</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+        IG {{ stats | sum(attribute='ig_count') }} /
+        WP {{ stats | sum(attribute='wp_count') }} /
+        HP {{ stats | sum(attribute='hp_count') }}
+      </div>
     </div>
   </div>
 </div>

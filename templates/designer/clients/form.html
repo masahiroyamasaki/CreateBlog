@@ -110,7 +110,16 @@
         </div>
         <div class="form-group">
           <label>長期アクセストークン</label>
-          <input class="form-control" type="password" name="ig_access_token" placeholder="{% if client %}変更する場合のみ入力{% else %}EAAxxxxxxx...{% endif %}">
+          <input class="form-control" type="password" name="ig_access_token" placeholder="{% if client %}変更する場合のみ入力{% else %}EAAxxxxxxx...{% endif %}" autocomplete="new-password">
+          {% if client and form_data is defined and form_data.ig_access_token %}
+          {% set _tok = form_data.ig_access_token %}
+          <div class="hint" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+            <span style="color:var(--success);">✓ 設定済み:</span>
+            <code style="background:var(--bg3);border:1px solid var(--border);padding:2px 10px;border-radius:4px;font-size:12px;letter-spacing:.04em;">
+              {{ _tok[:4] }}••••••••••{{ _tok[-5:] }}
+            </code>
+          </div>
+          {% endif %}
         </div>
         <div class="form-group">
           <label>固定ハッシュタグ（投稿キャプションに自動追加）</label>
