@@ -361,9 +361,30 @@ def post_publish(client_id: int, post_id: int):
         return jsonify({"success": True, "wp_url": post.wp_post_url})
 
 
+def _strip_account_prefix(caption: str, client_name: str) -> str:
+    """冒頭に混入した企業名・@メンション・空行を除去する。"""
+    lines = caption.strip().splitlines()
+    cleaned = []
+    for line in lines:
+        s = line.strip()
+        if not cleaned:
+            if not s:
+                continue
+            if s.startswith("@"):
+                continue
+            if client_name and s == client_name:
+                continue
+            if client_name and s.startswith(client_name):
+                line = s[len(client_name):].lstrip(" 　・／/")
+                if not line:
+                    continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def _build_caption(post: Post, client: Client) -> str:
     """キャプション + ハッシュタグを結合して返す"""
-    caption = post.ig_caption or ""
+    caption = _strip_account_prefix(post.ig_caption or "", client.name)
     hashtags = (post.ig_hashtags_post or "").strip()
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags

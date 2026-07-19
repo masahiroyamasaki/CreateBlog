@@ -90,7 +90,26 @@ def _do_instagram(client, post, ig_client, decrypt_field) -> dict:
     if not images:
         return {"success": False, "reason": "投稿画像がありません"}
 
-    caption = post.ig_caption or ""
+    # 冒頭の企業名・@メンション・空行を除去してから投稿する
+    _raw = (post.ig_caption or "").strip()
+    _lines = _raw.splitlines()
+    _cleaned = []
+    for _l in _lines:
+        _s = _l.strip()
+        if not _cleaned:
+            if not _s:
+                continue
+            if _s.startswith("@"):
+                continue
+            _cname = client.name or ""
+            if _cname and _s == _cname:
+                continue
+            if _cname and _s.startswith(_cname):
+                _l = _s[len(_cname):].lstrip(" 　・／/")
+                if not _l:
+                    continue
+        _cleaned.append(_l)
+    caption = "\n".join(_cleaned).strip()
     hashtags = (post.ig_hashtags_post or "").strip()
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
