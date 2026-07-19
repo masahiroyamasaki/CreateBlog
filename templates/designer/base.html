@@ -105,6 +105,9 @@
       <a href="{{ url_for('designer.clients') }}" class="nav-link {% if request.endpoint == 'designer.clients' %}active{% endif %}">
         🏢 企業一覧
       </a>
+      <a href="{{ url_for('designer.my_invoices') }}" class="nav-link {% if request.endpoint == 'designer.my_invoices' %}active{% endif %}">
+        🧾 請求書
+      </a>
       {% if current_user.role == 'admin' %}
       <div class="nav-section" style="margin-top:8px;">管理者</div>
       <a href="{{ url_for('designer.admin_designers') }}" class="nav-link {% if 'admin_designer' in request.endpoint %}active{% endif %}">

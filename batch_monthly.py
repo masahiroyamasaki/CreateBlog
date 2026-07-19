@@ -117,7 +117,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                 invoice = Invoice(
                     designer_id=designer_id,
                     year=year, month=month,
-                    total_amount=total, status="draft",
+                    total_amount=total, status="issued",
                 )
                 db.session.add(invoice)
                 db.session.flush()

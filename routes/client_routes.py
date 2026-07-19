@@ -1,7 +1,7 @@
 """routes/client_routes.py — 契約企業の管理"""
-from flask import render_template, request, redirect, url_for, flash, abort
+from flask import render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
-from models import db, Client, DesignerClient, Post, TopicQueue, Designer
+from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem
 from config import encrypt_field, decrypt_field
 from routes import designer_bp
 
@@ -16,6 +16,45 @@ def _get_accessible_clients():
 def _assert_access(client: Client):
     if not current_user.can_access_client(client.id):
         abort(403)
+
+
+@designer_bp.route("/my-invoices")
+@login_required
+def my_invoices():
+    """デザイナー自身の請求書一覧を表示する。"""
+    invoices = (
+        Invoice.query
+        .filter_by(designer_id=current_user.id)
+        .order_by(Invoice.year.desc(), Invoice.month.desc())
+        .all()
+    )
+    return render_template("designer/my_invoices.html", invoices=invoices)
+
+
+@designer_bp.route("/my-invoices/<int:invoice_id>/pdf")
+@login_required
+def my_invoice_pdf(invoice_id: int):
+    """デザイナー自身の請求書PDFをダウンロードする。"""
+    import os
+    invoice = Invoice.query.get_or_404(invoice_id)
+    if invoice.designer_id != current_user.id:
+        abort(403)
+    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
+        items = InvoiceItem.query.filter_by(invoice_id=invoice_id).all()
+        try:
+            from billing import generate_invoice_pdf
+            pdf_path = generate_invoice_pdf(invoice, items)
+            invoice.pdf_path = pdf_path
+            db.session.commit()
+        except Exception as e:
+            flash(f"PDF生成エラー: {e}", "error")
+            return redirect(url_for("designer.my_invoices"))
+    return send_file(
+        invoice.pdf_path,
+        as_attachment=True,
+        download_name=f"invoice_{invoice.year}{invoice.month:02d}.pdf",
+        mimetype="application/pdf",
+    )
 
 
 @designer_bp.route("/clients")

@@ -26,9 +26,10 @@
         <th>請求番号</th>
         <th>デザイナー</th>
         <th>対象月</th>
-        <th>請求金額</th>
+        <th>支払い期限</th>
+        <th style="text-align:right;">請求金額（税込）</th>
         <th>ステータス</th>
-        <th>作成日</th>
+        <th>発行日</th>
         <th></th>
       </tr>
     </thead>
@@ -41,13 +42,10 @@
           <div style="font-size:11px;color:var(--muted);">{{ inv.designer.email }}</div>
         </td>
         <td>{{ inv.year }}年{{ inv.month }}月分</td>
-        <td style="font-weight:700;">¥{{ "{:,}".format(inv.total_amount) }}</td>
+        <td style="font-size:12px;">{{ inv.payment_deadline }}</td>
+        <td style="text-align:right;font-weight:700;">¥{{ "{:,}".format(inv.total_with_tax) }}</td>
         <td>
-          {% if inv.status == 'sent' %}
-          <span class="badge badge-green">送付済み</span>
-          {% else %}
-          <span class="badge badge-gray">下書き</span>
-          {% endif %}
+          <span class="badge {{ inv.status_badge }}">{{ inv.status_label }}</span>
         </td>
         <td style="font-size:12px;color:var(--muted);">{{ inv.created_at.strftime('%Y/%m/%d') if inv.created_at }}</td>
         <td>

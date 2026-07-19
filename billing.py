@@ -15,7 +15,7 @@ ISSUER = {
     "email": "info@rk-rpa.com",
 }
 
-INVOICE_DIR = os.path.join(os.path.dirname(__file__), "invoices")
+INVOICE_DIR = os.path.join(os.path.dirname(__file__), "uploads", "invoices")
 
 
 def _ensure_dir():
@@ -89,6 +89,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
         designer.business_name or "",
         designer.email,
     ]
+    to_lines = [l for l in to_lines if l]  # 空行除去
     from_lines = [
         ISSUER["name"],
         ISSUER["rep"],
@@ -122,9 +123,10 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     elements.append(Spacer(1, 10 * mm))
 
     # ── 合計金額ハイライト ──
-    total_fmt = f"¥{invoice.total_amount:,}"
+    tax_amount = int(invoice.total_amount * 0.1)
+    total_with_tax = invoice.total_amount + tax_amount
     total_tbl = Table(
-        [["ご請求金額（税込）", total_fmt]],
+        [["ご請求金額（税込）", f"¥{total_with_tax:,}"]],
         colWidths=[content_w * 0.65, content_w * 0.35],
     )
     total_tbl.setStyle(TableStyle([
@@ -149,7 +151,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     col_desc = content_w - col_no - col_name - 32 * mm
     col_amt = 32 * mm
 
-    item_data = [["No.", "企業名", "内容", "金額"]]
+    item_data = [["No.", "企業名", "内容", "金額（税抜）"]]
     for i, item in enumerate(items_list, 1):
         item_data.append([
             str(i),
@@ -157,26 +159,31 @@ def generate_invoice_pdf(invoice, items_list) -> str:
             item.description,
             f"¥{item.amount:,}",
         ])
-    # 合計行
-    item_data.append(["", "", "合　計", f"¥{invoice.total_amount:,}"])
+    item_data.append(["", "", "小　計", f"¥{invoice.total_amount:,}"])
+    item_data.append(["", "", "消費税（10%）", f"¥{tax_amount:,}"])
+    item_data.append(["", "", "合　計（税込）", f"¥{total_with_tax:,}"])
 
     item_tbl = Table(item_data, colWidths=[col_no, col_name, col_desc, col_amt])
+    n_items = len(items_list)
     last = len(item_data) - 1
+    subtotal_row = n_items + 1   # 小計行インデックス
+    tax_row = n_items + 2        # 消費税行インデックス
     item_tbl.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, -1), FONT),
         ("FONTSIZE", (0, 0), (-1, -1), 10),
         # ヘッダー
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        # 行背景
-        ("ROWBACKGROUNDS", (0, 1), (-1, last - 1), [colors.white, colors.HexColor("#f8fafc")]),
-        # 合計行
-        ("BACKGROUND", (0, last), (-1, last), colors.HexColor("#f1f5f9")),
+        # 行背景（明細部分のみ）
+        ("ROWBACKGROUNDS", (0, 1), (-1, n_items), [colors.white, colors.HexColor("#f8fafc")]),
+        # 小計・税・合計行
+        ("BACKGROUND", (0, subtotal_row), (-1, last), colors.HexColor("#f8fafc")),
         ("FONTSIZE", (0, last), (-1, last), 11),
-        # 数値右揃え
+        ("TEXTCOLOR", (0, last), (-1, last), colors.HexColor("#6366f1")),
+        # 右揃え
         ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (2, subtotal_row), (2, last), "RIGHT"),
         ("ALIGN", (3, 0), (3, -1), "RIGHT"),
-        ("ALIGN", (2, last), (2, last), "RIGHT"),
         # グリッド
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
@@ -189,7 +196,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
 
     # ── 備考 ──
     elements.append(Paragraph(
-        "※ お支払い期限：翌月末日",
+        f"※ お支払い期限：{invoice.payment_deadline}",
         ps(9, color=colors.HexColor("#64748b")),
     ))
 

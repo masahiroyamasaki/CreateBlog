@@ -1,0 +1,57 @@
+{% extends "designer/base.html" %}
+{% block title %}請求書一覧{% endblock %}
+{% block page_title %}請求書{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'success' if cat == 'success' else 'error' }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <div class="card-header">
+    <h2>請求書一覧</h2>
+    <span style="font-size:12px;color:var(--muted);">{{ invoices|length }} 件</span>
+  </div>
+  {% if invoices %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>請求番号</th>
+        <th>対象月</th>
+        <th>支払い期限</th>
+        <th style="text-align:right;">請求金額（税込）</th>
+        <th>ステータス</th>
+        <th>発行日</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td style="font-family:monospace;font-size:12px;">{{ inv.invoice_number }}</td>
+        <td>{{ inv.year }}年{{ inv.month }}月分</td>
+        <td style="font-size:12px;">{{ inv.payment_deadline }}</td>
+        <td style="text-align:right;font-weight:700;">¥{{ "{:,}".format(inv.total_with_tax) }}</td>
+        <td><span class="badge {{ inv.status_badge }}">{{ inv.status_label }}</span></td>
+        <td style="font-size:12px;color:var(--muted);">{{ inv.created_at.strftime('%Y/%m/%d') if inv.created_at }}</td>
+        <td>
+          <a href="{{ url_for('designer.my_invoice_pdf', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm">PDF</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">請求書はまだありません。</div>
+  {% endif %}
+</div>
+
+<!-- 金額説明 -->
+{% if invoices %}
+<div style="margin-top:16px;font-size:12px;color:var(--muted);">
+  ※ 表示金額はすべて税込（消費税10%加算済み）です。お支払いは各請求書の支払い期限までにお願いいたします。
+</div>
+{% endif %}
+{% endblock %}

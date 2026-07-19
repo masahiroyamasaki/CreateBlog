@@ -228,7 +228,10 @@ class Invoice(db.Model):
     month = db.Column(db.Integer, nullable=False)
     total_amount = db.Column(db.Integer, default=0)
     pdf_path = db.Column(db.String(500), default="")
-    status = db.Column(db.Enum("draft", "sent"), default="draft", nullable=False)
+    status = db.Column(
+        db.Enum("draft", "sent", "issued", "paid"),
+        default="issued", nullable=False,
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime)
 
@@ -239,6 +242,28 @@ class Invoice(db.Model):
     @property
     def invoice_number(self) -> str:
         return f"INV-{self.year}{self.month:02d}-{self.designer_id:04d}"
+
+    @property
+    def payment_deadline(self) -> str:
+        import calendar
+        last_day = calendar.monthrange(self.year, self.month)[1]
+        return f"{self.year}年{self.month}月{last_day}日"
+
+    @property
+    def status_label(self) -> str:
+        return {"draft": "下書き", "sent": "送付済み", "issued": "発行済み", "paid": "入金済み"}.get(self.status, self.status)
+
+    @property
+    def status_badge(self) -> str:
+        return {"draft": "badge-gray", "sent": "badge-blue", "issued": "badge-orange", "paid": "badge-green"}.get(self.status, "badge-gray")
+
+    @property
+    def tax_amount(self) -> int:
+        return int(self.total_amount * 0.1)
+
+    @property
+    def total_with_tax(self) -> int:
+        return self.total_amount + self.tax_amount
 
 
 class InvoiceItem(db.Model):

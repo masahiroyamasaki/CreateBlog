@@ -7,13 +7,19 @@
 {% endblock %}
 
 {% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'success' if cat == 'success' else ('warning' if cat == 'warning' else 'error') }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
 <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
 
   <!-- 請求書プレビュー -->
   <div class="card">
     <div class="card-body">
 
-      <!-- ヘッダー -->
+      <!-- タイトル -->
       <div style="text-align:center;margin-bottom:24px;">
         <h2 style="font-size:22px;font-weight:700;letter-spacing:.1em;">請　求　書</h2>
       </div>
@@ -23,13 +29,7 @@
         <div><span style="color:var(--muted);">請求番号:</span> <strong>{{ invoice.invoice_number }}</strong></div>
         <div style="text-align:right;"><span style="color:var(--muted);">発行日:</span> {{ invoice.created_at.strftime('%Y年%m月%d日') if invoice.created_at else '—' }}</div>
         <div><span style="color:var(--muted);">対象月:</span> {{ invoice.year }}年{{ invoice.month }}月分</div>
-        <div style="text-align:right;">
-          {% if invoice.status == 'sent' %}
-          <span class="badge badge-green">送付済み</span>
-          {% else %}
-          <span class="badge badge-gray">下書き</span>
-          {% endif %}
-        </div>
+        <div style="text-align:right;"><span style="color:var(--muted);">支払い期限:</span> {{ invoice.payment_deadline }}</div>
       </div>
 
       <!-- 請求先・請求元 -->
@@ -38,9 +38,9 @@
           <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:8px;">請求先</div>
           <div style="font-weight:700;font-size:14px;">{{ invoice.designer.name }} 様</div>
           {% if invoice.designer.business_name %}
-          <div style="font-size:12px;color:var(--muted);">{{ invoice.designer.business_name }}</div>
+          <div style="font-size:13px;margin-top:2px;">{{ invoice.designer.business_name }}</div>
           {% endif %}
-          <div style="font-size:12px;color:var(--muted);">{{ invoice.designer.email }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">{{ invoice.designer.email }}</div>
         </div>
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:8px;">請求元</div>
@@ -54,7 +54,7 @@
       <!-- 合計金額 -->
       <div style="background:var(--primary);border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <span style="color:#fff;font-size:14px;">ご請求金額（税込）</span>
-        <span style="color:#fff;font-size:22px;font-weight:700;">¥{{ "{:,}".format(invoice.total_amount) }}</span>
+        <span style="color:#fff;font-size:22px;font-weight:700;">¥{{ "{:,}".format(invoice.total_with_tax) }}</span>
       </div>
 
       <!-- 明細 -->
@@ -64,7 +64,7 @@
             <th style="width:32px;">No.</th>
             <th>企業名</th>
             <th>内容</th>
-            <th style="text-align:right;">金額</th>
+            <th style="text-align:right;">金額（税抜）</th>
           </tr>
         </thead>
         <tbody>
@@ -73,35 +73,52 @@
             <td style="text-align:center;color:var(--muted);">{{ loop.index }}</td>
             <td style="font-weight:600;">{{ item.client_name }}</td>
             <td style="color:var(--muted);font-size:12px;">{{ item.description }}</td>
-            <td style="text-align:right;font-weight:600;">¥{{ "{:,}".format(item.amount) }}</td>
+            <td style="text-align:right;">¥{{ "{:,}".format(item.amount) }}</td>
           </tr>
           {% endfor %}
           <tr style="background:var(--bg3);">
-            <td colspan="3" style="text-align:right;font-weight:700;">合　計</td>
-            <td style="text-align:right;font-weight:700;font-size:15px;">¥{{ "{:,}".format(invoice.total_amount) }}</td>
+            <td colspan="3" style="text-align:right;color:var(--muted);">小　計</td>
+            <td style="text-align:right;">¥{{ "{:,}".format(invoice.total_amount) }}</td>
+          </tr>
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;color:var(--muted);">消費税（10%）</td>
+            <td style="text-align:right;">¥{{ "{:,}".format(invoice.tax_amount) }}</td>
+          </tr>
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;font-weight:700;">合　計（税込）</td>
+            <td style="text-align:right;font-weight:700;font-size:15px;color:var(--primary);">¥{{ "{:,}".format(invoice.total_with_tax) }}</td>
           </tr>
         </tbody>
       </table>
 
-      <p style="margin-top:16px;font-size:12px;color:var(--muted);">※ お支払い期限：翌月末日</p>
+      <p style="margin-top:16px;font-size:12px;color:var(--muted);">※ お支払い期限：{{ invoice.payment_deadline }}</p>
     </div>
   </div>
 
   <!-- サイドパネル -->
   <div style="display:flex;flex-direction:column;gap:16px;">
     <div class="card">
-      <div class="card-header"><h2>送付情報</h2></div>
-      <div class="card-body" style="font-size:13px;">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>ステータス</label>
-          <div>{% if invoice.status == 'sent' %}<span class="badge badge-green">送付済み</span>{% else %}<span class="badge badge-gray">下書き</span>{% endif %}</div>
+      <div class="card-header"><h2>ステータス管理</h2></div>
+      <div class="card-body">
+        <div style="margin-bottom:12px;">
+          <span class="badge {{ invoice.status_badge }}" style="font-size:13px;padding:6px 14px;">{{ invoice.status_label }}</span>
         </div>
         {% if invoice.sent_at %}
-        <div class="form-group" style="margin-bottom:0;">
-          <label>送付日時</label>
-          <div>{{ invoice.sent_at.strftime('%Y/%m/%d %H:%M') }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+          送付日時: {{ invoice.sent_at.strftime('%Y/%m/%d %H:%M') }}
         </div>
         {% endif %}
+        <form method="POST" action="{{ url_for('designer.admin_invoice_status', invoice_id=invoice.id) }}">
+          <div class="form-group">
+            <label>ステータスを変更（管理者のみ）</label>
+            <select class="form-control" name="status">
+              <option value="issued" {% if invoice.status == 'issued' %}selected{% endif %}>発行済み</option>
+              <option value="paid"   {% if invoice.status == 'paid'   %}selected{% endif %}>入金済み</option>
+              <option value="draft"  {% if invoice.status == 'draft'  %}selected{% endif %}>下書き</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">更新する</button>
+        </form>
       </div>
     </div>
 

@@ -211,3 +211,19 @@ def admin_invoice_generate():
     except Exception as e:
         flash(f"エラー: {e}", "error")
     return redirect(url_for("designer.admin_invoices"))
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/status", methods=["POST"])
+@login_required
+def admin_invoice_status(invoice_id: int):
+    """管理者のみ: 請求書ステータスを更新する（入金確認用）。"""
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    new_status = request.form.get("status", "")
+    if new_status in ("issued", "paid", "draft"):
+        invoice.status = new_status
+        db.session.commit()
+        flash(f"ステータスを「{invoice.status_label}」に変更しました", "success")
+    else:
+        flash("無効なステータスです", "error")
+    return redirect(url_for("designer.admin_invoice_detail", invoice_id=invoice_id))

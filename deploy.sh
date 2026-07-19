@@ -54,6 +54,10 @@ echo "[3/4] pip install"
 "$VENV_DIR/bin/pip" install -q -r requirements.txt
 echo "  -> pip 完了"
 
+# ---- 3.5. 書き込みディレクトリの確認 ----
+mkdir -p "$APP_DIR/uploads/invoices"
+chmod -R 755 "$APP_DIR/uploads"
+
 # ---- 4. サービス再起動 ----
 echo "[4/4] サービス再起動: $SERVICE_NAME"
 sudo systemctl restart "$SERVICE_NAME"
