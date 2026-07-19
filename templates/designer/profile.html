@@ -1,0 +1,52 @@
+{% extends "designer/base.html" %}
+{% block title %}プロフィール編集{% endblock %}
+{% block page_title %}プロフィール{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;">
+
+  <div class="card">
+    <div class="card-header"><h2>プロフィール編集</h2></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('designer.my_profile') }}">
+
+        <div class="form-group">
+          <label>氏名 *</label>
+          <input class="form-control" type="text" name="name" value="{{ current_user.name }}" required>
+        </div>
+
+        <div class="form-group">
+          <label>法人名・屋号</label>
+          <input class="form-control" type="text" name="business_name" value="{{ current_user.business_name or '' }}" placeholder="任意">
+        </div>
+
+        <div class="form-group">
+          <label>活動地域</label>
+          <input class="form-control" type="text" name="region" value="{{ current_user.region or '' }}" placeholder="例: 大阪府">
+        </div>
+
+        <div class="form-group">
+          <label>職種</label>
+          <input class="form-control" type="text" name="job_type" value="{{ current_user.job_type or '' }}" placeholder="例: Webデザイナー">
+        </div>
+
+        <hr style="border-color:var(--border);margin:20px 0;">
+
+        <div class="form-group">
+          <label>メールアドレス</label>
+          <input class="form-control" type="text" value="{{ current_user.email }}" disabled style="opacity:.6;cursor:not-allowed;">
+          <div class="hint">メールアドレスの変更は管理者にお問い合わせください。</div>
+        </div>
+
+        <div class="form-group">
+          <label>新しいパスワード</label>
+          <input class="form-control" type="password" name="new_password" placeholder="変更する場合のみ入力（8文字以上）" autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">保存する</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

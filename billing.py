@@ -85,8 +85,8 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     # ── 請求先・請求元 ──
     designer = invoice.designer
     to_lines = [
-        designer.name + "　様",
         designer.business_name or "",
+        designer.name + "　様",
         designer.email,
     ]
     to_lines = [l for l in to_lines if l]  # 空行除去

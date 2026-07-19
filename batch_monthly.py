@@ -15,6 +15,17 @@ logger = logging.getLogger(__name__)
 _JST = timezone(timedelta(hours=9))
 
 
+def _plan_description(client) -> str:
+    """企業の契約プランをもとに請求明細の内容文を生成する。"""
+    count = client.monthly_post_count or 4
+    _labels = {
+        "instagram": f"Instagram 運用代行 {count}件/月",
+        "wordpress":  f"WordPress 記事制作 {count}件/月",
+        "custom_hp":  f"独自HP 記事制作 {count}件/月",
+    }
+    return _labels.get(client.platform_type or "", f"ブログ運用代行 {count}件/月")
+
+
 def run_monthly_ideas_batch(app, db) -> dict:
     """毎月1日: 全稼働企業に対して月間投稿数分のネタを生成する。"""
     result = {"clients": 0, "topics": 0, "errors": []}
@@ -127,7 +138,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                         invoice_id=invoice.id,
                         client_id=client.id,
                         client_name=client.name,
-                        description=f"月次ブログ運用代行（{client.monthly_post_count or 4}件/月）",
+                        description=_plan_description(client),
                         amount=client.monthly_fee or 0,
                     ))
                 db.session.commit()

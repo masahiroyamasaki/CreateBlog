@@ -18,6 +18,31 @@ def _assert_access(client: Client):
         abort(403)
 
 
+@designer_bp.route("/profile", methods=["GET", "POST"])
+@login_required
+def my_profile():
+    """デザイナー自身のプロフィール編集"""
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("氏名は必須です", "error")
+            return redirect(url_for("designer.my_profile"))
+        current_user.name = name
+        current_user.business_name = request.form.get("business_name", "").strip()
+        current_user.region = request.form.get("region", "").strip()
+        current_user.job_type = request.form.get("job_type", "").strip()
+        new_password = request.form.get("new_password", "").strip()
+        if new_password:
+            if len(new_password) < 8:
+                flash("パスワードは8文字以上で入力してください", "error")
+                return redirect(url_for("designer.my_profile"))
+            current_user.set_password(new_password)
+        db.session.commit()
+        flash("プロフィールを更新しました", "success")
+        return redirect(url_for("designer.my_profile"))
+    return render_template("designer/profile.html")
+
+
 @designer_bp.route("/my-invoices")
 @login_required
 def my_invoices():

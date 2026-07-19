@@ -12,6 +12,30 @@ from routes import designer_bp
 _generation_runs = {}
 
 
+def _clean_ig_caption(caption: str, client_name: str = "") -> str:
+    """IGキャプション冒頭に混入したアカウント名・@メンションを除去する。"""
+    import re
+    lines = caption.strip().splitlines()
+    cleaned = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # 先頭行だけチェック: @メンション・企業名・空行の連続を読み飛ばす
+        if not cleaned:
+            if not stripped:
+                continue
+            if stripped.startswith("@"):
+                continue
+            if client_name and stripped == client_name:
+                continue
+            # 「○○です。」「○○をご紹介します。」のような企業名冒頭パターン
+            if client_name and stripped.startswith(client_name):
+                line = stripped[len(client_name):].lstrip("　 ・／/")
+                if not line:
+                    continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def _assert_access(client: Client):
     if not current_user.can_access_client(client.id):
         abort(403)
@@ -30,12 +54,23 @@ def topic_list(client_id: int):
     )
     pending_count = sum(1 for t in topics if t.status == "pending")
     processing_count = sum(1 for t in topics if t.status == "processing")
+    draft_count = Post.query.filter(
+        Post.client_id == client_id,
+        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+    ).count()
+    monthly_limit = client.monthly_post_count or 4
+    can_generate = draft_count < monthly_limit
+    remaining_count = max(0, monthly_limit - draft_count)
     return render_template(
         "designer/topics/list.html",
         client=client,
         topics=topics,
         pending_count=pending_count,
         processing_count=processing_count,
+        draft_count=draft_count,
+        monthly_limit=monthly_limit,
+        can_generate=can_generate,
+        remaining_count=remaining_count,
     )
 
 
@@ -114,14 +149,12 @@ def topic_reorder(client_id: int):
     return jsonify({"success": True})
 
 
-# ─── AI生成（管理者のみ）──────────────────────────────────────────────────────
+# ─── AI生成 ────────────────────────────────────────────────────────────────
 
 @designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/generate-ui")
 @login_required
 def topic_generate_ui(client_id: int, topic_id: int):
-    """生成進捗ページを表示する（管理者のみ）"""
-    if current_user.role != "admin":
-        abort(403)
+    """生成進捗ページを表示する"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     topic = TopicQueue.query.get_or_404(topic_id)
@@ -136,9 +169,7 @@ def topic_generate_ui(client_id: int, topic_id: int):
 @designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/generate", methods=["POST"])
 @login_required
 def topic_generate(client_id: int, topic_id: int):
-    """4エージェントパイプラインをバックグラウンドで起動し run_id を返す（管理者のみ）"""
-    if current_user.role != "admin":
-        abort(403)
+    """4エージェントパイプラインをバックグラウンドで起動し run_id を返す"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     topic = TopicQueue.query.get_or_404(topic_id)
@@ -146,6 +177,13 @@ def topic_generate(client_id: int, topic_id: int):
         abort(403)
     if topic.status != "pending":
         return jsonify({"success": False, "reason": "このネタはすでに生成済みか処理中です"})
+    draft_count = Post.query.filter(
+        Post.client_id == client_id,
+        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+    ).count()
+    monthly_limit = client.monthly_post_count or 4
+    if draft_count >= monthly_limit:
+        return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
 
     # 即座にDBへ処理中マーク＋プレースホルダー投稿を作成（ページ離脱後も状態が見える）
     topic.status = "processing"
@@ -171,6 +209,7 @@ def topic_generate(client_id: int, topic_id: int):
         "step_num": 0,
         "post_id": post_id,
         "error": None,
+        "cancel_requested": False,
     }
 
     # バックグラウンドスレッドに渡す値を先に取り出す
@@ -185,6 +224,27 @@ def topic_generate(client_id: int, topic_id: int):
 
     def _run():
         run = _generation_runs[run_id]
+
+        def _cancel_and_cleanup():
+            run.update(status="cancelled", step="cancelled")
+            with app.app_context():
+                try:
+                    from models import Post as _Post, TopicQueue as _TQ, db as _db
+                    p = _Post.query.get(post_id)
+                    if p:
+                        _db.session.delete(p)
+                    tq = _TQ.query.get(topic_id_val)
+                    if tq:
+                        tq.status = "pending"
+                        tq.generated_post_id = None
+                    _db.session.commit()
+                except Exception:
+                    try:
+                        from models import db as _db
+                        _db.session.rollback()
+                    except Exception:
+                        pass
+
         try:
             # ── Instagram: 4エージェント + IG フォーマッター ──────────────────
             if platform_type == "instagram":
@@ -202,14 +262,20 @@ def topic_generate(client_id: int, topic_id: int):
                     "tone": "標準",
                     "existing_posts": [],
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 2: コンテンツチェック
                 run.update(step="content_checker", step_num=2)
                 content_check = ContentCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 3: リーガルチェック
                 run.update(step="legal_checker", step_num=3)
                 legal_check = LegalCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 4: 最終記事生成
                 run.update(step="final_creator", step_num=4)
@@ -221,6 +287,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "keywords": topic_outline,
                     "tone": "標準",
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 5: IG フォーマッター（プレーンテキスト 1000文字 + ハッシュタグ）
                 run.update(step="ig_formatter", step_num=5)
@@ -229,6 +297,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "client_name": client_name,
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 6: 保存 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
@@ -239,7 +309,7 @@ def topic_generate(client_id: int, topic_id: int):
                     client_obj = _Client.query.get(client_id_val)
                     if post:
                         post.body_html  = ""
-                        post.ig_caption = ig_caption.strip()
+                        post.ig_caption = _clean_ig_caption(ig_caption, client_name)
                         post.status     = "draft"
                         if client_obj and client_obj.schedule_type:
                             existing = {
@@ -275,14 +345,20 @@ def topic_generate(client_id: int, topic_id: int):
                     "tone": "標準",
                     "existing_posts": [],
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 2: コンテンツチェック
                 run.update(step="content_checker", step_num=2)
                 content_check = ContentCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 3: リーガルチェック
                 run.update(step="legal_checker", step_num=3)
                 legal_check = LegalCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 4: 最終記事生成
                 run.update(step="final_creator", step_num=4)
@@ -294,6 +370,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "keywords": topic_outline,
                     "tone": "標準",
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 5: IGキャプション生成（1000文字 + ハッシュタグ）
                 run.update(step="ig_caption", step_num=5)
@@ -302,6 +380,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "client_name": client_name,
                 })
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
 
                 # Step 6: プレースホルダーを更新して完成 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
@@ -314,7 +394,7 @@ def topic_generate(client_id: int, topic_id: int):
                     client_obj = _Client.query.get(client_id_val)
                     if post:
                         post.body_html  = body_html
-                        post.ig_caption = ig_caption.strip()
+                        post.ig_caption = _clean_ig_caption(ig_caption, client_name)
                         post.status     = "draft"
                         if client_obj and client_obj.schedule_type:
                             existing = {
@@ -363,18 +443,37 @@ def generate_status(run_id: str):
     return jsonify(run)
 
 
+@designer_bp.route("/generate-cancel/<run_id>", methods=["POST"])
+@login_required
+def generate_cancel(run_id: str):
+    """生成ジョブにキャンセルフラグを立てる（次のステップ間で停止）"""
+    run = _generation_runs.get(run_id)
+    if not run:
+        return jsonify({"error": "not found"}), 404
+    run["cancel_requested"] = True
+    return jsonify({"success": True})
+
+
 @designer_bp.route("/clients/<int:client_id>/topics/bulk-generate", methods=["POST"])
 @login_required
 def topic_bulk_generate(client_id: int):
-    """管理者のみ: 未生成の記事ネタを一括で記事に生成する"""
-    if current_user.role != "admin":
-        abort(403)
+    """未生成の記事ネタを一括で記事に生成する（月間契約数まで）"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
+
+    draft_count = Post.query.filter(
+        Post.client_id == client_id,
+        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+    ).count()
+    monthly_limit = client.monthly_post_count or 4
+    remaining = monthly_limit - draft_count
+    if remaining <= 0:
+        return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
 
     pending_topics = (
         TopicQueue.query.filter_by(client_id=client_id, status="pending")
         .order_by(TopicQueue.sort_order)
+        .limit(remaining)
         .all()
     )
     if not pending_topics:
@@ -406,7 +505,7 @@ def topic_bulk_generate(client_id: int):
         run_id = str(uuid.uuid4())
         _generation_runs[run_id] = {
             "status": "running", "step": "init",
-            "step_num": 0, "post_id": post_id, "error": None,
+            "step_num": 0, "post_id": post_id, "error": None, "cancel_requested": False,
         }
         run_ids.append(run_id)
 
@@ -414,6 +513,27 @@ def topic_bulk_generate(client_id: int):
                  topic_id_val=topic.id, post_id=post_id,
                  platform_type=platform_type, client_id_val=client_id_val, client_name=client_name):
             run = _generation_runs[run_id]
+
+            def _cancel_and_cleanup():
+                run.update(status="cancelled", step="cancelled")
+                with app.app_context():
+                    try:
+                        from models import Post as _Post, TopicQueue as _TQ, db as _db
+                        p = _Post.query.get(post_id)
+                        if p:
+                            _db.session.delete(p)
+                        tq = _TQ.query.get(topic_id_val)
+                        if tq:
+                            tq.status = "pending"
+                            tq.generated_post_id = None
+                        _db.session.commit()
+                    except Exception:
+                        try:
+                            from models import db as _db
+                            _db.session.rollback()
+                        except Exception:
+                            pass
+
             try:
                 from agents.blog_creator import BlogCreatorAgent
                 from agents.content_checker import ContentCheckerAgent
@@ -424,14 +544,24 @@ def topic_bulk_generate(client_id: int):
 
                 run.update(step="blog_creator", step_num=1)
                 draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "existing_posts": []})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
                 run.update(step="content_checker", step_num=2)
                 content_check = ContentCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
                 run.update(step="legal_checker", step_num=3)
                 legal_check = LegalCheckerAgent().run({"draft": draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
                 run.update(step="final_creator", step_num=4)
                 final_content = FinalCreatorAgent().run({"draft": draft, "content_check": content_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準"})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
                 run.update(step="ig_caption", step_num=5)
                 ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
                 run.update(step="saving", step_num=6)
 
                 body_html = "" if platform_type == "instagram" else _md.markdown(final_content, extensions=["extra", "toc"])
@@ -443,7 +573,7 @@ def topic_bulk_generate(client_id: int):
                     client_obj = _Client.query.get(client_id_val)
                     if post:
                         post.body_html = body_html
-                        post.ig_caption = ig_caption.strip()
+                        post.ig_caption = _clean_ig_caption(ig_caption, client_name)
                         post.status = "draft"
                         if client_obj and client_obj.schedule_type:
                             existing = {p.scheduled_at.date() for p in _Post.query.filter(_Post.client_id == client_id_val, _Post.scheduled_at.isnot(None)).all() if p.scheduled_at}

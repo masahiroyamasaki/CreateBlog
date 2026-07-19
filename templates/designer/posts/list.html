@@ -50,6 +50,7 @@
           <th>ステータス</th>
           <th>画像</th>
           <th>予約日時</th>
+          <th>投稿完了日</th>
           <th>作成日</th>
         </tr>
       </thead>
@@ -93,6 +94,7 @@
               {% endif %}
             {% else %}—{% endif %}
           </td>
+          <td style="font-size:12px;color:var(--muted);">{{ p.posted_at.strftime('%m/%d %H:%M') if p.posted_at else '—' }}</td>
           <td style="font-size:12px;color:var(--muted);">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
         </tr>
         {% endfor %}

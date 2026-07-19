@@ -46,6 +46,12 @@
 .preview-html table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
 .preview-html th { background: #f3f4f6; font-weight: 600; padding: 10px 14px; border: 1px solid #e5e7eb; text-align: left; }
 .preview-html td { padding: 10px 14px; border: 1px solid #e5e7eb; }
+
+/* ── プレビュー拡大モーダル ── */
+#preview-modal { display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.82); overflow-y:auto; }
+.preview-modal-inner { position:relative; max-width:900px; margin:40px auto 60px; background:#fff; border-radius:14px; padding:36px 40px; }
+.preview-modal-close { position:absolute; top:14px; right:14px; background:#1e293b; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+.preview-modal-close:hover { background:#0f172a; }
 </style>
 {% endblock %}
 
@@ -95,7 +101,10 @@
             <div id="body-preview-area" style="display:none;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="font-size:12px;color:var(--muted);" id="body-char-info"></span>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyBodyText()">テキストコピー</button>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyBodyText()">テキストコピー</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="openPreviewModal('body')">⤢ 拡大表示</button>
+                </div>
               </div>
               <div class="preview-html" id="body-preview-content">{{ post.body_html | safe }}</div>
             </div>
@@ -117,7 +126,10 @@
 
             <!-- 投稿プレビュー -->
             <div style="margin-top:10px;">
-              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">投稿プレビュー</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <div style="font-size:12px;font-weight:600;color:var(--muted);">投稿プレビュー</div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openPreviewModal('ig')">⤢ 拡大表示</button>
+              </div>
               <div id="ig-preview" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;color:#111;max-height:180px;overflow-y:auto;line-height:1.7;"></div>
             </div>
           </div>
@@ -269,6 +281,14 @@
   </div>
 </div>
 {% endblock %}
+
+<!-- プレビュー拡大モーダル -->
+<div id="preview-modal" onclick="if(event.target===this)closePreviewModal()">
+  <div class="preview-modal-inner">
+    <button class="preview-modal-close" onclick="closePreviewModal()">✕ 閉じる</button>
+    <div id="modal-body-content"></div>
+  </div>
+</div>
 
 {% block scripts %}
 <script>
@@ -456,5 +476,27 @@ function saveImageOrder() {
 const now = new Date();
 now.setMinutes(now.getMinutes() + 10);
 document.getElementById('scheduled-at').min = now.toISOString().slice(0,16);
+
+// ─── プレビュー拡大モーダル ──────────────────────────────────────────────────
+function openPreviewModal(type) {
+  const modal = document.getElementById('preview-modal');
+  const wrap  = document.getElementById('modal-body-content');
+  if (type === 'body') {
+    const html = document.getElementById('f-body').value;
+    wrap.innerHTML = `<div class="preview-html">${html}</div>`;
+  } else {
+    const text = document.getElementById('ig-preview').textContent || '';
+    wrap.innerHTML = `<pre style="white-space:pre-wrap;font-size:15px;color:#111;line-height:1.8;font-family:'Hiragino Kaku Gothic ProN',sans-serif;">${text.replace(/</g,'&lt;')}</pre>`;
+  }
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreviewModal() {
+  document.getElementById('preview-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreviewModal(); });
 </script>
 {% endblock %}

@@ -30,27 +30,30 @@
   <span>{{ processing_count }} 件のネタをAI生成中です。このページは自動更新されます。</span>
 </div>
 {% endif %}
-<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
-
-  <!-- ネタ一覧 -->
-  <div>
-    <div class="card">
-      <div class="card-header">
-        <h2>未生成のネタ（{{ pending_count }} 件）</h2>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
-          {% if current_user.role == 'admin' %}
-          <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
-            <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
-            AIでネタ生成
-          </button>
-          <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()" {% if pending_count == 0 %}disabled{% endif %}>
-            <span id="bulk-gen-spinner" class="spinner-sm" style="display:none;"></span>
-            未生成ネタを一括生成（{{ pending_count }}件）
-          </button>
-          {% endif %}
-        </div>
+<div>
+  <div class="card">
+    <div class="card-header">
+      <h2>未生成のネタ（{{ pending_count }} 件）</h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
+        {% if not can_generate %}
+        <span style="font-size:12px;color:var(--warning);">月間契約数（{{ monthly_limit }}件）に達しています</span>
+        {% else %}
+        <span style="font-size:12px;color:var(--muted);">生成可能残数: {{ remaining_count }}件</span>
+        {% endif %}
+        {% if current_user.role == 'admin' %}
+        <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
+          <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
+          AIでネタ生成
+        </button>
+        {% endif %}
+        <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()"
+          {% if pending_count == 0 or not can_generate %}disabled{% endif %}>
+          <span id="bulk-gen-spinner" class="spinner-sm" style="display:none;"></span>
+          未生成ネタを一括生成（{{ [pending_count, remaining_count]|min }}件）
+        </button>
       </div>
+    </div>
       <div class="card-body" style="padding:12px;">
         <div id="topic-list" style="display:flex;flex-direction:column;gap:8px;">
           {% if topics %}
@@ -71,8 +74,9 @@
           {% else %}
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
             <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-generate btn-sm" onclick="confirmGenerate({{ t.id }})" id="gen-btn-{{ t.id }}"
+                {% if not can_generate %}disabled title="月間契約数に達しています"{% endif %}>AI生成</button>
               {% if current_user.role == 'admin' %}
-              <button class="btn btn-generate btn-sm" onclick="confirmGenerate({{ t.id }})" id="gen-btn-{{ t.id }}">AI生成</button>
               <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
                 <button type="submit" class="btn btn-danger btn-sm">削除</button>
               </form>
@@ -102,30 +106,11 @@
           {% endif %}
           {% endfor %}
           {% else %}
-          <div class="empty">ネタがありません。右のフォームから追加してください。</div>
+          <div class="empty">ネタがありません。</div>
           {% endif %}
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- 追加フォーム -->
-  <div class="card" style="position:sticky;top:76px;">
-    <div class="card-header"><h2>新規追加</h2></div>
-    <div class="card-body">
-      <form method="POST" action="{{ url_for('designer.topic_add', client_id=client.id) }}">
-        <div class="form-group">
-          <label>タイトル *</label>
-          <input class="form-control" type="text" name="title" required placeholder="例: WordPressの始め方 完全ガイド">
-        </div>
-        <div class="form-group">
-          <label>大枠・メモ</label>
-          <textarea class="form-control" name="outline" rows="4" placeholder="記事の方向性やキーポイントをメモ..."></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;">追加する</button>
-      </form>
-    </div>
-  </div>
 </div>
 {% endblock %}
 
@@ -133,6 +118,7 @@
 <script>
 const clientId = {{ client.id }};
 const processingCount = {{ processing_count }};
+const canGenerate = {{ 'true' if can_generate else 'false' }};
 // 処理中のネタがあれば10秒ごとに自動更新
 if (processingCount > 0) {
   setTimeout(() => location.reload(), 10000);
@@ -200,6 +186,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function confirmGenerate(topicId) {
+  if (!canGenerate) {
+    showToast('月間契約数に達しているため生成できません', 'error'); return;
+  }
   const pressed = _getPressedSet();
   if (pressed.has(topicId)) {
     showToast('このネタはすでに生成を実行済みです', 'error'); return;
@@ -236,10 +225,13 @@ async function generateAiIdea() {
 
 const BULK_KEY = `bulk_pressed_${clientId}`;
 async function bulkGenerate() {
+  if (!canGenerate) {
+    showToast('月間契約数に達しているため生成できません', 'error'); return;
+  }
   if (localStorage.getItem(BULK_KEY)) {
     showToast('一括生成はすでに実行済みです', 'error'); return;
   }
-  const count = {{ pending_count }};
+  const count = Math.min({{ pending_count }}, {{ remaining_count }});
   if (!confirm(`このボタンは1回のみしか押下できません。未生成ネタ${count}件を一括で記事に生成しますか?`)) return;
   localStorage.setItem(BULK_KEY, '1');
   const btn = document.getElementById('bulk-gen-btn');
