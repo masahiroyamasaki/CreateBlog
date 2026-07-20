@@ -73,6 +73,7 @@ def publish_due_posts(app, db) -> int:
                         company_name=client.name,
                         title=post.title,
                         body_html=post.body_html or "",
+                        email_format=client.email_format or "html",
                     )
                     if result.get("success"):
                         post.status        = "posted"

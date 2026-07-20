@@ -65,7 +65,9 @@ class Client(db.Model):
     wp_sample_posts_json = db.Column(db.Text)                 # WP既存記事キャッシュ（JSON）
     hp_template_path = db.Column(db.String(500), default="") # 独自HPテンプレートファイルパス
     hp_design_prompt = db.Column(db.Text)                     # HPデザイン指示（AI生成）
-    article_taste = db.Column(db.String(30), default="standard")  # 記事テイスト
+    article_taste      = db.Column(db.String(30), default="standard")  # 記事テイスト
+    target_word_count  = db.Column(db.Integer, default=0)              # 目標文字数（0=自動）
+    email_format       = db.Column(db.String(10), default="html")      # email_only出力形式: html/text
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
     monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数
     monthly_fee = db.Column(db.Integer, default=0)              # 月額料金（円）

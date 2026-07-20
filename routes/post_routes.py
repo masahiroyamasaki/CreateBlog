@@ -336,6 +336,7 @@ def post_publish(client_id: int, post_id: int):
             company_name=client.name,
             title=post.title,
             body_html=post.body_html or "",
+            email_format=client.email_format or "html",
         )
         if result.get("success"):
             post.status        = "posted"

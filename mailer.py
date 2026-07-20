@@ -226,6 +226,7 @@ def send_article_email(
     company_name: str,
     title: str,
     body_html: str,
+    email_format: str = "html",
 ) -> dict:
     """生成記事をHTMLメールで送信する（メール送信のみプラン用）。"""
     if not is_configured():
@@ -282,7 +283,15 @@ def send_article_email(
     msg["Subject"] = f"【記事納品】{company_name}: {title}"
     msg["From"]    = f"RKパートナーズ <{MAIL_FROM}>"
     msg["To"]      = to_email
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    if email_format == "text":
+        import re as _re
+        plain = _re.sub(r"<[^>]+>", "", body_html)
+        plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
+        text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    else:
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
         with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as smtp:
