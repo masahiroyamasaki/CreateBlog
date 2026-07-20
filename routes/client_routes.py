@@ -120,7 +120,7 @@ def client_new():
         client = Client(
             name=request.form["name"],
             platform_type=request.form.get("platform_type", "wordpress"),
-            client_status=request.form.get("client_status", "active"),
+            client_status=request.form.get("client_status", "setting"),
             monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
             monthly_fee=int(request.form.get("monthly_fee", 0) or 0),
             wp_endpoint=request.form.get("wp_endpoint", ""),

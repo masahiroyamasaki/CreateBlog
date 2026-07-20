@@ -40,9 +40,9 @@
       <div class="form-group">
         <label>ステータス</label>
         <select class="form-control" name="client_status">
-          <option value="active"  {% if not client or client.client_status == 'active'  %}selected{% endif %}>稼働中</option>
+          <option value="active"  {% if client and client.client_status == 'active'  %}selected{% endif %}>稼働中</option>
           <option value="pending" {% if client and client.client_status == 'pending' %}selected{% endif %}>保留中</option>
-          <option value="setting" {% if client and client.client_status == 'setting' %}selected{% endif %}>設定中</option>
+          <option value="setting" {% if not client or client.client_status == 'setting' %}selected{% endif %}>設定中</option>
         </select>
       </div>
 
