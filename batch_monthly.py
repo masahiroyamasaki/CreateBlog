@@ -297,18 +297,23 @@ def _generate_post(client, topic, platform_type: str, ai, app, db):
         hp_design_prompt  = client.hp_design_prompt or ""
         article_taste     = client.article_taste or "standard"
         target_word_count = client.target_word_count or 0
+        target_audience   = client.target_audience or ""
+        character_prompt  = client.character_prompt or ""
         draft             = BlogCreatorAgent().run({
             "topic": topic.title, "keywords": topic.outline or "",
             "tone": "標準", "word_count": target_word_count,
             "existing_posts": wp_sample_posts,
             "design_prompt": hp_design_prompt,
             "taste": article_taste,
+            "target_audience": target_audience,
+            "character_prompt": character_prompt,
         })
         content_check = ContentCheckerAgent().run({"draft": draft})
         legal_check   = LegalCheckerAgent().run({"draft": draft})
         final_content = FinalCreatorAgent().run({
             "draft": draft, "content_check": content_check, "legal_check": legal_check,
             "topic": topic.title, "keywords": topic.outline or "", "tone": "標準",
+            "word_count": target_word_count,
         })
         ig_caption    = IgFormatterAgent().run({
             "blog_content": final_content,

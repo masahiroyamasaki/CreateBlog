@@ -291,6 +291,7 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
+                    "word_count": target_word_count,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -380,6 +381,7 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
+                    "word_count": target_word_count,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -596,7 +598,7 @@ def topic_bulk_generate(client_id: int):
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="final_creator", step_num=4)
-                final_content = FinalCreatorAgent().run({"draft": draft, "content_check": content_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準"})
+                final_content = FinalCreatorAgent().run({"draft": draft, "content_check": content_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="ig_caption", step_num=5)
