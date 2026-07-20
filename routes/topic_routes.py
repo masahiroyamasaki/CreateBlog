@@ -213,6 +213,7 @@ def topic_generate(client_id: int, topic_id: int):
     client_name = client.name
     wp_sample_posts = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
     hp_design_prompt = client.hp_design_prompt or ""
+    article_taste = client.article_taste or "standard"
 
     def _run():
         run = _generation_runs[run_id]
@@ -254,6 +255,7 @@ def topic_generate(client_id: int, topic_id: int):
                     "tone": "標準",
                     "existing_posts": wp_sample_posts,
                     "design_prompt": hp_design_prompt,
+                    "taste": article_taste,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -338,6 +340,7 @@ def topic_generate(client_id: int, topic_id: int):
                     "tone": "標準",
                     "existing_posts": wp_sample_posts,
                     "design_prompt": hp_design_prompt,
+                    "taste": article_taste,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return

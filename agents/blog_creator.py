@@ -61,6 +61,19 @@ class BlogCreatorAgent(BaseAgent):
         design_prompt = data.get("design_prompt", "")
         design_section = f"\n\n## サイトデザイン・文体指示\n{design_prompt}" if design_prompt else ""
 
+        taste = data.get("taste", "standard")
+        _taste_map = {
+            "standard":     "標準（既存記事のトンマナに準じる）",
+            "formal":       "フォーマル — 敬語を徹底し、論理的・丁寧に展開する。ビジネス文書としても通用する格調ある表現を使う。",
+            "casual":       "カジュアル — 読者に語りかけるような親しみやすい口調で、堅苦しさを排除する。テンポよく読み進められるようにする。",
+            "pop":          "ポップ — 明るく軽快で若々しいエネルギーのある表現を使う。読んでいて楽しい雰囲気を出し、テンポよく展開する。",
+            "simple":       "シンプル — 余分な表現は省き、情報を簡潔に伝えることを最優先する。1文を短くし、スキャンしやすい構成にする。",
+            "luxury":       "高級感 — 洗練された言葉遣いで読者の上質な感性に訴える。押しつけがましくなく、余白のある落ち着いた表現を心がける。",
+            "professional": "プロフェッショナル — 信頼感と権威性を持たせ、データや根拠を重視する。業界のオピニオンリーダーとして語る視点を持つ。",
+        }
+        taste_label = _taste_map.get(taste, _taste_map["standard"])
+        taste_section = f"\n\n## 記事テイスト・スタイル指定\n{taste_label}" if taste != "standard" else ""
+
         return f"""以下の条件でブログ記事を作成してください。
 
 ## テーマ・トピック
@@ -71,7 +84,7 @@ class BlogCreatorAgent(BaseAgent):
 
 ## 文字数・トーン
 {word_count} ／ トーン: {tone}
-{posts_section}{design_section}
+{posts_section}{design_section}{taste_section}
 
 6ステップに従い、Markdown 形式で記事を出力してください。"""
 

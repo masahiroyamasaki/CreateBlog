@@ -136,6 +136,20 @@
           <textarea class="form-control" name="themes" rows="5" placeholder="例：RPA導入事例&#10;業務効率化&#10;DX推進&#10;AI活用" style="font-size:14px;">{{ client.themes if client and client.themes else '' }}</textarea>
           <p class="hint">1行に1テーマ。このテーマをもとにAIが記事ネタを自動生成します。</p>
         </div>
+        <div class="form-group">
+          <label>記事テイスト（文体・イメージ）</label>
+          {% set current_taste = (client.article_taste if client and client.article_taste else 'standard') %}
+          <select class="form-control" name="article_taste">
+            <option value="standard"     {% if current_taste == 'standard'     %}selected{% endif %}>標準（既存記事のトンマナに準じる）</option>
+            <option value="formal"       {% if current_taste == 'formal'       %}selected{% endif %}>フォーマル — 格調ある丁寧な表現</option>
+            <option value="casual"       {% if current_taste == 'casual'       %}selected{% endif %}>カジュアル — 親しみやすく話しかける文体</option>
+            <option value="pop"          {% if current_taste == 'pop'          %}selected{% endif %}>ポップ — 明るく軽快、若々しい雰囲気</option>
+            <option value="simple"       {% if current_taste == 'simple'       %}selected{% endif %}>シンプル — 簡潔で情報重視</option>
+            <option value="luxury"       {% if current_taste == 'luxury'       %}selected{% endif %}>高級感 — 洗練された品格ある表現</option>
+            <option value="professional" {% if current_taste == 'professional' %}selected{% endif %}>プロフェッショナル — 専門的で信頼感のある文体</option>
+          </select>
+          <p class="hint">AIが記事を生成する際の文体・イメージを指定します。「HPデザイン指示」と組み合わせて使用できます。</p>
+        </div>
       </div>
 
       <!-- スケジュール設定（共通） -->
