@@ -221,6 +221,82 @@ def send_invoice_email(to_email: str, designer_name: str, invoice, pdf_path: str
         return {"success": False, "reason": str(e)}
 
 
+def send_article_email(
+    to_email: str,
+    company_name: str,
+    title: str,
+    body_html: str,
+) -> dict:
+    """生成記事をHTMLメールで送信する（メール送信のみプラン用）。"""
+    if not is_configured():
+        return {"success": False, "reason": "メール設定が未完了です。.env に MAIL_USERNAME / MAIL_PASSWORD を設定してください。"}
+    if not to_email:
+        return {"success": False, "reason": "送信先メールアドレスが設定されていません。企業設定でメールアドレスを登録してください。"}
+
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8">
+<style>
+  body {{ margin:0; padding:0; background:#f4f4f8; font-family:'Helvetica Neue',Arial,sans-serif; }}
+  .article-body h1,.article-body h2,.article-body h3 {{ color:#1e293b; }}
+  .article-body p {{ line-height:1.8; color:#334155; }}
+  .article-body ul,.article-body ol {{ padding-left:1.5em; line-height:1.8; color:#334155; }}
+  .article-body blockquote {{ border-left:4px solid #6366f1; margin:0; padding:8px 16px; background:#f0f0ff; color:#4b5563; }}
+</style>
+</head>
+<body>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f8;padding:40px 0;">
+  <tr><td align="center">
+    <table width="680" cellpadding="0" cellspacing="0"
+           style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+      <tr>
+        <td style="background:#6366f1;padding:28px 36px;">
+          <p style="margin:0;color:rgba(255,255,255,.8);font-size:13px;">AI ブログエージェント — {company_name}</p>
+          <h1 style="margin:6px 0 0;color:#fff;font-size:22px;font-weight:700;">記事が完成しました</h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:32px 36px;">
+          <p style="margin:0 0 6px;color:#64748b;font-size:13px;">記事タイトル</p>
+          <p style="margin:0 0 28px;font-size:20px;font-weight:700;color:#1e293b;line-height:1.4;">{title}</p>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 28px;">
+          <div class="article-body" style="font-size:15px;line-height:1.8;color:#334155;">
+            {body_html}
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">AI ブログエージェント — RKパートナーズ</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"【記事納品】{company_name}: {title}"
+    msg["From"]    = f"RKパートナーズ <{MAIL_FROM}>"
+    msg["To"]      = to_email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(MAIL_USERNAME, MAIL_PASSWORD)
+            smtp.send_message(msg)
+        return {"success": True, "to": to_email}
+    except smtplib.SMTPAuthenticationError:
+        return {"success": False, "reason": "メール認証失敗。MAIL_USERNAME / MAIL_PASSWORD を確認してください。"}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 def send_result_notification(
     to_email: str,
     company_name: str,

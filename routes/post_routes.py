@@ -328,6 +328,27 @@ def post_publish(client_id: int, post_id: int):
         db.session.commit()
         return jsonify({"success": True})
 
+    # ── メール送信のみ ────────────────────────────────────
+    elif pt == "email_only":
+        from mailer import send_article_email
+        result = send_article_email(
+            to_email=client.client_email or "",
+            company_name=client.name,
+            title=post.title,
+            body_html=post.body_html or "",
+        )
+        if result.get("success"):
+            post.status        = "posted"
+            post.posted_at     = _now_jst()
+            post.error_message = ""
+            db.session.commit()
+            return jsonify({"success": True, "to": result.get("to")})
+        else:
+            post.status        = "failed"
+            post.error_message = result.get("reason", "メール送信失敗")
+            db.session.commit()
+            return jsonify({"success": False, "reason": post.error_message})
+
     # ── 旧: wordpress_instagram（後方互換）───────────────
     else:
         errors = []

@@ -120,6 +120,7 @@ def client_new():
         client = Client(
             name=request.form["name"],
             platform_type=request.form.get("platform_type", "wordpress"),
+            client_email=request.form.get("client_email", ""),
             article_taste=request.form.get("article_taste", "standard"),
             client_status=request.form.get("client_status", "setting"),
             monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
@@ -161,6 +162,7 @@ def client_edit(client_id: int):
     if request.method == "POST":
         client.name = request.form["name"]
         client.platform_type = request.form.get("platform_type", "wordpress_instagram")
+        client.client_email  = request.form.get("client_email", "")
         client.article_taste = request.form.get("article_taste", "standard")
         client.client_status = request.form.get("client_status", "active")
         client.monthly_post_count = int(request.form.get("monthly_post_count", 4) or 4)

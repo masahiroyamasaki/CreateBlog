@@ -61,6 +61,7 @@ class Client(db.Model):
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
+    client_email = db.Column(db.String(255), default="")       # メール送信先（email_onlyプラン用）
     wp_sample_posts_json = db.Column(db.Text)                 # WP既存記事キャッシュ（JSON）
     hp_template_path = db.Column(db.String(500), default="") # 独自HPテンプレートファイルパス
     hp_design_prompt = db.Column(db.Text)                     # HPデザイン指示（AI生成）

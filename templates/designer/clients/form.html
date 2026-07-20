@@ -51,9 +51,10 @@
         <p class="section-title">料金プラン</p>
         <label>投稿タイプ</label>
         <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections(); autoCalcFee();">
-          <option value="wordpress" {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
-          <option value="instagram" {% if client and client.platform_type == 'instagram' %}selected{% endif %}>Instagram</option>
-          <option value="custom_hp" {% if client and client.platform_type == 'custom_hp' %}selected{% endif %}>独自HP</option>
+          <option value="wordpress"  {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
+          <option value="instagram"  {% if client and client.platform_type == 'instagram'  %}selected{% endif %}>Instagram</option>
+          <option value="custom_hp"  {% if client and client.platform_type == 'custom_hp'  %}selected{% endif %}>独自HP</option>
+          <option value="email_only" {% if client and client.platform_type == 'email_only' %}selected{% endif %}>メール送信のみ</option>
         </select>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -70,6 +71,18 @@
                placeholder="0">
         <p class="hint">投稿タイプと投稿数から自動計算</p>
       </div>
+      </div>
+
+      <!-- メール送信のみ セクション -->
+      <div class="section-block" id="section-email-only">
+        <p class="section-title">メール送信設定</p>
+        <div class="form-group">
+          <label>記事送信先メールアドレス *</label>
+          <input class="form-control" type="email" name="client_email"
+                 value="{{ client.client_email if client and client.client_email else '' }}"
+                 placeholder="client@example.com">
+          <p class="hint">記事が完成・予約日時になると、このアドレスにHTMLメールで記事が送信されます。</p>
+        </div>
       </div>
 
       <!-- 独自HP セクション -->
@@ -274,9 +287,10 @@ const PRICING_PLANS = {{ pricing_plans | tojson }};
 
 function updateSections() {
   const pt = document.getElementById('platform_type').value;
-  document.getElementById('section-wordpress').style.display = (pt === 'wordpress') ? '' : 'none';
-  document.getElementById('section-instagram').style.display = (pt === 'instagram') ? '' : 'none';
-  document.getElementById('section-custom-hp').style.display = (pt === 'custom_hp') ? '' : 'none';
+  document.getElementById('section-wordpress').style.display  = (pt === 'wordpress')  ? '' : 'none';
+  document.getElementById('section-instagram').style.display  = (pt === 'instagram')  ? '' : 'none';
+  document.getElementById('section-custom-hp').style.display  = (pt === 'custom_hp')  ? '' : 'none';
+  document.getElementById('section-email-only').style.display = (pt === 'email_only') ? '' : 'none';
 }
 
 function updateScheduleUI() {
@@ -297,7 +311,8 @@ function highlightDate(checkbox) {
 }
 
 function autoCalcFee() {
-  const pt = document.getElementById('platform_type').value;
+  let pt = document.getElementById('platform_type').value;
+  if (pt === 'email_only') pt = 'wordpress'; // メール送信のみ はWordPressと同額
   const posts = parseInt(document.getElementById('monthly_post_count').value) || 0;
   const plans = PRICING_PLANS[pt] || [];
   const match = plans.find(p => p.posts === posts);

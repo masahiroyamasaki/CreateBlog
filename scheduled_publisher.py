@@ -66,6 +66,23 @@ def publish_due_posts(app, db) -> int:
                     post.error_message = ""
                     published += 1
 
+                elif pt == "email_only":
+                    from mailer import send_article_email
+                    result = send_article_email(
+                        to_email=client.client_email or "",
+                        company_name=client.name,
+                        title=post.title,
+                        body_html=post.body_html or "",
+                    )
+                    if result.get("success"):
+                        post.status        = "posted"
+                        post.posted_at     = now
+                        post.error_message = ""
+                        published += 1
+                    else:
+                        post.status        = "failed"
+                        post.error_message = result.get("reason", "メール送信失敗")
+
                 db.session.commit()
 
             except Exception as e:

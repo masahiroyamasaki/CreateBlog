@@ -77,6 +77,8 @@
             <span class="badge" style="background:#21759b;color:#fff;">WordPress</span>
             {% elif client.platform_type == 'custom_hp' %}
             <span class="badge badge-gray">独自HP</span>
+            {% elif client.platform_type == 'email_only' %}
+            <span class="badge" style="background:#0891b2;color:#fff;">メール</span>
             {% else %}
             <span class="badge badge-gray">{{ client.platform_type }}</span>
             {% endif %}
