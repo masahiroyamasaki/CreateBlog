@@ -60,17 +60,6 @@
           {% for t in topics %}
           {% if t.status == 'processing' %}
           <div class="topic-item topic-processing" id="topic-{{ t.id }}" style="cursor:default;">
-            <span class="spinner"></span>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <span class="topic-title">{{ t.title }}</span>
-                <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:10px;">AI生成中...</span>
-                <span id="step-info-{{ t.id }}" style="font-size:11px;color:var(--primary);font-weight:500;"></span>
-              </div>
-              {% if t.outline %}
-              <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
-              {% endif %}
-            </div>
             <div style="display:flex;gap:6px;flex-shrink:0;">
               <a href="{{ url_for('designer.topic_generate_ui', client_id=client.id, topic_id=t.id) }}"
                  class="btn btn-secondary btn-sm" style="white-space:nowrap;">進捗確認</a>
@@ -79,6 +68,17 @@
                     onsubmit="return confirm('生成を強制終了してネタをキューに戻しますか？\n（生成中の記事は破棄されます）');">
                 <button type="submit" class="btn btn-danger btn-sm">強制終了</button>
               </form>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="spinner"></span>
+                <span class="topic-title">{{ t.title }}</span>
+                <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:10px;">AI生成中...</span>
+                <span id="step-info-{{ t.id }}" style="font-size:11px;color:var(--primary);font-weight:500;"></span>
+              </div>
+              {% if t.outline %}
+              <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
+              {% endif %}
             </div>
           </div>
           {% else %}
