@@ -362,24 +362,8 @@ def post_publish(client_id: int, post_id: int):
 
 
 def _strip_account_prefix(caption: str, client_name: str) -> str:
-    """冒頭に混入した企業名・@メンション・空行を除去する。"""
-    lines = caption.strip().splitlines()
-    cleaned = []
-    for line in lines:
-        s = line.strip()
-        if not cleaned:
-            if not s:
-                continue
-            if s.startswith("@"):
-                continue
-            if client_name and s == client_name:
-                continue
-            if client_name and s.startswith(client_name):
-                line = s[len(client_name):].lstrip(" 　・／/")
-                if not line:
-                    continue
-        cleaned.append(line)
-    return "\n".join(cleaned).strip()
+    from caption_utils import strip_account_prefix
+    return strip_account_prefix(caption, client_name)
 
 
 def _build_caption(post: Post, client: Client) -> str:

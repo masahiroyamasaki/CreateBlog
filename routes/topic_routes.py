@@ -13,27 +13,8 @@ _generation_runs = {}
 
 
 def _clean_ig_caption(caption: str, client_name: str = "") -> str:
-    """IGキャプション冒頭に混入したアカウント名・@メンションを除去する。"""
-    import re
-    lines = caption.strip().splitlines()
-    cleaned = []
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        # 先頭行だけチェック: @メンション・企業名・空行の連続を読み飛ばす
-        if not cleaned:
-            if not stripped:
-                continue
-            if stripped.startswith("@"):
-                continue
-            if client_name and stripped == client_name:
-                continue
-            # 「○○です。」「○○をご紹介します。」のような企業名冒頭パターン
-            if client_name and stripped.startswith(client_name):
-                line = stripped[len(client_name):].lstrip("　 ・／/")
-                if not line:
-                    continue
-        cleaned.append(line)
-    return "\n".join(cleaned).strip()
+    from caption_utils import strip_account_prefix
+    return strip_account_prefix(caption, client_name)
 
 
 def _assert_access(client: Client):
