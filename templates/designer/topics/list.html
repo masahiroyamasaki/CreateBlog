@@ -70,12 +70,15 @@
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
               {% endif %}
             </div>
-            <form method="POST"
-                  action="{{ url_for('designer.topic_force_reset', client_id=client.id, topic_id=t.id) }}"
-                  onsubmit="return confirm('生成を強制終了してネタをキューに戻しますか？\n（生成中の記事は破棄されます）');"
-                  style="flex-shrink:0;">
-              <button type="submit" class="btn btn-danger btn-sm">強制終了</button>
-            </form>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <a href="{{ url_for('designer.topic_generate_ui', client_id=client.id, topic_id=t.id) }}"
+                 class="btn btn-secondary btn-sm" style="white-space:nowrap;">進捗確認</a>
+              <form method="POST"
+                    action="{{ url_for('designer.topic_force_reset', client_id=client.id, topic_id=t.id) }}"
+                    onsubmit="return confirm('生成を強制終了してネタをキューに戻しますか？\n（生成中の記事は破棄されます）');">
+                <button type="submit" class="btn btn-danger btn-sm">強制終了</button>
+              </form>
+            </div>
           </div>
           {% else %}
           <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">

@@ -260,7 +260,41 @@ function showError(msg) {
   document.getElementById('error-msg').textContent = msg;
 }
 
-// ページ読み込み後に自動スタート
-window.addEventListener('load', startGeneration);
+// ページ読み込み後: processing 中なら既存 run_id に再接続、pending なら新規生成
+window.addEventListener('load', async () => {
+  const topicStatus = {{ '"processing"' if topic.status == 'processing' else '"pending"' }};
+  if (topicStatus === 'processing') {
+    // 既存の実行中 run_id を取得して再接続
+    try {
+      const res = await fetch(`/designer/clients/${CLIENT_ID}/topics/${TOPIC_ID}/run-id`);
+      const data = await res.json();
+      if (data.run_id) {
+        runId = data.run_id;
+        // 現在のステップ状態を反映
+        const run = data.run;
+        const stepNum = STEP_MAP[run.step] || 0;
+        updatePipeline(run.step, stepNum);
+        if (run.status === 'done') {
+          finishAll(); showResult(run.post_id); return;
+        } else if (run.status === 'error') {
+          showError(run.error || '不明なエラー'); return;
+        } else if (run.status === 'cancelled') {
+          document.getElementById('cancel-box').style.display = 'block'; return;
+        }
+        document.getElementById('cancel-area').style.display = 'block';
+        pollTimer = setInterval(poll, 2500);
+      } else {
+        // run_id が見つからない（サーバー再起動などでロスト）
+        document.getElementById('error-box').style.display = 'block';
+        document.getElementById('error-msg').textContent =
+          '生成処理の状態が失われました。「強制終了」でネタをキューに戻してから再生成してください。';
+      }
+    } catch (e) {
+      showError('接続エラー: ' + e.message);
+    }
+  } else {
+    startGeneration();
+  }
+});
 </script>
 {% endblock %}

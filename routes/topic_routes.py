@@ -10,6 +10,8 @@ from routes import designer_bp
 
 # バックグラウンド生成ジョブのステート管理（in-memory）
 _generation_runs = {}
+# topic_id → run_id の逆引きマップ（進捗確認ページの再接続用）
+_topic_to_run: dict[int, str] = {}
 
 
 def _clean_ig_caption(caption: str, client_name: str = "") -> str:
@@ -145,7 +147,7 @@ def topic_generate_ui(client_id: int, topic_id: int):
     topic = TopicQueue.query.get_or_404(topic_id)
     if topic.client_id != client_id:
         abort(403)
-    if topic.status != "pending":
+    if topic.status == "generated":
         flash("このネタはすでに生成済みです", "warning")
         return redirect(url_for("designer.topic_list", client_id=client_id))
     return render_template("designer/topics/generate.html", client=client, topic=topic)
@@ -200,6 +202,7 @@ def topic_generate(client_id: int, topic_id: int):
         "error": None,
         "cancel_requested": False,
     }
+    _topic_to_run[topic.id] = run_id
 
     # バックグラウンドスレッドに渡す値を先に取り出す
     import json as _json_mod
@@ -220,6 +223,7 @@ def topic_generate(client_id: int, topic_id: int):
 
         def _cancel_and_cleanup():
             run.update(status="cancelled", step="cancelled")
+            _topic_to_run.pop(topic_id_val, None)
             with app.app_context():
                 try:
                     from models import Post as _Post, TopicQueue as _TQ, db as _db
@@ -409,9 +413,11 @@ def topic_generate(client_id: int, topic_id: int):
                     run["post_id"] = post_id
 
                 run.update(status="done", step="done", step_num=6)
+                _topic_to_run.pop(topic_id_val, None)
 
         except Exception as e:
             run.update(status="error", error=str(e))
+            _topic_to_run.pop(topic_id_val, None)
             with app.app_context():
                 try:
                     post = Post.query.get(post_id)
@@ -438,6 +444,18 @@ def generate_status(run_id: str):
     if not run:
         return jsonify({"error": "not found"}), 404
     return jsonify(run)
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/run-id")
+@login_required
+def topic_run_id(client_id: int, topic_id: int):
+    """topic_id に対応する実行中の run_id を返す（ページ再接続用）"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    run_id = _topic_to_run.get(topic_id)
+    if run_id and run_id in _generation_runs:
+        return jsonify({"run_id": run_id, "run": _generation_runs[run_id]})
+    return jsonify({"run_id": None})
 
 
 @designer_bp.route("/generate-cancel/<run_id>", methods=["POST"])
