@@ -276,7 +276,7 @@ function showError(msg) {
 
 // ページ読み込み後: processing 中なら既存 run_id に再接続、pending なら新規生成
 window.addEventListener('load', async () => {
-  const topicStatus = {{ '"processing"' if topic.status == 'processing' else '"pending"' }};
+  const topicStatus = {{ topic.status | tojson }};
   if (topicStatus === 'processing') {
     // 既存の実行中 run_id を取得して再接続
     try {
