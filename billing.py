@@ -123,8 +123,9 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     elements.append(Spacer(1, 10 * mm))
 
     # ── 合計金額ハイライト ──
-    tax_amount = int(invoice.total_amount * 0.1)
-    total_with_tax = invoice.total_amount + tax_amount
+    tax_amount = invoice.tax_amount
+    total_with_tax = invoice.total_with_tax
+    discount_amount = invoice.discount_amount
     total_tbl = Table(
         [["ご請求金額（税込）", f"¥{total_with_tax:,}"]],
         colWidths=[content_w * 0.65, content_w * 0.35],
@@ -160,6 +161,9 @@ def generate_invoice_pdf(invoice, items_list) -> str:
             f"¥{item.amount:,}",
         ])
     item_data.append(["", "", "小　計", f"¥{invoice.total_amount:,}"])
+    if discount_amount > 0:
+        discount_label = "割引（税引き前）" if invoice.discount_target != "posttax" else "割引（税引き後）"
+        item_data.append(["", "", discount_label, f"−¥{discount_amount:,}"])
     item_data.append(["", "", "消費税（10%）", f"¥{tax_amount:,}"])
     item_data.append(["", "", "合　計（税込）", f"¥{total_with_tax:,}"])
 
@@ -167,7 +171,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     n_items = len(items_list)
     last = len(item_data) - 1
     subtotal_row = n_items + 1   # 小計行インデックス
-    tax_row = n_items + 2        # 消費税行インデックス
+    tax_row = last - 1           # 消費税行インデックス（割引行が有無でずれる）
     item_tbl.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, -1), FONT),
         ("FONTSIZE", (0, 0), (-1, -1), 10),

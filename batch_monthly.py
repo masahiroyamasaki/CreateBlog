@@ -289,9 +289,13 @@ def _generate_post(client, topic, platform_type: str, ai, app, db):
         from agents.ig_formatter import IgFormatterAgent
         import markdown as _md
 
+        import json as _json_mod
+        wp_sample_posts = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
+        hp_design_prompt = client.hp_design_prompt or ""
         draft         = BlogCreatorAgent().run({
             "topic": topic.title, "keywords": topic.outline or "",
-            "tone": "標準", "existing_posts": [],
+            "tone": "標準", "existing_posts": wp_sample_posts,
+            "design_prompt": hp_design_prompt,
         })
         content_check = ContentCheckerAgent().run({"draft": draft})
         legal_check   = LegalCheckerAgent().run({"draft": draft})

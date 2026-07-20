@@ -35,9 +35,13 @@ def topic_list(client_id: int):
     )
     pending_count = sum(1 for t in topics if t.status == "pending")
     processing_count = sum(1 for t in topics if t.status == "processing")
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    _now = _dt.now(_tz(_td(hours=9)))
+    _month_start = _dt(_now.year, _now.month, 1)
     draft_count = Post.query.filter(
         Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
+        Post.created_at >= _month_start,
     ).count()
     monthly_limit = client.monthly_post_count or 4
     can_generate = draft_count < monthly_limit
@@ -158,13 +162,17 @@ def topic_generate(client_id: int, topic_id: int):
         abort(403)
     if topic.status != "pending":
         return jsonify({"success": False, "reason": "このネタはすでに生成済みか処理中です"})
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    _now = _dt.now(_tz(_td(hours=9)))
+    _month_start = _dt(_now.year, _now.month, 1)
     draft_count = Post.query.filter(
         Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
+        Post.created_at >= _month_start,
     ).count()
     monthly_limit = client.monthly_post_count or 4
     if draft_count >= monthly_limit:
-        return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
+        return jsonify({"success": False, "reason": f"今月の生成数が月間契約数({monthly_limit}件)に達しています"})
 
     # 即座にDBへ処理中マーク＋プレースホルダー投稿を作成（ページ離脱後も状態が見える）
     topic.status = "processing"
@@ -194,6 +202,7 @@ def topic_generate(client_id: int, topic_id: int):
     }
 
     # バックグラウンドスレッドに渡す値を先に取り出す
+    import json as _json_mod
     app = current_app._get_current_object()
     client_id_val = client.id
     topic_id_val = topic.id
@@ -202,6 +211,8 @@ def topic_generate(client_id: int, topic_id: int):
     designer_id = current_user.id
     platform_type = client.platform_type or "wordpress"
     client_name = client.name
+    wp_sample_posts = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
+    hp_design_prompt = client.hp_design_prompt or ""
 
     def _run():
         run = _generation_runs[run_id]
@@ -241,7 +252,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "existing_posts": [],
+                    "existing_posts": wp_sample_posts,
+                    "design_prompt": hp_design_prompt,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -324,7 +336,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "topic": topic_title,
                     "keywords": topic_outline,
                     "tone": "標準",
-                    "existing_posts": [],
+                    "existing_posts": wp_sample_posts,
+                    "design_prompt": hp_design_prompt,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -442,9 +455,13 @@ def topic_bulk_generate(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
 
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    _now = _dt.now(_tz(_td(hours=9)))
+    _month_start = _dt(_now.year, _now.month, 1)
     draft_count = Post.query.filter(
         Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"])
+        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
+        Post.created_at >= _month_start,
     ).count()
     monthly_limit = client.monthly_post_count or 4
     remaining = monthly_limit - draft_count
@@ -465,6 +482,9 @@ def topic_bulk_generate(client_id: int):
     client_name = client.name
     client_id_val = client.id
     designer_id = current_user.id
+    import json as _json_mod
+    wp_sample_posts = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
+    hp_design_prompt = client.hp_design_prompt or ""
 
     run_ids = []
 
@@ -492,7 +512,8 @@ def topic_bulk_generate(client_id: int):
 
         def _run(run_id=run_id, topic_title=topic.title, topic_outline=topic.outline or "",
                  topic_id_val=topic.id, post_id=post_id,
-                 platform_type=platform_type, client_id_val=client_id_val, client_name=client_name):
+                 platform_type=platform_type, client_id_val=client_id_val, client_name=client_name,
+                 wp_sample_posts=wp_sample_posts, hp_design_prompt=hp_design_prompt):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -524,7 +545,7 @@ def topic_bulk_generate(client_id: int):
                 import markdown as _md
 
                 run.update(step="blog_creator", step_num=1)
-                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "existing_posts": []})
+                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="content_checker", step_num=2)

@@ -58,6 +58,9 @@ class BlogCreatorAgent(BaseAgent):
         else:
             posts_section = "\n\n（既存記事なし：デフォルトスタイルで作成）"
 
+        design_prompt = data.get("design_prompt", "")
+        design_section = f"\n\n## サイトデザイン・文体指示\n{design_prompt}" if design_prompt else ""
+
         return f"""以下の条件でブログ記事を作成してください。
 
 ## テーマ・トピック
@@ -68,7 +71,7 @@ class BlogCreatorAgent(BaseAgent):
 
 ## 文字数・トーン
 {word_count} ／ トーン: {tone}
-{posts_section}
+{posts_section}{design_section}
 
 6ステップに従い、Markdown 形式で記事を出力してください。"""
 

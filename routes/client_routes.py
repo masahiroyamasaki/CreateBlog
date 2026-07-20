@@ -189,6 +189,98 @@ def client_edit(client_id: int):
     return render_template("designer/clients/form.html", client=client, form_data=form_data)
 
 
+@designer_bp.route("/clients/<int:client_id>/fetch-wp-posts", methods=["POST"])
+@login_required
+def client_fetch_wp_posts(client_id: int):
+    """WordPressから既存記事を取得してキャッシュする（文体参照用）。"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    import json, requests as _req
+    from wp_client import _auth_header
+    endpoint = (client.wp_endpoint or "").rstrip("/")
+    if not endpoint:
+        flash("WordPressエンドポイントが設定されていません", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id))
+    try:
+        username = client.wp_username or ""
+        password = decrypt_field(client.wp_app_password)
+        res = _req.get(
+            f"{endpoint}/wp-json/wp/v2/posts",
+            headers=_auth_header(username, password),
+            params={"per_page": 5, "orderby": "date", "order": "desc",
+                    "_fields": "id,title,content,date"},
+            timeout=15,
+        )
+        if res.status_code != 200:
+            flash(f"WP記事取得失敗 (HTTP {res.status_code})", "error")
+            return redirect(url_for("designer.client_edit", client_id=client_id))
+        posts = []
+        for p in res.json():
+            import re as _re
+            content_text = _re.sub(r"<[^>]+>", "", p.get("content", {}).get("rendered", ""))[:800]
+            posts.append({
+                "title": p.get("title", {}).get("rendered", ""),
+                "content": content_text,
+            })
+        client.wp_sample_posts_json = json.dumps(posts, ensure_ascii=False)
+        db.session.commit()
+        flash(f"WordPress記事を {len(posts)} 件取得しました", "success")
+    except Exception as e:
+        flash(f"記事取得エラー: {e}", "error")
+    return redirect(url_for("designer.client_edit", client_id=client_id))
+
+
+@designer_bp.route("/clients/<int:client_id>/upload-hp-template", methods=["POST"])
+@login_required
+def client_upload_hp_template(client_id: int):
+    """独自HPのデザインテンプレートファイルをアップロードしてAIが設計指示を抽出する。"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    import os
+    file = request.files.get("template_file")
+    if not file or file.filename == "":
+        flash("ファイルが選択されていません", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id))
+    allowed_exts = {".html", ".htm", ".css"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_exts:
+        flash("HTML または CSS ファイルのみアップロードできます", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id))
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads", "hp_templates")
+    os.makedirs(upload_dir, exist_ok=True)
+    save_path = os.path.join(upload_dir, f"client_{client_id}_template{ext}")
+    file.save(save_path)
+    client.hp_template_path = save_path
+    # AI でデザイン指示を抽出
+    try:
+        with open(save_path, "r", encoding="utf-8", errors="ignore") as f:
+            template_content = f.read()[:8000]
+        import anthropic as _anthropic
+        from config import Config
+        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        msg = ai.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=800,
+            messages=[{
+                "role": "user",
+                "content": f"""以下のHTMLまたはCSSを解析し、このサイトのデザイン・文体・構成に合わせた記事生成のための指示を日本語で200字以内にまとめてください。
+
+コードの説明ではなく「記事ライターへの指示」として書いてください。
+色調・フォント・レイアウトの印象、想定読者層、推奨される文体・トーン、見出し構造などを含めること。
+
+```
+{template_content}
+```""",
+            }],
+        )
+        client.hp_design_prompt = msg.content[0].text.strip()
+        flash("テンプレートを解析してデザイン指示を生成しました", "success")
+    except Exception as e:
+        flash(f"テンプレートを保存しました（AI解析エラー: {e}）", "warning")
+    db.session.commit()
+    return redirect(url_for("designer.client_edit", client_id=client_id))
+
+
 @designer_bp.route("/clients/<int:client_id>/assign", methods=["POST"])
 @login_required
 def client_assign(client_id: int):

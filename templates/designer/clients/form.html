@@ -206,6 +206,45 @@
         <p class="hint">投稿予約を自動設定するときのデフォルトスケジュールです。</p>
       </div>
 
+      {% if client %}
+      <!-- AI設計 -->
+      <div class="section-block">
+        <p class="section-title">AI 記事スタイル設定</p>
+
+        <!-- WordPress記事取得 -->
+        <div class="form-group">
+          <label>WordPress 既存記事（文体参照）</label>
+          <p class="hint" style="margin-bottom:8px;">最新5件をWordPressから取得して、AIが文体・トーン・構成を揃えた記事を生成します。</p>
+          {% if client.wp_sample_posts_json %}
+          <div style="font-size:12px;color:var(--success);margin-bottom:8px;">✓ 取得済み</div>
+          {% endif %}
+          <form method="POST" action="{{ url_for('designer.client_fetch_wp_posts', client_id=client.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-secondary btn-sm"
+                    onclick="return confirm('WordPressから既存記事を取得します。現在のキャッシュは上書きされます。')">
+              WP記事を取得
+            </button>
+          </form>
+        </div>
+
+        <!-- 独自HPテンプレートアップロード -->
+        <div class="form-group" style="margin-top:16px;">
+          <label>ホームページテンプレート（デザイン解析）</label>
+          <p class="hint" style="margin-bottom:8px;">HTML/CSSファイルをアップロードすると、AIがデザイン・文体指示を自動抽出します。</p>
+          <form method="POST" action="{{ url_for('designer.client_upload_hp_template', client_id=client.id) }}"
+                enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="file" name="template_file" accept=".html,.htm,.css"
+                   style="font-size:13px;border:1px solid var(--border);padding:4px 8px;border-radius:6px;background:var(--bg2);">
+            <button type="submit" class="btn btn-secondary btn-sm">解析・保存</button>
+          </form>
+          {% if client.hp_design_prompt %}
+          <div style="margin-top:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted);line-height:1.6;">
+            <strong style="color:var(--text);">現在のデザイン指示:</strong><br>{{ client.hp_design_prompt }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <div style="display:flex;gap:10px;margin-top:28px;">
         <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
         <button type="submit" class="btn btn-primary">保存する</button>

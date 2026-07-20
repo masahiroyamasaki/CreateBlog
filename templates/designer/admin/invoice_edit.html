@@ -71,6 +71,41 @@
         </tfoot>
       </table>
 
+      <!-- 割引設定 -->
+      <div style="margin-top:20px;padding:16px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">割引設定</div>
+        <div style="display:grid;grid-template-columns:180px 140px 1fr;gap:12px;align-items:end;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">割引種別</label>
+            <select name="discount_type" id="discount_type" class="form-control" style="font-size:13px;" onchange="updateDiscountUI()">
+              <option value="" {% if not invoice.discount_type %}selected{% endif %}>なし</option>
+              <option value="amount" {% if invoice.discount_type == 'amount' %}selected{% endif %}>金額指定（円）</option>
+              <option value="percent" {% if invoice.discount_type == 'percent' %}selected{% endif %}>パーセント（%）</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;" id="discount_value_label">割引額</label>
+            <input class="form-control" type="number" name="discount_value" id="discount_value"
+                   value="{{ invoice.discount_value or 0 }}" min="0" step="0.01" style="font-size:13px;text-align:right;"
+                   oninput="updateTotals()">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">適用タイミング</label>
+            <div style="display:flex;gap:12px;align-items:center;height:36px;">
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;">
+                <input type="radio" name="discount_target" value="pretax" {% if invoice.discount_target != 'posttax' %}checked{% endif %} onchange="updateTotals()">
+                税引き前
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;">
+                <input type="radio" name="discount_target" value="posttax" {% if invoice.discount_target == 'posttax' %}checked{% endif %} onchange="updateTotals()">
+                税引き後
+              </label>
+            </div>
+          </div>
+        </div>
+        <div id="discount_preview" style="margin-top:10px;font-size:12px;color:var(--muted);"></div>
+      </div>
+
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button type="submit" class="btn btn-primary">変更を保存</button>
         <a href="{{ url_for('designer.admin_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-secondary">キャンセル</a>
@@ -111,16 +146,53 @@ document.querySelectorAll('.amount-input').forEach(el => {
   el.addEventListener('input', updateTotals);
 });
 
+function updateDiscountUI() {
+  const type = document.getElementById('discount_type').value;
+  const label = document.getElementById('discount_value_label');
+  label.textContent = type === 'percent' ? '割引率（%）' : '割引額（円）';
+  updateTotals();
+}
+
 function updateTotals() {
   let subtotal = 0;
   document.querySelectorAll('.amount-input').forEach(el => {
     subtotal += parseInt(el.value || 0);
   });
-  const tax   = Math.floor(subtotal * 0.1);
-  const total = subtotal + tax;
+
+  const type   = document.getElementById('discount_type').value;
+  const val    = parseFloat(document.getElementById('discount_value').value || 0);
+  const target = document.querySelector('input[name="discount_target"]:checked')?.value || 'pretax';
+
+  let discountAmt = 0;
+  if (type === 'amount') {
+    discountAmt = Math.floor(val);
+  } else if (type === 'percent') {
+    const base = target === 'posttax' ? Math.floor(subtotal * 1.1) : subtotal;
+    discountAmt = Math.floor(base * val / 100);
+  }
+
+  let tax, total;
+  if (target === 'pretax') {
+    const taxable = Math.max(0, subtotal - discountAmt);
+    tax   = Math.floor(taxable * 0.1);
+    total = taxable + tax;
+  } else {
+    tax   = Math.floor(subtotal * 0.1);
+    total = Math.max(0, subtotal + tax - discountAmt);
+  }
+
   document.getElementById('ft-subtotal').textContent = '¥' + subtotal.toLocaleString();
   document.getElementById('ft-tax').textContent      = '¥' + tax.toLocaleString();
   document.getElementById('ft-total').textContent    = '¥' + total.toLocaleString();
+
+  const preview = document.getElementById('discount_preview');
+  if (type && discountAmt > 0) {
+    preview.textContent = `割引適用: −¥${discountAmt.toLocaleString()} （${target === 'pretax' ? '税引き前' : '税引き後'}）`;
+  } else {
+    preview.textContent = '';
+  }
 }
+
+updateDiscountUI();
 </script>
 {% endblock %}

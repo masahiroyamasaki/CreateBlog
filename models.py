@@ -61,6 +61,9 @@ class Client(db.Model):
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
+    wp_sample_posts_json = db.Column(db.Text, default="")    # WP既存記事キャッシュ（JSON）
+    hp_template_path = db.Column(db.String(500), default="") # 独自HPテンプレートファイルパス
+    hp_design_prompt = db.Column(db.Text, default="")        # HPデザイン指示（AI生成）
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
     monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数
     monthly_fee = db.Column(db.Integer, default=0)              # 月額料金（円）
@@ -234,6 +237,10 @@ class Invoice(db.Model):
     )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime)
+    # 割引
+    discount_type   = db.Column(db.String(20), default="")       # "amount" | "percent" | ""
+    discount_value  = db.Column(db.Float, default=0.0)           # 割引額 or 割引率(%)
+    discount_target = db.Column(db.String(20), default="pretax") # "pretax" | "posttax"
 
     designer = db.relationship("Designer", backref="invoices")
     items = db.relationship("InvoiceItem", back_populates="invoice",
@@ -258,12 +265,33 @@ class Invoice(db.Model):
         return {"draft": "badge-gray", "sent": "badge-blue", "issued": "badge-orange", "paid": "badge-green"}.get(self.status, "badge-gray")
 
     @property
+    def discount_amount(self) -> int:
+        """実際の割引額（円）。"""
+        if not self.discount_type or not (self.discount_value or 0):
+            return 0
+        if self.discount_type == "amount":
+            return int(self.discount_value or 0)
+        # percent
+        base = (self.total_amount + int(self.total_amount * 0.1)
+                if self.discount_target == "posttax"
+                else self.total_amount)
+        return int(base * (self.discount_value or 0) / 100)
+
+    @property
     def tax_amount(self) -> int:
-        return int(self.total_amount * 0.1)
+        if self.discount_target == "pretax" and self.discount_amount > 0:
+            taxable = max(0, self.total_amount - self.discount_amount)
+        else:
+            taxable = self.total_amount
+        return int(taxable * 0.1)
 
     @property
     def total_with_tax(self) -> int:
-        return self.total_amount + self.tax_amount
+        if self.discount_target == "pretax":
+            taxable = max(0, self.total_amount - self.discount_amount)
+            return max(0, taxable + int(taxable * 0.1))
+        # posttax
+        return max(0, self.total_amount + int(self.total_amount * 0.1) - self.discount_amount)
 
 
 class InvoiceItem(db.Model):

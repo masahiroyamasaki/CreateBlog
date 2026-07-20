@@ -243,6 +243,12 @@ def admin_invoice_edit(invoice_id: int):
             except (ValueError, TypeError):
                 pass
         invoice.total_amount = sum(i.amount for i in items)
+        invoice.discount_type = request.form.get("discount_type", "")
+        try:
+            invoice.discount_value = float(request.form.get("discount_value", 0) or 0)
+        except (ValueError, TypeError):
+            invoice.discount_value = 0.0
+        invoice.discount_target = request.form.get("discount_target", "pretax")
         db.session.commit()
         flash("請求書を更新しました", "success")
         return redirect(url_for("designer.admin_invoice_edit", invoice_id=invoice_id))
