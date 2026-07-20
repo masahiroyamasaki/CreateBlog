@@ -91,10 +91,21 @@ def _do_instagram(client, post, ig_client, decrypt_field) -> dict:
         return {"success": False, "reason": "投稿画像がありません"}
 
     from caption_utils import strip_account_prefix
-    caption = strip_account_prefix(post.ig_caption or "", client.name or "")
+    raw_ig   = post.ig_caption or ""
+    caption  = strip_account_prefix(raw_ig, client.name or "")
     hashtags = (post.ig_hashtags_post or "").strip()
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
+    logger.warning(
+        "[IG caption debug] post_id=%s client=%r\n"
+        "  raw ig_caption[:80]=%r\n"
+        "  ig_hashtags_post[:80]=%r\n"
+        "  final caption[:120]=%r",
+        post.id, client.name,
+        raw_ig[:80],
+        (post.ig_hashtags_post or "")[:80],
+        caption[:120],
+    )
 
     if len(images) == 1:
         return ig_client.post_single_image(
