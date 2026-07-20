@@ -219,7 +219,15 @@ function _markPressed(topicId) {
   localStorage.setItem(PRESSED_KEY, JSON.stringify([...s]));
 }
 document.addEventListener('DOMContentLoaded', () => {
+  // pending に戻ったネタは押下済みフラグを自動クリア
+  const pendingIds = new Set([{% for t in topics %}{% if t.status == 'pending' %}{{ t.id }},{% endif %}{% endfor %}]);
   const pressed = _getPressedSet();
+  let changed = false;
+  pressed.forEach(id => { if (pendingIds.has(id)) { pressed.delete(id); changed = true; } });
+  if (changed) localStorage.setItem(PRESSED_KEY, JSON.stringify([...pressed]));
+  // 一括生成キーも pending ネタがあればリセット
+  if (pendingIds.size > 0) localStorage.removeItem(`bulk_pressed_${clientId}`);
+
   pressed.forEach(id => {
     const btn = document.getElementById(`gen-btn-${id}`);
     if (btn) { btn.disabled = true; btn.title = '生成済みまたは実行済み'; }
