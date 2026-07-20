@@ -9,6 +9,8 @@
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid #7c3aed; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: 4px; }
+.status-select { outline: none; }
+.status-select option { background: #fff; color: #1e293b; font-weight: 400; }
 </style>
 {% endblock %}
 
@@ -84,8 +86,9 @@
             {% if current_user.role == 'admin' %}
             <form method="POST" action="{{ url_for('designer.post_status_change', client_id=client.id, post_id=p.id) }}" style="display:inline;">
               <input type="hidden" name="current_filter" value="{{ status_filter }}">
-              <select name="status" onchange="this.form.submit()"
-                      style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);cursor:pointer;">
+              <select name="status" onchange="applyStatusColor(this);this.form.submit()"
+                      class="status-select" data-status="{{ p.status }}"
+                      style="font-size:12px;padding:2px 6px;border:none;border-radius:4px;cursor:pointer;font-weight:600;">
                 {% for sv, sl in [('creating','作成中'),('draft','下書き'),('approved','承認済み'),('scheduled','予約中'),('posted','投稿済み'),('failed','失敗')] %}
                 <option value="{{ sv }}" {% if p.status == sv %}selected{% endif %}>{{ sl }}</option>
                 {% endfor %}
@@ -128,5 +131,22 @@ const creatingCount = {{ creating_count }};
 if (creatingCount > 0) {
   setTimeout(() => location.reload(), 10000);
 }
+
+const STATUS_COLORS = {
+  creating:  { bg: '#7c3aed', color: '#fff' },
+  draft:     { bg: '#6b7280', color: '#fff' },
+  approved:  { bg: '#2563eb', color: '#fff' },
+  scheduled: { bg: '#d97706', color: '#fff' },
+  posted:    { bg: '#16a34a', color: '#fff' },
+  failed:    { bg: '#dc2626', color: '#fff' },
+};
+
+function applyStatusColor(sel) {
+  const c = STATUS_COLORS[sel.value] || { bg: '#e5e7eb', color: '#374151' };
+  sel.style.background = c.bg;
+  sel.style.color = c.color;
+}
+
+document.querySelectorAll('.status-select').forEach(applyStatusColor);
 </script>
 {% endblock %}
