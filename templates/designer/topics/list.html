@@ -65,6 +65,7 @@
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="topic-title">{{ t.title }}</span>
                 <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:10px;">AI生成中...</span>
+                <span id="step-info-{{ t.id }}" style="font-size:11px;color:var(--primary);font-weight:500;"></span>
               </div>
               {% if t.outline %}
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
@@ -131,6 +132,37 @@ const canGenerate = {{ 'true' if can_generate else 'false' }};
 // 処理中のネタがあれば10秒ごとに自動更新
 if (processingCount > 0) {
   setTimeout(() => location.reload(), 10000);
+}
+
+// 生成ステップのインライン表示
+const STEP_NAMES_INLINE = {
+  init:            '初期化中',
+  blog_creator:    'ステップ 1/6: 下書き作成中',
+  content_checker: 'ステップ 2/6: コンテンツチェック中',
+  legal_checker:   'ステップ 3/6: リーガルチェック中',
+  final_creator:   'ステップ 4/6: 最終記事生成中',
+  ig_formatter:    'ステップ 5/6: キャプション生成中',
+  ig_caption:      'ステップ 5/6: キャプション生成中',
+  saving:          'ステップ 6/6: 保存中',
+  done:            '完了',
+};
+const processingTopicIds = [{% for t in topics %}{% if t.status == 'processing' %}{{ t.id }},{% endif %}{% endfor %}];
+
+async function pollStepInfo(topicId) {
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/${topicId}/run-id`);
+    const data = await res.json();
+    const el = document.getElementById('step-info-' + topicId);
+    if (!el) return;
+    if (data.run_id && data.run) {
+      el.textContent = STEP_NAMES_INLINE[data.run.step] || '処理中...';
+    }
+  } catch (e) {}
+}
+
+if (processingTopicIds.length > 0) {
+  processingTopicIds.forEach(id => pollStepInfo(id));
+  setInterval(() => processingTopicIds.forEach(id => pollStepInfo(id)), 3000);
 }
 let dragSrc = null;
 

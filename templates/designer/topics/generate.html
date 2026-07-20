@@ -125,6 +125,18 @@
     <span id="error-msg"></span>
   </div>
 
+  <!-- 状態消失（サーバー再起動等） -->
+  <div id="reconnect-lost-box" style="display:none;margin-top:28px;padding:20px;background:rgba(245,158,11,.08);border:1px solid var(--warning);border-radius:10px;">
+    <strong style="color:var(--warning);">生成処理の状態が失われました</strong><br>
+    <span style="font-size:13px;color:var(--muted);">サーバー再起動等により処理状態が失われました。下のボタンでネタをキューに戻してから再生成してください。</span>
+    <div style="margin-top:14px;">
+      <form method="POST" action="{{ url_for('designer.topic_force_reset', client_id=client.id, topic_id=topic.id) }}"
+            onsubmit="return confirm('ネタをキューに戻しますか？（生成中の記事は破棄されます）');">
+        <button type="submit" class="btn btn-secondary btn-sm">ネタをキューに戻す</button>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -137,6 +149,7 @@ const STEP_MAP = {
   legal_checker:   3,
   final_creator:   4,
   ig_caption:      5,
+  ig_formatter:    5,
   saving:          6,
   done:            6,
 };
@@ -146,6 +159,7 @@ const STEP_LABELS = {
   legal_checker:   'チェック中...',
   final_creator:   '生成中（1〜2分）...',
   ig_caption:      '生成中...',
+  ig_formatter:    '生成中...',
   saving:          '保存中...',
 };
 
@@ -285,9 +299,7 @@ window.addEventListener('load', async () => {
         pollTimer = setInterval(poll, 2500);
       } else {
         // run_id が見つからない（サーバー再起動などでロスト）
-        document.getElementById('error-box').style.display = 'block';
-        document.getElementById('error-msg').textContent =
-          '生成処理の状態が失われました。「強制終了」でネタをキューに戻してから再生成してください。';
+        document.getElementById('reconnect-lost-box').style.display = 'block';
       }
     } catch (e) {
       showError('接続エラー: ' + e.message);

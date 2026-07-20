@@ -328,6 +328,7 @@ def topic_generate(client_id: int, topic_id: int):
                     run["post_id"] = post_id
 
                 run.update(status="done", step="done", step_num=6)
+                _topic_to_run.pop(topic_id_val, None)
 
             # ── WordPress / その他: 4エージェント + IGフォーマッター ──────────
             else:
@@ -532,6 +533,7 @@ def topic_bulk_generate(client_id: int):
             "status": "running", "step": "init",
             "step_num": 0, "post_id": post_id, "error": None, "cancel_requested": False,
         }
+        _topic_to_run[topic.id] = run_id
         run_ids.append(run_id)
 
         def _run(run_id=run_id, topic_title=topic.title, topic_outline=topic.outline or "",
@@ -542,6 +544,7 @@ def topic_bulk_generate(client_id: int):
 
             def _cancel_and_cleanup():
                 run.update(status="cancelled", step="cancelled")
+                _topic_to_run.pop(topic_id_val, None)
                 with app.app_context():
                     try:
                         from models import Post as _Post, TopicQueue as _TQ, db as _db
@@ -612,8 +615,10 @@ def topic_bulk_generate(client_id: int):
                     run["post_id"] = post_id
 
                 run.update(status="done", step="done", step_num=6)
+                _topic_to_run.pop(topic_id_val, None)
             except Exception as e:
                 run.update(status="error", error=str(e))
+                _topic_to_run.pop(topic_id_val, None)
                 with app.app_context():
                     try:
                         from models import Post as _Post, TopicQueue as _TQ, db as _db
