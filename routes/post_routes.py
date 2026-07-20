@@ -368,23 +368,10 @@ def _strip_account_prefix(caption: str, client_name: str) -> str:
 
 def _build_caption(post: Post, client: Client) -> str:
     """キャプション + ハッシュタグを結合して返す"""
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
-    raw_ig   = post.ig_caption or ""
-    caption  = _strip_account_prefix(raw_ig, client.name)
+    caption  = _strip_account_prefix(post.ig_caption or "", client.name)
     hashtags = (post.ig_hashtags_post or "").strip()
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
-    _log.warning(
-        "[IG caption debug] post_id=%s client=%r\n"
-        "  raw ig_caption[:80]=%r\n"
-        "  ig_hashtags_post[:80]=%r\n"
-        "  final caption[:120]=%r",
-        post.id, client.name,
-        raw_ig[:80],
-        (post.ig_hashtags_post or "")[:80],
-        caption[:120],
-    )
     return caption
 
 
