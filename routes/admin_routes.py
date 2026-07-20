@@ -227,3 +227,109 @@ def admin_invoice_status(invoice_id: int):
     else:
         flash("無効なステータスです", "error")
     return redirect(url_for("designer.admin_invoice_detail", invoice_id=invoice_id))
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_invoice_edit(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    items = InvoiceItem.query.filter_by(invoice_id=invoice_id).order_by(InvoiceItem.id).all()
+    if request.method == "POST":
+        for item in items:
+            item.description = request.form.get(f"desc_{item.id}", item.description).strip()
+            try:
+                item.amount = int(request.form.get(f"amount_{item.id}", item.amount) or 0)
+            except (ValueError, TypeError):
+                pass
+        invoice.total_amount = sum(i.amount for i in items)
+        db.session.commit()
+        flash("請求書を更新しました", "success")
+        return redirect(url_for("designer.admin_invoice_edit", invoice_id=invoice_id))
+    return render_template("designer/admin/invoice_edit.html", invoice=invoice, items=items)
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/items/<int:item_id>/delete", methods=["POST"])
+@login_required
+def admin_invoice_item_delete(invoice_id: int, item_id: int):
+    _admin_only()
+    item = InvoiceItem.query.get_or_404(item_id)
+    if item.invoice_id != invoice_id:
+        abort(403)
+    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice.total_amount = max(0, (invoice.total_amount or 0) - (item.amount or 0))
+    db.session.delete(item)
+    db.session.commit()
+    flash("明細を削除しました", "success")
+    return redirect(url_for("designer.admin_invoice_edit", invoice_id=invoice_id))
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/items/add", methods=["POST"])
+@login_required
+def admin_invoice_item_add(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    client_name = request.form.get("client_name", "").strip()
+    description = request.form.get("description", "").strip()
+    try:
+        amount = int(request.form.get("amount", 0) or 0)
+    except (ValueError, TypeError):
+        amount = 0
+    if client_name or description:
+        db.session.add(InvoiceItem(
+            invoice_id=invoice_id,
+            client_name=client_name,
+            description=description,
+            amount=amount,
+        ))
+        invoice.total_amount = (invoice.total_amount or 0) + amount
+        db.session.commit()
+        flash("明細を追加しました", "success")
+    return redirect(url_for("designer.admin_invoice_edit", invoice_id=invoice_id))
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/reissue", methods=["POST"])
+@login_required
+def admin_invoice_reissue(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    items = InvoiceItem.query.filter_by(invoice_id=invoice_id).all()
+    try:
+        from billing import generate_invoice_pdf
+        from mailer import send_invoice_email
+        from datetime import datetime as _dt
+        pdf_path = generate_invoice_pdf(invoice, items)
+        invoice.pdf_path = pdf_path
+        designer = invoice.designer
+        if designer and designer.email:
+            r = send_invoice_email(designer.email, designer.name, invoice, pdf_path)
+            if r.get("success"):
+                invoice.status = "sent"
+                invoice.sent_at = _dt.utcnow()
+                db.session.commit()
+                flash("請求書を再発行・送付しました", "success")
+            else:
+                db.session.commit()
+                flash(f"PDF再生成済み（メール送付失敗: {r.get('reason')}）", "warning")
+        else:
+            db.session.commit()
+            flash("PDFを再生成しました", "success")
+    except Exception as e:
+        flash(f"再発行エラー: {e}", "error")
+    return redirect(url_for("designer.admin_invoices"))
+
+
+@designer_bp.route("/admin/invoices/<int:invoice_id>/delete", methods=["POST"])
+@login_required
+def admin_invoice_delete(invoice_id: int):
+    _admin_only()
+    invoice = Invoice.query.get_or_404(invoice_id)
+    if invoice.pdf_path and os.path.exists(invoice.pdf_path):
+        try:
+            os.remove(invoice.pdf_path)
+        except OSError:
+            pass
+    db.session.delete(invoice)
+    db.session.commit()
+    flash("請求書を削除しました", "success")
+    return redirect(url_for("designer.admin_invoices"))

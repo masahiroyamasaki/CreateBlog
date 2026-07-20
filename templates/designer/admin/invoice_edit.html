@@ -1,0 +1,126 @@
+{% extends "designer/base.html" %}
+{% block title %}請求書編集 {{ invoice.invoice_number }}{% endblock %}
+{% block page_title %}請求書編集{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.admin_invoices') }}" class="btn btn-secondary btn-sm">← 請求書一覧</a>
+  <a href="{{ url_for('designer.admin_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-secondary btn-sm">詳細表示</a>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'success' if cat == 'success' else ('warning' if cat == 'warning' else 'error') }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <div class="card-header">
+    <h2>{{ invoice.invoice_number }} — {{ invoice.year }}年{{ invoice.month }}月分 / {{ invoice.designer.name }}</h2>
+  </div>
+  <div class="card-body">
+
+    <form method="POST" action="{{ url_for('designer.admin_invoice_edit', invoice_id=invoice.id) }}">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:32px;">No.</th>
+            <th style="width:160px;">企業名</th>
+            <th>内容</th>
+            <th style="width:140px;text-align:right;">金額（税抜）</th>
+            <th style="width:64px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td style="text-align:center;color:var(--muted);">{{ loop.index }}</td>
+            <td style="font-weight:600;font-size:13px;">{{ item.client_name }}</td>
+            <td>
+              <input class="form-control" style="font-size:13px;" type="text"
+                     name="desc_{{ item.id }}" value="{{ item.description }}">
+            </td>
+            <td>
+              <input class="form-control amount-input" style="font-size:13px;text-align:right;" type="number"
+                     name="amount_{{ item.id }}" value="{{ item.amount }}" min="0">
+            </td>
+            <td>
+              <button type="submit"
+                      formaction="{{ url_for('designer.admin_invoice_item_delete', invoice_id=invoice.id, item_id=item.id) }}"
+                      class="btn btn-danger btn-sm"
+                      onclick="return confirm('この明細を削除しますか？')">削除</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;color:var(--muted);font-size:13px;">小　計</td>
+            <td id="ft-subtotal" style="text-align:right;font-size:13px;">¥{{ "{:,}".format(invoice.total_amount) }}</td>
+            <td></td>
+          </tr>
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;color:var(--muted);font-size:13px;">消費税（10%）</td>
+            <td id="ft-tax" style="text-align:right;font-size:13px;">¥{{ "{:,}".format(invoice.tax_amount) }}</td>
+            <td></td>
+          </tr>
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;font-weight:700;font-size:13px;">合　計（税込）</td>
+            <td id="ft-total" style="text-align:right;font-weight:700;font-size:14px;color:var(--primary);">¥{{ "{:,}".format(invoice.total_with_tax) }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button type="submit" class="btn btn-primary">変更を保存</button>
+        <a href="{{ url_for('designer.admin_invoice_detail', invoice_id=invoice.id) }}" class="btn btn-secondary">キャンセル</a>
+      </div>
+    </form>
+
+    <!-- 明細追加 -->
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;">明細を追加</div>
+      <form method="POST" action="{{ url_for('designer.admin_invoice_item_add', invoice_id=invoice.id) }}">
+        <div style="display:grid;grid-template-columns:1fr 2fr 140px auto;gap:8px;align-items:end;">
+          <div>
+            <label style="font-size:12px;color:var(--muted);">企業名</label>
+            <input class="form-control" type="text" name="client_name" placeholder="企業名" style="font-size:13px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);">内容</label>
+            <input class="form-control" type="text" name="description" placeholder="Instagram 運用代行 4件/月" style="font-size:13px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);">金額（税抜）</label>
+            <input class="form-control" type="number" name="amount" placeholder="0" min="0" style="font-size:13px;text-align:right;">
+          </div>
+          <div>
+            <button type="submit" class="btn btn-secondary">追加</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.amount-input').forEach(el => {
+  el.addEventListener('input', updateTotals);
+});
+
+function updateTotals() {
+  let subtotal = 0;
+  document.querySelectorAll('.amount-input').forEach(el => {
+    subtotal += parseInt(el.value || 0);
+  });
+  const tax   = Math.floor(subtotal * 0.1);
+  const total = subtotal + tax;
+  document.getElementById('ft-subtotal').textContent = '¥' + subtotal.toLocaleString();
+  document.getElementById('ft-tax').textContent      = '¥' + tax.toLocaleString();
+  document.getElementById('ft-total').textContent    = '¥' + total.toLocaleString();
+}
+</script>
+{% endblock %}

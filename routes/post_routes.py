@@ -361,6 +361,27 @@ def post_publish(client_id: int, post_id: int):
         return jsonify({"success": True, "wp_url": post.wp_post_url})
 
 
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/status", methods=["POST"])
+@login_required
+def post_status_change(client_id: int, post_id: int):
+    if current_user.role != "admin":
+        abort(403)
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    post = Post.query.get_or_404(post_id)
+    if post.client_id != client_id:
+        abort(403)
+    new_status = request.form.get("status", "")
+    if new_status in {"creating", "draft", "approved", "scheduled", "posted", "failed"}:
+        post.status = new_status
+        db.session.commit()
+    return redirect(url_for(
+        "designer.post_list",
+        client_id=client_id,
+        status=request.form.get("current_filter", ""),
+    ))
+
+
 def _strip_account_prefix(caption: str, client_name: str) -> str:
     from caption_utils import strip_account_prefix
     return strip_account_prefix(caption, client_name)
