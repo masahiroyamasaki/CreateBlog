@@ -40,17 +40,18 @@ try:
     from db_migrate import auto_migrate
     auto_migrate(app, db)        # モデルと差分があるカラムを自動追加
 
-    # 料金プランの初期データをシード（テーブルが空の場合のみ）
+    # 料金プランの初期データをシード（プラットフォームタイプ単位で未登録のもののみ追加）
     with app.app_context():
         from models import PricingPlan as _PP
-        if _PP.query.count() == 0:
-            from pricing import PLANS
-            order = 0
-            for pt, plans in PLANS.items():
+        from pricing import PLANS
+        for pt, plans in PLANS.items():
+            if _PP.query.filter_by(platform_type=pt).count() == 0:
+                last = _PP.query.order_by(_PP.sort_order.desc()).first()
+                order = (last.sort_order + 1) if last else 0
                 for p in plans:
                     db.session.add(_PP(platform_type=pt, monthly_posts=p["posts"], monthly_fee=p["fee"], sort_order=order))
                     order += 1
-            db.session.commit()
+                db.session.commit()
 
     # 料金プランをすべてのテンプレートに自動注入
     @app.context_processor

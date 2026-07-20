@@ -26,4 +26,13 @@ PLANS = {
         {"posts": 24, "fee": 15800},
         {"posts": 28, "fee": 17800},
     ],
+    "email_only": [
+        {"posts": 4,  "fee": 3000},
+        {"posts": 8,  "fee": 7000},
+        {"posts": 12, "fee": 9800},
+        {"posts": 16, "fee": 11800},
+        {"posts": 20, "fee": 13800},
+        {"posts": 24, "fee": 15800},
+        {"posts": 28, "fee": 17800},
+    ],
 }

@@ -89,9 +89,10 @@ def admin_designer_edit(designer_id: int):
 # ─── 料金プラン管理 ────────────────────────────────────────────────────────────
 
 _PLATFORM_LABELS = {
-    "instagram": "Instagram",
-    "wordpress": "WordPress",
-    "custom_hp": "独自HP",
+    "instagram":  "Instagram",
+    "wordpress":  "WordPress",
+    "custom_hp":  "独自HP",
+    "email_only": "メール送信のみ",
 }
 
 
