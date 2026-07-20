@@ -2,9 +2,7 @@
 {% block title %}企業一覧{% endblock %}
 {% block page_title %}担当企業一覧{% endblock %}
 {% block topbar_actions %}
-  {% if current_user.role == 'admin' %}
   <a href="{{ url_for('designer.client_new') }}" class="btn btn-primary btn-sm">+ 企業追加</a>
-  {% endif %}
 {% endblock %}
 
 {% set platform_labels = {
@@ -35,9 +33,7 @@
         <tr style="border-bottom:1px solid var(--border);transition:background .1s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
           <td style="padding:14px 16px;white-space:nowrap;">
             <a href="{{ url_for('designer.client_detail', client_id=c.id) }}" class="btn btn-secondary btn-sm">詳細</a>
-            {% if current_user.role == 'admin' %}
             <a href="{{ url_for('designer.client_edit', client_id=c.id) }}" class="btn btn-secondary btn-sm" style="margin-left:6px;">設定</a>
-            {% endif %}
           </td>
           <td style="padding:14px 16px;">
             <a href="{{ url_for('designer.client_detail', client_id=c.id) }}" style="font-weight:700;color:var(--text);text-decoration:none;">{{ c.name }}</a>

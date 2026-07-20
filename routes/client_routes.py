@@ -114,9 +114,7 @@ def client_detail(client_id: int):
 @designer_bp.route("/clients/new", methods=["GET", "POST"])
 @login_required
 def client_new():
-    if current_user.role != "admin":
-        abort(403)
-    designers = Designer.query.order_by(Designer.name).all()
+    designers = Designer.query.order_by(Designer.name).all() if current_user.role == "admin" else None
     if request.method == "POST":
         stype = request.form.get("schedule_type", "weekly")
         client = Client(
@@ -141,9 +139,12 @@ def client_new():
         db.session.add(client)
         db.session.flush()
 
-        # 選択されたデザイナーをアサイン（未選択の場合は作成者）
-        raw_id = request.form.get("designer_id", "").strip()
-        assign_id = int(raw_id) if raw_id else current_user.id
+        # 管理者は担当デザイナーを選択可、デザイナーは自分に自動アサイン
+        if current_user.role == "admin":
+            raw_id = request.form.get("designer_id", "").strip()
+            assign_id = int(raw_id) if raw_id else current_user.id
+        else:
+            assign_id = current_user.id
         db.session.add(DesignerClient(designer_id=assign_id, client_id=client.id))
         db.session.commit()
         flash(f"「{client.name}」を追加しました", "success")
