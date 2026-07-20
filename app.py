@@ -22,6 +22,14 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret-key"))
 
+@app.template_filter("to_jst")
+def _to_jst(dt):
+    """UTC naive datetime を JST (UTC+9) に変換する"""
+    if dt is None:
+        return dt
+    from datetime import timedelta
+    return dt + timedelta(hours=9)
+
 # ── MySQL + SQLAlchemy (新システム) ──────────────────────────────────────────
 try:
     from config import Config

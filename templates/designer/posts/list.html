@@ -112,7 +112,7 @@
             {% else %}—{% endif %}
           </td>
           <td style="font-size:12px;color:var(--muted);">{{ p.posted_at.strftime('%m/%d %H:%M') if p.posted_at else '—' }}</td>
-          <td style="font-size:12px;color:var(--muted);">{{ p.created_at.strftime('%m/%d %H:%M') }}</td>
+          <td style="font-size:12px;color:var(--muted);">{{ (p.created_at | to_jst).strftime('%m/%d %H:%M') }}</td>
         </tr>
         {% endfor %}
       </tbody>
