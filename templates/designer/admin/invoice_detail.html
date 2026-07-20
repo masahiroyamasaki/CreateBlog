@@ -82,6 +82,16 @@
             <td colspan="3" style="text-align:right;color:var(--muted);">小　計</td>
             <td style="text-align:right;">¥{{ "{:,}".format(invoice.total_amount) }}</td>
           </tr>
+          {% if invoice.discount_amount > 0 %}
+          <tr style="background:var(--bg3);">
+            <td colspan="3" style="text-align:right;color:var(--muted);">
+              割引
+              {% if invoice.discount_type == 'percent' %}（{{ invoice.discount_value | int }}%）{% endif %}
+              {% if invoice.discount_target == 'pretax' %}（税引き前）{% else %}（税引き後）{% endif %}
+            </td>
+            <td style="text-align:right;color:#dc2626;">−¥{{ "{:,}".format(invoice.discount_amount) }}</td>
+          </tr>
+          {% endif %}
           <tr style="background:var(--bg3);">
             <td colspan="3" style="text-align:right;color:var(--muted);">消費税（10%）</td>
             <td style="text-align:right;">¥{{ "{:,}".format(invoice.tax_amount) }}</td>

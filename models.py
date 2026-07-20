@@ -61,9 +61,9 @@ class Client(db.Model):
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
-    wp_sample_posts_json = db.Column(db.Text, default="")    # WP既存記事キャッシュ（JSON）
+    wp_sample_posts_json = db.Column(db.Text)                 # WP既存記事キャッシュ（JSON）
     hp_template_path = db.Column(db.String(500), default="") # 独自HPテンプレートファイルパス
-    hp_design_prompt = db.Column(db.Text, default="")        # HPデザイン指示（AI生成）
+    hp_design_prompt = db.Column(db.Text)                     # HPデザイン指示（AI生成）
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
     monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数
     monthly_fee = db.Column(db.Integer, default=0)              # 月額料金（円）

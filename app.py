@@ -64,8 +64,7 @@ try:
                 )
             return {"pricing_plans": plans}
         except Exception:
-            from pricing import PLANS
-            return {"pricing_plans": PLANS}
+            return {"pricing_plans": {}}
 except Exception as _mysql_err:
     import logging
     logging.warning(f"MySQL 接続スキップ（既存 SQLite 機能は継続）: {_mysql_err}")
