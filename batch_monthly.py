@@ -194,12 +194,15 @@ def _generate_ideas(client, ai, count: int, db) -> list:
         if theme_count > 1 else ""
     )
 
+    target_audience = (client.target_audience or "").strip()
+    audience_note = f"\n想定読者: {target_audience}" if target_audience else ""
+
     prompt = f"""あなたはコンテンツプランナーです。
 以下のテーマをもとに、投稿ネタを{count}件考えてください。
 
 企業名: {client.name}
 テーマ:
-{themes}
+{themes}{audience_note}
 {avoid}
 
 【重要な条件】

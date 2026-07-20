@@ -67,6 +67,8 @@ class Client(db.Model):
     hp_design_prompt = db.Column(db.Text)                     # HPデザイン指示（AI生成）
     article_taste      = db.Column(db.String(30), default="standard")  # 記事テイスト
     target_word_count  = db.Column(db.Integer, default=0)              # 目標文字数（0=自動）
+    target_audience    = db.Column(db.Text)                            # ターゲット設定
+    character_prompt   = db.Column(db.Text)                            # キャラ・ペルソナ設定
     email_format       = db.Column(db.String(10), default="html")      # email_only出力形式: html/text
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
     monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数

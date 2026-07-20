@@ -123,6 +123,8 @@ def client_new():
             client_email=request.form.get("client_email", ""),
             article_taste=request.form.get("article_taste", "standard"),
             target_word_count=int(request.form.get("target_word_count", 0) or 0),
+            target_audience=request.form.get("target_audience", ""),
+            character_prompt=request.form.get("character_prompt", ""),
             email_format=request.form.get("email_format", "html"),
             client_status=request.form.get("client_status", "setting"),
             monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
@@ -167,6 +169,8 @@ def client_edit(client_id: int):
         client.client_email       = request.form.get("client_email", "")
         client.article_taste      = request.form.get("article_taste", "standard")
         client.target_word_count  = int(request.form.get("target_word_count", 0) or 0)
+        client.target_audience    = request.form.get("target_audience", "")
+        client.character_prompt   = request.form.get("character_prompt", "")
         client.email_format       = request.form.get("email_format", "html")
         client.client_status = request.form.get("client_status", "active")
         client.monthly_post_count = int(request.form.get("monthly_post_count", 4) or 4)

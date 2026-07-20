@@ -204,6 +204,18 @@
           </select>
           <p class="hint">AIが記事を生成する際の目標文字数を指定します。「自動」の場合はテーマに合わせて判断されます。</p>
         </div>
+        <div class="form-group">
+          <label>ターゲット設定（想定読者）</label>
+          <textarea class="form-control" name="target_audience" rows="3"
+                    placeholder="例: 30〜50代の中小企業経営者。DX推進に関心はあるが具体的な一歩を踏み出せていない方。">{{ client.target_audience if client and client.target_audience else '' }}</textarea>
+          <p class="hint">記事ネタ生成とAI記事生成の両方に反映されます。想定する読者層・課題・ニーズを記述してください。</p>
+        </div>
+        <div class="form-group">
+          <label>キャラ・ペルソナ設定（AIライターの人格）</label>
+          <textarea class="form-control" name="character_prompt" rows="3"
+                    placeholder="例: 現場経験豊富な業務改善コンサルタント。専門用語を使いすぎず、具体的な事例と数字で語る。読者に寄り添う温かみのある文体。">{{ client.character_prompt if client and client.character_prompt else '' }}</textarea>
+          <p class="hint">AIライターのキャラクター・専門性・口調を設定します。記事テイストと組み合わせて使えます。</p>
+        </div>
       </div>
 
       <!-- スケジュール設定（共通） -->
@@ -310,6 +322,12 @@
                  style="font-size:13px;border:1px solid var(--border);padding:4px 8px;border-radius:6px;background:var(--bg2);">
           <button type="submit" class="btn btn-secondary btn-sm">解析・保存</button>
         </form>
+        {% if client.hp_template_path %}
+        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:12px;">
+          <span style="color:var(--success);">✓ テンプレートファイル設定済み:</span>
+          <code style="background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:4px;">{{ client.hp_template_path.split('/')[-1].split('\\')[-1] }}</code>
+        </div>
+        {% endif %}
         {% if client.hp_design_prompt %}
         <div style="margin-top:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted);line-height:1.6;">
           <strong style="color:var(--text);">現在のデザイン指示:</strong><br>{{ client.hp_design_prompt }}

@@ -75,6 +75,12 @@ class BlogCreatorAgent(BaseAgent):
         design_prompt = data.get("design_prompt", "")
         design_section = f"\n\n## サイトデザイン・文体指示\n{design_prompt}" if design_prompt else ""
 
+        target_audience = data.get("target_audience", "")
+        audience_section = f"\n\n## 想定読者・ターゲット\n{target_audience}" if target_audience else ""
+
+        character_prompt = data.get("character_prompt", "")
+        character_section = f"\n\n## ライターのキャラクター・ペルソナ\n{character_prompt}" if character_prompt else ""
+
         taste = data.get("taste", "standard")
         _taste_map = {
             "standard":     "標準（既存記事のトンマナに準じる）",
@@ -98,7 +104,7 @@ class BlogCreatorAgent(BaseAgent):
 
 ## 文字数・トーン
 {word_count} ／ トーン: {tone}
-{posts_section}{design_section}{taste_section}
+{posts_section}{design_section}{audience_section}{character_section}{taste_section}
 
 6ステップに従い、Markdown 形式で記事を出力してください。"""
 

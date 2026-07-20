@@ -218,6 +218,8 @@ def topic_generate(client_id: int, topic_id: int):
     hp_design_prompt  = client.hp_design_prompt or ""
     article_taste     = client.article_taste or "standard"
     target_word_count = client.target_word_count or 0
+    target_audience   = client.target_audience or ""
+    character_prompt  = client.character_prompt or ""
 
     def _run():
         run = _generation_runs[run_id]
@@ -262,6 +264,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "existing_posts": wp_sample_posts,
                     "design_prompt": hp_design_prompt,
                     "taste": article_taste,
+                    "target_audience": target_audience,
+                    "character_prompt": character_prompt,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -349,6 +353,8 @@ def topic_generate(client_id: int, topic_id: int):
                     "existing_posts": wp_sample_posts,
                     "design_prompt": hp_design_prompt,
                     "taste": article_taste,
+                    "target_audience": target_audience,
+                    "character_prompt": character_prompt,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -509,7 +515,11 @@ def topic_bulk_generate(client_id: int):
     designer_id = current_user.id
     import json as _json_mod
     wp_sample_posts = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
-    hp_design_prompt = client.hp_design_prompt or ""
+    hp_design_prompt   = client.hp_design_prompt or ""
+    article_taste_bulk = client.article_taste or "standard"
+    target_word_count_bulk = client.target_word_count or 0
+    target_audience_bulk   = client.target_audience or ""
+    character_prompt_bulk  = client.character_prompt or ""
 
     run_ids = []
 
@@ -539,7 +549,9 @@ def topic_bulk_generate(client_id: int):
         def _run(run_id=run_id, topic_title=topic.title, topic_outline=topic.outline or "",
                  topic_id_val=topic.id, post_id=post_id,
                  platform_type=platform_type, client_id_val=client_id_val, client_name=client_name,
-                 wp_sample_posts=wp_sample_posts, hp_design_prompt=hp_design_prompt):
+                 wp_sample_posts=wp_sample_posts, hp_design_prompt=hp_design_prompt,
+                 article_taste=article_taste_bulk, target_word_count=target_word_count_bulk,
+                 target_audience=target_audience_bulk, character_prompt=character_prompt_bulk):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -572,7 +584,7 @@ def topic_bulk_generate(client_id: int):
                 import markdown as _md
 
                 run.update(step="blog_creator", step_num=1)
-                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt})
+                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count, "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt, "taste": article_taste, "target_audience": target_audience, "character_prompt": character_prompt})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="content_checker", step_num=2)
