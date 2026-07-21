@@ -279,19 +279,20 @@ def send_article_email(
 </html>
 """
 
-    msg = MIMEMultipart("alternative")
+    if email_format == "text":
+        import re as _re, html as _html_mod
+        plain = _re.sub(r"<[^>]+>", "", body_html)
+        plain = _html_mod.unescape(plain)
+        plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
+        text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
+        msg = MIMEText(text_body, "plain", "utf-8")
+    else:
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
     msg["Subject"] = f"【記事納品】{company_name}: {title}"
     msg["From"]    = f"RKパートナーズ <{MAIL_FROM}>"
     msg["To"]      = to_email
-
-    if email_format == "text":
-        import re as _re
-        plain = _re.sub(r"<[^>]+>", "", body_html)
-        plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
-        text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
-        msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    else:
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
         with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as smtp:
