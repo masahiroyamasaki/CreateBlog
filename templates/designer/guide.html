@@ -1,0 +1,538 @@
+{% extends "designer/base.html" %}
+{% block title %}使い方ガイド{% endblock %}
+{% block page_title %}使い方ガイド{% endblock %}
+
+{% block head %}
+<style>
+.guide-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 32px;
+  align-items: start;
+  max-width: 1000px;
+}
+
+/* 目次 */
+.guide-toc {
+  position: sticky;
+  top: 76px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.guide-toc h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.guide-toc a {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 5px 8px;
+  border-radius: 5px;
+  line-height: 1.4;
+  transition: all .12s;
+}
+.guide-toc a:hover { background: var(--bg3); color: var(--text); }
+.guide-toc a.sub { padding-left: 18px; font-size: 11px; }
+
+/* コンテンツ */
+.guide-body { min-width: 0; }
+
+.guide-section {
+  margin-bottom: 40px;
+  scroll-margin-top: 80px;
+}
+.guide-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.guide-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 20px 0 10px;
+}
+.guide-section p {
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.guide-section ul, .guide-section ol {
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--muted);
+  padding-left: 24px;
+  margin: 0 0 12px;
+}
+.guide-section li { margin-bottom: 4px; }
+
+/* ステップバッジ */
+.step-list { display: flex; flex-direction: column; gap: 14px; margin: 16px 0; }
+.step-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.step-content h4 { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
+.step-content p  { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.7; }
+
+/* ポイントボックス */
+.point-box {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+}
+.point-box strong { color: var(--primary); }
+
+/* 警告ボックス */
+.warn-box {
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #78350f;
+}
+
+/* プラン比較テーブル */
+.plan-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+.plan-table th {
+  background: var(--bg3);
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.plan-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  vertical-align: top;
+}
+.plan-table tr:hover td { background: var(--bg2); }
+
+/* タグ */
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+.tag-green  { background: #dcfce7; color: #166534; }
+.tag-blue   { background: #dbeafe; color: #1e40af; }
+.tag-purple { background: #ede9fe; color: #5b21b6; }
+.tag-orange { background: #ffedd5; color: #9a3412; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-wrap">
+
+  <!-- 目次 -->
+  <div class="guide-toc">
+    <h3>目次</h3>
+    <a href="#overview">システム概要</a>
+    <a href="#flow">基本の流れ</a>
+    <a href="#client">企業設定</a>
+    <a class="sub" href="#client-platform">プランの種類</a>
+    <a class="sub" href="#client-ai">AI設定</a>
+    <a href="#topics">記事ネタ管理</a>
+    <a class="sub" href="#topics-add">ネタの追加</a>
+    <a class="sub" href="#topics-generate">AI自動生成</a>
+    <a href="#post">記事生成・編集</a>
+    <a class="sub" href="#post-generate">AI生成パイプライン</a>
+    <a class="sub" href="#post-edit">編集と確認</a>
+    <a href="#publish">投稿・公開</a>
+    <a class="sub" href="#publish-now">即時投稿</a>
+    <a class="sub" href="#publish-schedule">予約投稿</a>
+    <a class="sub" href="#publish-email">メール送信</a>
+    <a href="#batch">月次バッチ</a>
+    <a href="#faq">よくある質問</a>
+  </div>
+
+  <!-- 本文 -->
+  <div class="guide-body">
+
+    <!-- ① システム概要 -->
+    <div class="guide-section" id="overview">
+      <h2>📖 システム概要</h2>
+      <p>
+        このシステムは、クライアント企業のブログ・SNS運用を自動化するAIコンテンツ管理ツールです。
+        AIが記事ネタの発案から本文生成・チェック・投稿まで一連の作業を代行します。
+      </p>
+      <div class="point-box">
+        <strong>できること：</strong><br>
+        記事ネタ（テーマ）の自動提案 → AI執筆（4エージェントパイプライン）→ WordPress / Instagram / メール送信 への自動投稿
+      </div>
+      <h3>AI生成パイプラインの仕組み</h3>
+      <ul>
+        <li><strong>Step 1 — BlogCreator</strong>：テーマと事業内容・ターゲット設定をもとに下書きを執筆</li>
+        <li><strong>Step 2 — ContentChecker</strong>：内容の正確性・論理性・読みやすさをチェック</li>
+        <li><strong>Step 3 — LegalChecker</strong>：薬機法・景表法などのリーガルリスクをチェック</li>
+        <li><strong>Step 4 — FinalCreator</strong>：チェック結果を反映した最終記事を完成させる</li>
+        <li><strong>Step 5 — IgFormatter</strong>：Instagram用キャプション（1000字）を生成（WordPress・メールプランでも内部生成）</li>
+      </ul>
+    </div>
+
+    <!-- ② 基本の流れ -->
+    <div class="guide-section" id="flow">
+      <h2>🔄 基本の流れ</h2>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>企業を登録する</h4>
+            <p>「企業一覧」→「企業を追加」から、クライアント企業の基本情報・プラン・AI設定を登録します。</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>記事ネタを用意する</h4>
+            <p>企業ページの「記事ネタ」タブで、手動追加またはAI自動生成でネタをストックします。</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>AIで記事を生成する</h4>
+            <p>ネタを選んで「記事を生成」をクリック。4ステップのAIパイプラインが自動で記事を作成します（通常1〜3分）。</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>記事を確認・編集する</h4>
+            <p>生成された記事を詳細画面で確認し、必要に応じてタイトルや本文を修正します。</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h4>投稿・送信する</h4>
+            <p>「今すぐ投稿」で即時公開、または日時を指定して予約投稿します。メール送信プランはクライアント宛に記事が送信されます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 企業設定 -->
+    <div class="guide-section" id="client">
+      <h2>🏢 企業設定</h2>
+      <p>「企業一覧」→企業名→「設定を編集」から各種設定を変更できます。</p>
+
+      <h3 id="client-platform">プランの種類</h3>
+      <table class="plan-table">
+        <tr>
+          <th>プラン</th>
+          <th>投稿先</th>
+          <th>主な用途</th>
+        </tr>
+        <tr>
+          <td><span class="tag tag-blue">WordPress</span></td>
+          <td>WordPress サイト</td>
+          <td>ブログ記事をAPIで自動投稿・予約投稿</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-purple">Instagram</span></td>
+          <td>Instagram ビジネスアカウント</td>
+          <td>画像 + キャプションをAPIで自動投稿</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">独自HP</span></td>
+          <td>手動掲載</td>
+          <td>記事をシステムで生成し、手動でHPに反映する</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-orange">メール送信のみ</span></td>
+          <td>クライアントのメールアドレス</td>
+          <td>完成記事をメール（HTML or プレーンテキスト）で納品</td>
+        </tr>
+      </table>
+
+      <h3 id="client-ai">AI設定（記事品質に直結する重要項目）</h3>
+      <ul>
+        <li>
+          <strong>事業内容・サービス概要</strong>：企業が何をしている会社かを詳しく書くほど、ズレのない記事になります。
+          業種・主力サービス・対象顧客を具体的に記述してください。
+        </li>
+        <li>
+          <strong>記事テーマ</strong>：AIがネタを自動生成するときのカテゴリ。1行に1テーマで複数登録できます。
+          テーマが多いほど多様な記事が生まれます。
+        </li>
+        <li>
+          <strong>ターゲット設定</strong>：想定読者（年代・職種・課題・ニーズ）を書きます。記事の書き方と切り口に反映されます。
+        </li>
+        <li>
+          <strong>キャラ・ペルソナ設定</strong>：AIライターの人格・専門性・口調を指定します。
+          例：「現場経験豊富な業務改善コンサルタント。堅苦しくなく、具体的な事例で語る。」
+        </li>
+        <li>
+          <strong>記事テイスト</strong>：文体の方向性を「標準・フォーマル・カジュアル・ポップ・シンプル・高級感・プロフェッショナル」から選択。
+        </li>
+        <li>
+          <strong>目標文字数</strong>：「自動」のほか、100字〜3000字から指定できます。指定するとAIがその文字数に合わせて生成します。
+        </li>
+      </ul>
+
+      <div class="point-box">
+        <strong>設定のコツ：</strong>事業内容・ターゲット・キャラ設定の3つを丁寧に記述するだけで、記事の品質が大幅に向上します。
+        最初は簡単な内容でも構いません。記事を確認しながら少しずつ改善していきましょう。
+      </div>
+
+      <h3>デフォルト投稿スケジュール</h3>
+      <p>
+        毎週（曜日指定）または毎月（日付指定）で投稿スケジュールを設定できます。
+        AI生成完了時に自動でこのスケジュールが割り当てられます。
+        月間投稿数と曜日・日付の選択数が連動しているため、設定ミスを防ぐ仕組みになっています。
+      </p>
+    </div>
+
+    <!-- ④ 記事ネタ管理 -->
+    <div class="guide-section" id="topics">
+      <h2>💡 記事ネタ管理</h2>
+      <p>企業ページの「記事ネタ」から管理します。ネタは生成前のキューとして機能し、上から順に記事化されます。</p>
+
+      <h3 id="topics-add">ネタの手動追加</h3>
+      <p>
+        「ネタを追加」ボタンからタイトルと大枠（執筆の方向性・ポイント）を入力して追加します。
+        大枠は省略可能ですが、書いておくと記事の精度が上がります。
+      </p>
+      <ul>
+        <li>追加後はドラッグ＆ドロップで順番を変更できます</li>
+        <li>タイトルや大枠は一覧画面でインライン編集できます</li>
+        <li>不要になったネタは削除できます（生成済みの記事には影響しません）</li>
+      </ul>
+
+      <h3 id="topics-generate">AIによるネタ自動生成</h3>
+      <p>
+        「AIでネタ生成」ボタンをクリックすると、設定した記事テーマ・事業内容・ターゲットをもとにAIが
+        新しいネタを1件提案してキューに追加します（管理者のみ利用可）。
+      </p>
+      <div class="point-box">
+        <strong>月次バッチとの違い：</strong>管理者向けの手動ボタンは1件ずつ生成します。
+        月次バッチ（毎月1日）は全稼働企業に対して月間契約数分のネタを一括生成します。
+      </div>
+    </div>
+
+    <!-- ⑤ 記事生成・編集 -->
+    <div class="guide-section" id="post">
+      <h2>📝 記事生成・編集</h2>
+
+      <h3 id="post-generate">AI記事生成の起動方法</h3>
+      <p>記事ネタ一覧で、各ネタの「記事を生成」ボタンをクリックします。生成進捗ページに自動遷移し、5つのステップがリアルタイムで表示されます。</p>
+      <ul>
+        <li>生成中はページを閉じても処理は継続されます（バックグラウンド実行）</li>
+        <li>「一括生成」ボタンを使うと、今月の残り枠分のネタをまとめて生成できます</li>
+        <li>生成に失敗した場合は「強制リセット」でネタを待機状態に戻せます</li>
+      </ul>
+      <div class="warn-box">
+        <strong>注意：</strong>月間契約数に達すると、それ以上の生成はブロックされます。
+        翌月になると自動的にリセットされます。
+      </div>
+
+      <h3 id="post-edit">記事の編集</h3>
+      <p>生成が完了すると「投稿一覧」に下書きとして追加されます。記事タイトルをクリックして詳細画面を開きます。</p>
+
+      <h4>WordPress / 独自HP / メール（HTMLプラン）</h4>
+      <ul>
+        <li><strong>件名 / タイトル</strong>：記事のタイトルまたはメールの件名を編集できます</li>
+        <li><strong>本文</strong>：HTML形式で保存されています。「編集」タブで直接修正、「プレビュー」タブで表示確認ができます</li>
+        <li>「テキストコピー」ボタンでプレーンテキストとしてクリップボードにコピーできます</li>
+      </ul>
+
+      <h4>Instagram</h4>
+      <ul>
+        <li><strong>IGキャプション</strong>：最大2200文字。文字数カウンターがリアルタイムで表示されます</li>
+        <li><strong>ハッシュタグ</strong>：企業設定の固定ハッシュタグに加え、投稿ごとに個別タグを追加できます</li>
+        <li><strong>投稿画像</strong>：最大10枚まで追加可能（カルーセル対応）。ドラッグ＆ドロップで並び替えができます</li>
+      </ul>
+
+      <h4>メール送信（プレーンテキスト）</h4>
+      <ul>
+        <li>本文はMarkdown形式で保存され、そのままプレーンテキストとして送信されます</li>
+        <li>HTMLタグは一切含まれないため、どのメールクライアントでも正しく表示されます</li>
+      </ul>
+    </div>
+
+    <!-- ⑥ 投稿・公開 -->
+    <div class="guide-section" id="publish">
+      <h2>🚀 投稿・公開</h2>
+
+      <h3 id="publish-now">今すぐ投稿（即時実行）</h3>
+      <p>記事詳細画面の右パネル「今すぐ投稿 / メール送信」ボタンをクリックします。確認ダイアログが表示され、承認後すぐに実行されます。</p>
+      <ul>
+        <li><strong>WordPress</strong>：WordPress REST APIを通じて即時公開されます</li>
+        <li><strong>Instagram</strong>：Graph APIを通じて即時投稿されます（画像が必須）</li>
+        <li><strong>独自HP</strong>：「投稿済み」ステータスに変更されます（実際の掲載は手動）</li>
+        <li><strong>メール送信</strong>：設定されたアドレスに記事が送信されます</li>
+      </ul>
+
+      <h3 id="publish-schedule">予約投稿</h3>
+      <p>「日時を指定して投稿」フォームで日付と時刻を入力し「予約する」をクリックします。</p>
+      <ul>
+        <li><strong>WordPress</strong>：WP側に「予約済み」ステータスで登録され、指定日時に自動公開されます</li>
+        <li><strong>Instagram / メール</strong>：システム側で管理し、指定日時にバッチが自動実行します（毎分チェック）</li>
+        <li>予約後でも「予約変更・取り消し」から変更できます</li>
+      </ul>
+      <div class="point-box">
+        <strong>スケジュール自動設定：</strong>企業設定の「デフォルト投稿スケジュール」を設定しておくと、
+        記事生成完了時に自動で予約日時が割り当てられます。手動設定の手間が省けます。
+      </div>
+
+      <h3 id="publish-email">メール送信の設定</h3>
+      <p>「メール送信のみ」プランの企業設定で以下を確認してください。</p>
+      <ul>
+        <li><strong>記事送信先メールアドレス</strong>：記事が届くアドレスを正しく設定してください</li>
+        <li><strong>メール出力形式</strong>：
+          <ul>
+            <li>「HTML」：見出し・段落などの書式付きメールで送信します</li>
+            <li>「プレーンテキスト」：タグなしのシンプルなテキストで送信します（すべてのメーラーで確実に読める）</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ⑦ 月次バッチ -->
+    <div class="guide-section" id="batch">
+      <h2>⚙️ 月次バッチ（自動処理）</h2>
+      <p>VPSのcronで毎月自動実行される処理です。手動操作は不要です。</p>
+      <ul>
+        <li>
+          <strong>毎月1日 — ネタ自動生成</strong>：稼働中の全企業に対して、月間契約数分の記事ネタをAIが自動生成してキューに追加します。
+          事業内容・テーマ・ターゲット設定が反映されます。
+        </li>
+        <li>
+          <strong>毎月10日 — 記事自動生成</strong>：キューにある未生成のネタから記事を自動生成します。
+          生成された記事は「下書き」として投稿一覧に追加されます。
+        </li>
+        <li>
+          <strong>毎月1日 — 請求書自動作成</strong>：稼働中企業の月額料金をもとに請求書PDFを自動作成し、
+          担当デザイナーにメールで送付します。
+        </li>
+        <li>
+          <strong>毎分 — 予約投稿チェック</strong>：予約日時を過ぎた投稿を自動で実行します（Instagram・メール送信）。
+        </li>
+      </ul>
+      <div class="warn-box">
+        <strong>注意：</strong>バッチが正常に動作するには、企業ステータスが「稼働中」であること、
+        記事テーマが設定されていることが必要です。設定中・保留中の企業はバッチ対象外です。
+      </div>
+    </div>
+
+    <!-- ⑧ よくある質問 -->
+    <div class="guide-section" id="faq">
+      <h2>❓ よくある質問</h2>
+
+      <h3>記事生成がいつまでも「作成中」のままになっている</h3>
+      <p>
+        ネタ一覧で対象ネタの「強制リセット」ボタンをクリックすると、ネタを「待機中」に戻せます。
+        その後、改めて「記事を生成」から再実行してください。
+        AIのAPIタイムアウトやサーバー再起動により稀に発生します。
+      </p>
+
+      <h3>メールがプレーンテキストにならない</h3>
+      <p>
+        企業設定の「メール出力形式」が「プレーンテキスト」になっているか確認してください。
+        設定変更後は必ず「保存する」をクリックしてください。
+        変更後に生成した記事から反映されます（既存の記事は再生成が必要です）。
+      </p>
+
+      <h3>記事の文字数が目標と大きく違う</h3>
+      <p>
+        企業設定の「目標文字数」を設定してください。「自動」の場合はAIがテーマに応じて判断するため、
+        毎回異なる場合があります。具体的な文字数（例：1000字）を指定すると安定します。
+      </p>
+
+      <h3>AIが同じようなネタを繰り返し提案する</h3>
+      <p>
+        記事テーマを増やすか、事業内容・ターゲット設定をより具体的に記述することで多様なネタが生成されます。
+        また、過去のネタや投稿タイトルを参照して重複を避ける機能が組み込まれています。
+      </p>
+
+      <h3>Instagram投稿に失敗する</h3>
+      <p>
+        投稿画像が最低1枚必要です。また、Instagramのアクセストークンには有効期限（60日）があります。
+        「Instagram認証情報が設定されていません」と表示される場合は、企業設定でトークンを再取得・更新してください。
+      </p>
+
+      <h3>WordPressへの投稿に失敗する</h3>
+      <p>
+        企業設定の「WordPressエンドポイント」「ユーザー名」「アプリケーションパスワード」を確認してください。
+        WordPress側で「アプリケーションパスワード」が有効になっているか（WordPress 5.6以降で利用可能）も確認してください。
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// スクロール時に目次のアクティブリンクをハイライト
+const sections = document.querySelectorAll('.guide-section');
+const tocLinks = document.querySelectorAll('.guide-toc a');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      tocLinks.forEach(link => {
+        link.style.color = '';
+        link.style.background = '';
+        link.style.fontWeight = '';
+      });
+      const active = document.querySelector(`.guide-toc a[href="#${id}"]`);
+      if (active) {
+        active.style.color = 'var(--primary)';
+        active.style.background = 'var(--bg3)';
+        active.style.fontWeight = '700';
+      }
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
+{% endblock %}

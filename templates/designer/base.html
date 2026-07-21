@@ -135,6 +135,11 @@
         💡 記事ネタ
       </a>
       {% endif %}
+      <div style="margin-top:auto;padding:8px 6px 4px;border-top:1px solid var(--border);margin-top:12px;">
+        <a href="{{ url_for('designer.guide') }}" class="nav-link {% if request.endpoint == 'designer.guide' %}active{% endif %}">
+          📖 使い方
+        </a>
+      </div>
     </nav>
     <div class="sidebar-user">
       <div class="name">{{ current_user.name }}</div>
