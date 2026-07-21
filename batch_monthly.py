@@ -3,8 +3,6 @@
 VPS cron 設定:
   # 毎月1日9時: ネタ生成
   0 9 1 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-ideas >> /var/log/blog-monthly.log 2>&1
-  # 毎月10日9時: 記事生成
-  0 9 10 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-articles >> /var/log/blog-monthly.log 2>&1
 """
 import re
 import json
@@ -57,43 +55,6 @@ def run_monthly_ideas_batch(app, db) -> dict:
 
     return result
 
-
-def run_monthly_articles_batch(app, db) -> dict:
-    """毎月10日: 未生成のネタから記事を生成する。"""
-    result = {"clients": 0, "posts": 0, "errors": []}
-
-    with app.app_context():
-        from models import Client, TopicQueue
-        from config import Config
-        import anthropic as _anthropic
-
-        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-        clients = Client.query.filter_by(client_status="active").all()
-
-        for client in clients:
-            pending = (
-                TopicQueue.query
-                .filter_by(client_id=client.id, status="pending")
-                .order_by(TopicQueue.sort_order)
-                .all()
-            )
-            if not pending:
-                logger.info(f"[{client.name}] 未生成ネタなし、スキップ")
-                continue
-
-            result["clients"] += 1
-            pt = client.platform_type or "wordpress"
-            for topic in pending:
-                try:
-                    _generate_post(client, topic, pt, ai, app, db)
-                    result["posts"] += 1
-                    logger.info(f"[{client.name}] 記事生成完了: {topic.title}")
-                except Exception as e:
-                    msg = f"[{client.name}] 記事生成エラー ({topic.title}): {e}"
-                    logger.error(msg)
-                    result["errors"].append(msg)
-
-    return result
 
 
 # ── 請求書バッチ ──────────────────────────────────────────────────────────────
@@ -264,107 +225,3 @@ def _generate_ideas(client, ai, count: int, db) -> list:
     return added
 
 
-# ── 記事生成 ─────────────────────────────────────────────────────────────────
-
-def _generate_post(client, topic, platform_type: str, ai, app, db):
-    """1件のネタから記事を生成して Post に保存する（同期実行）。"""
-    from models import TopicQueue, Post
-    from schedule_utils import next_scheduled_at
-
-    # プレースホルダー投稿作成
-    topic.status = "processing"
-    placeholder = Post(
-        client_id=client.id,
-        title=topic.title,
-        outline=topic.outline or "",
-        body_html="",
-        ig_caption="",
-        status="creating",
-    )
-    db.session.add(placeholder)
-    db.session.flush()
-    post_id = placeholder.id
-    topic.generated_post_id = post_id
-    db.session.commit()
-
-    try:
-        from agents.blog_creator import BlogCreatorAgent
-        from agents.content_checker import ContentCheckerAgent
-        from agents.legal_checker import LegalCheckerAgent
-        from agents.final_creator import FinalCreatorAgent
-        from agents.ig_formatter import IgFormatterAgent
-        import markdown as _md
-
-        import json as _json_mod
-        wp_sample_posts   = _json_mod.loads(client.wp_sample_posts_json or "[]") if client.wp_sample_posts_json else []
-        hp_design_prompt  = client.hp_design_prompt or ""
-        article_taste     = client.article_taste or "standard"
-        target_word_count = client.target_word_count or 0
-        target_audience      = client.target_audience or ""
-        character_prompt     = client.character_prompt or ""
-        business_description = client.business_description or ""
-        draft                = BlogCreatorAgent().run({
-            "topic": topic.title, "keywords": topic.outline or "",
-            "tone": "標準", "word_count": target_word_count,
-            "existing_posts": wp_sample_posts,
-            "design_prompt": hp_design_prompt,
-            "taste": article_taste,
-            "target_audience": target_audience,
-            "character_prompt": character_prompt,
-            "business_description": business_description,
-        })
-        content_check = ContentCheckerAgent().run({"draft": draft})
-        legal_check   = LegalCheckerAgent().run({"draft": draft})
-        final_content = FinalCreatorAgent().run({
-            "draft": draft, "content_check": content_check, "legal_check": legal_check,
-            "topic": topic.title, "keywords": topic.outline or "", "tone": "標準",
-            "word_count": target_word_count,
-        })
-
-        if platform_type == "instagram":
-            body_html  = ""
-            ig_caption = IgFormatterAgent().run({
-                "blog_content": final_content,
-                "topic": topic.title,
-                "client_name": client.name,
-            })
-        elif platform_type == "email_only":
-            body_html  = _md.markdown(final_content, extensions=["extra", "toc"])
-            ig_caption = final_content  # Markdownをプレーンテキストとして保存
-        else:
-            body_html  = _md.markdown(final_content, extensions=["extra", "toc"])
-            ig_caption = IgFormatterAgent().run({
-                "blog_content": final_content,
-                "topic": topic.title,
-                "client_name": client.name,
-            })
-
-        # スケジュール自動設定
-        existing_dates = {
-            p.scheduled_at.date()
-            for p in Post.query.filter(
-                Post.client_id == client.id,
-                Post.scheduled_at.isnot(None),
-            ).all() if p.scheduled_at
-        }
-        scheduled_at = next_scheduled_at(client, existing_dates) if client.schedule_type else None
-
-        post = Post.query.get(post_id)
-        if post:
-            post.body_html    = body_html
-            post.ig_caption   = ig_caption.strip()
-            post.status       = "draft"
-            post.scheduled_at = scheduled_at
-
-        topic.status = "generated"
-        db.session.commit()
-
-    except Exception as e:
-        post = Post.query.get(post_id)
-        if post:
-            post.status = "failed"
-            post.error_message = str(e)
-        topic.status = "pending"
-        topic.generated_post_id = None
-        db.session.commit()
-        raise

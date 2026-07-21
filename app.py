@@ -645,25 +645,6 @@ def run_monthly_ideas_cmd():
         sys.exit(1)
 
 
-@app.cli.command("run-monthly-articles")
-def run_monthly_articles_cmd():
-    """未生成ネタから記事を一括生成（毎月10日 cron から呼び出す）"""
-    try:
-        from batch_monthly import run_monthly_articles_batch
-        from models import db as _db
-        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{ts} UTC] 記事生成バッチ開始")
-        result = run_monthly_articles_batch(app, _db)
-        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{ts} UTC] 完了: 企業={result['clients']}, 記事={result['posts']}")
-        if result["errors"]:
-            for e in result["errors"]:
-                print(f"  ERROR: {e}")
-    except Exception as e:
-        print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] FATAL: {e}")
-        import sys
-        sys.exit(1)
-
 
 @app.cli.command("run-monthly-billing")
 def run_monthly_billing_cmd():
