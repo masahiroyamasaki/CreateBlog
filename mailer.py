@@ -281,8 +281,20 @@ def send_article_email(
 
     if email_format == "text":
         import re as _re, html as _html_mod
-        plain = _re.sub(r"<[^>]+>", "", body_html)
+        # ブロック要素の閉じタグ → 改行2つ
+        plain = _re.sub(
+            r"</(?:p|div|h[1-6]|li|dt|dd|blockquote|pre|table|tr|td|th)>",
+            "\n\n", body_html, flags=_re.IGNORECASE,
+        )
+        # <br> → 改行1つ
+        plain = _re.sub(r"<br\s*/?>", "\n", plain, flags=_re.IGNORECASE)
+        # 残りのHTMLタグを除去
+        plain = _re.sub(r"<[^>]+>", "", plain)
+        # HTMLエンティティを戻す（&amp; → & など）
         plain = _html_mod.unescape(plain)
+        # ノーブレークスペースを通常スペースに
+        plain = plain.replace("\xa0", " ")
+        # 3行以上の空行を2行に圧縮
         plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
         text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
         msg = MIMEText(text_body, "plain", "utf-8")

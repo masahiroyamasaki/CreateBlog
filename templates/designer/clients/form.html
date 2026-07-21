@@ -168,6 +168,12 @@
       <div class="section-block">
         <p class="section-title">記事テーマ設定</p>
         <div class="form-group">
+          <label>事業内容・サービス概要</label>
+          <textarea class="form-control" name="business_description" rows="4"
+                    placeholder="例: 中小企業向けのRPA導入・業務効率化コンサルティング会社。従業員50名以下の製造業・小売業・サービス業を主な対象とし、UiPathやPower Automateを活用した現場主義のDX支援を行う。">{{ client.business_description if client and client.business_description else '' }}</textarea>
+          <p class="hint">企業の事業内容・主力サービス・ターゲット業種などを記述してください。記事ネタ生成と記事生成の両方に反映されます。</p>
+        </div>
+        <div class="form-group">
           <label>記事テーマ（ネタ自動生成に使用）</label>
           <textarea class="form-control" name="themes" rows="5" placeholder="例：RPA導入事例&#10;業務効率化&#10;DX推進&#10;AI活用" style="font-size:14px;">{{ client.themes if client and client.themes else '' }}</textarea>
           <p class="hint">1行に1テーマ。このテーマをもとにAIが記事ネタを自動生成します。</p>

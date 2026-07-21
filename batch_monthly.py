@@ -194,13 +194,16 @@ def _generate_ideas(client, ai, count: int, db) -> list:
         if theme_count > 1 else ""
     )
 
+    business_description = (client.business_description or "").strip()
+    business_note = f"\n事業内容: {business_description}" if business_description else ""
+
     target_audience = (client.target_audience or "").strip()
     audience_note = f"\n想定読者: {target_audience}" if target_audience else ""
 
     prompt = f"""あなたはコンテンツプランナーです。
 以下のテーマをもとに、投稿ネタを{count}件考えてください。
 
-企業名: {client.name}
+企業名: {client.name}{business_note}
 テーマ:
 {themes}{audience_note}
 {avoid}
@@ -297,9 +300,10 @@ def _generate_post(client, topic, platform_type: str, ai, app, db):
         hp_design_prompt  = client.hp_design_prompt or ""
         article_taste     = client.article_taste or "standard"
         target_word_count = client.target_word_count or 0
-        target_audience   = client.target_audience or ""
-        character_prompt  = client.character_prompt or ""
-        draft             = BlogCreatorAgent().run({
+        target_audience      = client.target_audience or ""
+        character_prompt     = client.character_prompt or ""
+        business_description = client.business_description or ""
+        draft                = BlogCreatorAgent().run({
             "topic": topic.title, "keywords": topic.outline or "",
             "tone": "標準", "word_count": target_word_count,
             "existing_posts": wp_sample_posts,
@@ -307,6 +311,7 @@ def _generate_post(client, topic, platform_type: str, ai, app, db):
             "taste": article_taste,
             "target_audience": target_audience,
             "character_prompt": character_prompt,
+            "business_description": business_description,
         })
         content_check = ContentCheckerAgent().run({"draft": draft})
         legal_check   = LegalCheckerAgent().run({"draft": draft})

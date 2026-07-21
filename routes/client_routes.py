@@ -123,6 +123,7 @@ def client_new():
             client_email=request.form.get("client_email", ""),
             article_taste=request.form.get("article_taste", "standard"),
             target_word_count=int(request.form.get("target_word_count", 0) or 0),
+            business_description=request.form.get("business_description", ""),
             target_audience=request.form.get("target_audience", ""),
             character_prompt=request.form.get("character_prompt", ""),
             email_format=request.form.get("email_format", "html"),
@@ -167,6 +168,7 @@ def client_edit(client_id: int):
         client.name = request.form["name"]
         client.platform_type = request.form.get("platform_type", "wordpress_instagram")
         client.client_email       = request.form.get("client_email", "")
+        client.business_description = request.form.get("business_description", "")
         client.article_taste      = request.form.get("article_taste", "standard")
         client.target_word_count  = int(request.form.get("target_word_count", 0) or 0)
         client.target_audience    = request.form.get("target_audience", "")
