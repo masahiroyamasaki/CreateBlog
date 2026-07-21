@@ -320,16 +320,24 @@ def _generate_post(client, topic, platform_type: str, ai, app, db):
             "topic": topic.title, "keywords": topic.outline or "", "tone": "標準",
             "word_count": target_word_count,
         })
-        ig_caption    = IgFormatterAgent().run({
-            "blog_content": final_content,
-            "topic": topic.title,
-            "client_name": client.name,
-        })
 
         if platform_type == "instagram":
-            body_html = ""
+            body_html  = ""
+            ig_caption = IgFormatterAgent().run({
+                "blog_content": final_content,
+                "topic": topic.title,
+                "client_name": client.name,
+            })
+        elif platform_type == "email_only":
+            body_html  = _md.markdown(final_content, extensions=["extra", "toc"])
+            ig_caption = final_content  # Markdownをプレーンテキストとして保存
         else:
-            body_html = _md.markdown(final_content, extensions=["extra", "toc"])
+            body_html  = _md.markdown(final_content, extensions=["extra", "toc"])
+            ig_caption = IgFormatterAgent().run({
+                "blog_content": final_content,
+                "topic": topic.title,
+                "client_name": client.name,
+            })
 
         # スケジュール自動設定
         existing_dates = {

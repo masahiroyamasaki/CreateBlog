@@ -389,15 +389,18 @@ def topic_generate(client_id: int, topic_id: int):
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
 
-                # Step 5: IGキャプション生成（1000文字 + ハッシュタグ）
+                # Step 5: IGキャプション生成（email_only はMarkdownをそのまま保存）
                 run.update(step="ig_caption", step_num=5)
-                ig_caption = IgFormatterAgent().run({
-                    "blog_content": final_content,
-                    "topic": topic_title,
-                    "client_name": client_name,
-                })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
+                if platform_type == "email_only":
+                    ig_caption = final_content  # Markdownをプレーンテキストとして保存
+                else:
+                    ig_caption = IgFormatterAgent().run({
+                        "blog_content": final_content,
+                        "topic": topic_title,
+                        "client_name": client_name,
+                    })
+                    if run.get("cancel_requested"):
+                        _cancel_and_cleanup(); return
 
                 # Step 6: プレースホルダーを更新して完成 + スケジュール自動設定
                 run.update(step="saving", step_num=6)
@@ -607,7 +610,10 @@ def topic_bulk_generate(client_id: int):
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="ig_caption", step_num=5)
-                ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name})
+                if platform_type == "email_only":
+                    ig_caption = final_content  # Markdownをプレーンテキストとして保存
+                else:
+                    ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="saving", step_num=6)

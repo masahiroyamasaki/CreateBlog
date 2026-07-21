@@ -227,6 +227,7 @@ def send_article_email(
     title: str,
     body_html: str,
     email_format: str = "html",
+    plain_body: str = "",
 ) -> dict:
     """生成記事をHTMLメールで送信する（メール送信のみプラン用）。"""
     if not is_configured():
@@ -280,23 +281,18 @@ def send_article_email(
 """
 
     if email_format == "text":
-        import re as _re, html as _html_mod
-        # ブロック要素の閉じタグ → 改行2つ
-        plain = _re.sub(
-            r"</(?:p|div|h[1-6]|li|dt|dd|blockquote|pre|table|tr|td|th)>",
-            "\n\n", body_html, flags=_re.IGNORECASE,
-        )
-        # <br> → 改行1つ
-        plain = _re.sub(r"<br\s*/?>", "\n", plain, flags=_re.IGNORECASE)
-        # 残りのHTMLタグを除去
-        plain = _re.sub(r"<[^>]+>", "", plain)
-        # HTMLエンティティを戻す（&amp; → & など）
-        plain = _html_mod.unescape(plain)
-        # ノーブレークスペースを通常スペースに
-        plain = plain.replace("\xa0", " ")
-        # 3行以上の空行を2行に圧縮
-        plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
-        text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
+        if plain_body:
+            # Markdownや生テキストを直接使用（HTMLに依存しない確実な方法）
+            text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain_body.strip()}\n\n---\nAI ブログエージェント — RKパートナーズ"
+        else:
+            # フォールバック: HTMLからタグを除去してテキスト化
+            import re as _re, html as _html_mod
+            plain = _re.sub(r"</(?:p|div|h[1-6]|li|dt|dd|blockquote|pre|table|tr|td|th)>", "\n\n", body_html, flags=_re.IGNORECASE)
+            plain = _re.sub(r"<br\s*/?>", "\n", plain, flags=_re.IGNORECASE)
+            plain = _re.sub(r"<[^>]+>", "", plain)
+            plain = _html_mod.unescape(plain).replace("\xa0", " ")
+            plain = _re.sub(r"\n{3,}", "\n\n", plain).strip()
+            text_body = f"【記事納品】{company_name}\n\n■ {title}\n\n{plain}\n\n---\nAI ブログエージェント — RKパートナーズ"
         msg = MIMEText(text_body, "plain", "utf-8")
     else:
         msg = MIMEMultipart("alternative")
