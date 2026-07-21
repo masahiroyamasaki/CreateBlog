@@ -73,8 +73,13 @@
     <!-- 本文・キャプション編集 -->
     <div class="card">
       <div class="card-body">
+        {% set is_email_only = (client.platform_type == 'email_only') %}
+        {% set is_instagram  = (client.platform_type == 'instagram') %}
+
         <div class="tab-bar">
-          {% if client.platform_type == 'instagram' %}
+          {% if is_email_only %}
+          <div class="tab active" onclick="switchTab('body')">メール本文</div>
+          {% elif is_instagram %}
           <div class="tab" onclick="switchTab('body')" style="color:var(--muted);">ブログ本文（未使用）</div>
           <div class="tab active" onclick="switchTab('ig')">IGキャプション</div>
           {% else %}
@@ -85,15 +90,20 @@
 
         <form id="save-form" method="POST" action="{{ url_for('designer.post_save', client_id=client.id, post_id=post.id) }}">
           <div class="form-group">
-            <label>タイトル</label>
+            <label>{% if is_email_only %}件名（メールの件名になります）{% else %}タイトル{% endif %}</label>
             <input class="form-control" type="text" name="title" id="f-title" value="{{ post.title }}">
           </div>
 
           <!-- 本文タブ -->
-          <div class="tab-panel {% if client.platform_type != 'instagram' %}active{% endif %}" id="tab-body">
+          <div class="tab-panel {% if not is_instagram %}active{% endif %}" id="tab-body">
+            {% if is_email_only %}
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+              メール本文（HTML形式）。送信形式は企業設定の「メール出力形式」で切り替えられます。
+            </p>
+            {% endif %}
             <div class="tab-bar" style="margin-bottom:10px;">
               <div class="tab active" onclick="switchBodyView('edit')">編集</div>
-              <div class="tab" onclick="switchBodyView('preview')">プレビュー</div>
+              <div class="tab" onclick="switchBodyView('preview')">{% if is_email_only %}プレビュー{% else %}プレビュー{% endif %}</div>
             </div>
             <div id="body-edit-area">
               <textarea class="form-control" name="body_html" id="f-body" rows="16" style="font-family:monospace;font-size:12px;">{{ post.body_html }}</textarea>
@@ -106,13 +116,19 @@
                   <button type="button" class="btn btn-secondary btn-sm" onclick="openPreviewModal('body')">⤢ 拡大表示</button>
                 </div>
               </div>
+              {% if is_email_only %}
+              <div id="body-preview-content"
+                   style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:16px;font-size:14px;white-space:pre-wrap;line-height:1.8;color:#1e293b;font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;">{{ post.body_html | safe }}</div>
+              {% else %}
               <div class="preview-html" id="body-preview-content">{{ post.body_html | safe }}</div>
+              {% endif %}
             </div>
           </div>
 
-          <!-- IG キャプション タブ -->
-          <div class="tab-panel {% if client.platform_type == 'instagram' %}active{% endif %}" id="tab-ig">
-            <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if client.platform_type == 'instagram' %}12{% else %}9{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション本文（最大2200文字）">{{ post.ig_caption }}</textarea>
+          <!-- IG キャプション タブ（email_only では非表示） -->
+          {% if not is_email_only %}
+          <div class="tab-panel {% if is_instagram %}active{% endif %}" id="tab-ig">
+            <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if is_instagram %}12{% else %}9{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション本文（最大2200文字）">{{ post.ig_caption }}</textarea>
             <div class="char-count" id="char-count">0 / 2200</div>
 
             <!-- ハッシュタグ編集欄 -->
@@ -133,6 +149,11 @@
               <div id="ig-preview" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;color:#111;max-height:180px;overflow-y:auto;line-height:1.7;"></div>
             </div>
           </div>
+          {% else %}
+          {# email_only: hidden dummy fields so post_save still works without errors #}
+          <input type="hidden" name="ig_caption" value="{{ post.ig_caption }}">
+          <input type="hidden" name="ig_hashtags_post" value="{{ post.ig_hashtags_post or '' }}">
+          {% endif %}
         </form>
 
         <div style="display:flex;gap:8px;margin-top:14px;">
@@ -141,7 +162,8 @@
       </div>
     </div>
 
-    <!-- 画像管理 -->
+    <!-- 画像管理（メール送信のみプランでは非表示） -->
+    {% if not is_email_only %}
     <div class="card">
       <div class="card-header">
         <h2>投稿画像（カルーセル対応、最大10枚）</h2>
@@ -199,6 +221,7 @@
         </details>
       </div>
     </div>
+    {% endif %}{# end if not is_email_only #}
   </div>
 
   <!-- 右: 投稿パネル -->
@@ -207,9 +230,14 @@
     <!-- 今すぐ投稿 -->
     {% if post.status in ['draft', 'approved', 'failed'] %}
     <div class="card">
-      <div class="card-header"><h2>今すぐ投稿</h2></div>
+      <div class="card-header">
+        <h2>{% if is_email_only %}今すぐメール送信{% else %}今すぐ投稿{% endif %}</h2>
+      </div>
       <div class="card-body">
-        {% if client.platform_type == 'wordpress' %}
+        {% if is_email_only %}
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">設定されたメールアドレスに記事を送信します。</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">送信先: <strong>{{ client.client_email or '未設定' }}</strong><br>形式: <strong>{{ 'プレーンテキスト' if client.email_format == 'text' else 'HTML' }}</strong></p>
+        {% elif client.platform_type == 'wordpress' %}
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">WordPress への公開を即時実行します。</p>
         {% elif client.platform_type == 'instagram' %}
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Instagram への投稿を即時実行します。</p>
@@ -218,7 +246,9 @@
         {% else %}
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">WordPress への公開 + Instagram への投稿を即時実行します。</p>
         {% endif %}
-        <button class="btn btn-success" style="width:100%;" id="publish-btn" onclick="publishNow()">投稿する</button>
+        <button class="btn btn-success" style="width:100%;" id="publish-btn" onclick="publishNow()">
+          {% if is_email_only %}メール送信{% else %}投稿する{% endif %}
+        </button>
         <div id="publish-result" style="margin-top:12px;font-size:13px;display:none;"></div>
       </div>
     </div>
@@ -227,13 +257,19 @@
     <!-- 日時指定投稿 -->
     <div class="card">
       <div class="card-header">
-        <h2>{% if post.status == 'scheduled' %}予約変更・取り消し{% else %}日時を指定して投稿{% endif %}</h2>
+        <h2>{% if post.status == 'scheduled' %}予約変更・取り消し{% elif is_email_only %}日時を指定してメール送信{% else %}日時を指定して投稿{% endif %}</h2>
       </div>
       <div class="card-body">
         {% if post.status == 'scheduled' %}
         <div class="alert alert-warning" style="margin-bottom:14px;">
           📅 {{ post.scheduled_at.strftime('%Y/%m/%d %H:%M') }} に予約中<br>
+          {% if is_email_only %}
+          <small>指定日時にメールが自動送信されます。</small>
+          {% elif client.platform_type in ('wordpress', 'wordpress_instagram') %}
           <small>WordPress は予約済み。Instagram は指定日時にバッチが実行します。</small>
+          {% else %}
+          <small>指定日時にバッチが実行します。</small>
+          {% endif %}
         </div>
         <form method="POST" action="{{ url_for('designer.post_schedule', client_id=client.id, post_id=post.id) }}">
           <input type="hidden" name="action" value="cancel">
@@ -253,7 +289,7 @@
             <p class="hint">時刻を空欄にすると企業のデフォルト時刻（{{ client.default_post_time or '10:00' }}）を使用</p>
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%;">
-            {% if post.status == 'scheduled' %}変更して再予約{% else %}予約する{% endif %}
+            {% if post.status == 'scheduled' %}変更して再予約{% elif is_email_only %}この日時にメール送信予約{% else %}予約する{% endif %}
           </button>
         </form>
 
@@ -262,15 +298,21 @@
     </div>
 
     <!-- 投稿状態 -->
-    {% if post.wp_post_url or post.ig_media_id or post.error_message %}
+    {% if post.wp_post_url or post.ig_media_id or post.posted_at or post.error_message %}
     <div class="card">
-      <div class="card-header"><h2>投稿結果</h2></div>
+      <div class="card-header"><h2>{% if is_email_only %}送信結果{% else %}投稿結果{% endif %}</h2></div>
       <div class="card-body" style="font-size:13px;">
-        {% if post.wp_post_url %}
-        <div style="margin-bottom:8px;">WordPress: <a href="{{ post.wp_post_url }}" target="_blank" style="color:var(--primary);">記事を見る ↗</a></div>
-        {% endif %}
-        {% if post.ig_media_id %}
-        <div style="margin-bottom:8px;">Instagram: <span style="color:var(--success);">投稿済み ({{ post.ig_media_id }})</span></div>
+        {% if is_email_only %}
+          {% if post.posted_at %}
+          <div style="margin-bottom:8px;color:var(--success);">✓ {{ post.posted_at.strftime('%Y/%m/%d %H:%M') }} に送信済み</div>
+          {% endif %}
+        {% else %}
+          {% if post.wp_post_url %}
+          <div style="margin-bottom:8px;">WordPress: <a href="{{ post.wp_post_url }}" target="_blank" style="color:var(--primary);">記事を見る ↗</a></div>
+          {% endif %}
+          {% if post.ig_media_id %}
+          <div style="margin-bottom:8px;">Instagram: <span style="color:var(--success);">投稿済み ({{ post.ig_media_id }})</span></div>
+          {% endif %}
         {% endif %}
         {% if post.error_message %}
         <div class="alert alert-error" style="margin-top:8px;white-space:pre-wrap;">{{ post.error_message }}</div>
@@ -300,7 +342,8 @@ const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
 function switchTab(tab) {
   document.querySelectorAll('.tab-bar:first-child .tab').forEach((t,i) => t.classList.toggle('active', i === (tab === 'body' ? 0 : 1)));
   document.getElementById('tab-body').classList.toggle('active', tab === 'body');
-  document.getElementById('tab-ig').classList.toggle('active', tab === 'ig');
+  const igPanel = document.getElementById('tab-ig');
+  if (igPanel) igPanel.classList.toggle('active', tab === 'ig');
   if (tab === 'ig') updateCharCount();
 }
 
@@ -323,10 +366,11 @@ function copyBodyText() {
 }
 
 function updateCharCount() {
-  const len = document.getElementById('f-ig').value.length;
+  const igEl = document.getElementById('f-ig');
+  if (!igEl) return;
+  const len = igEl.value.length;
   const el = document.getElementById('char-count');
-  el.textContent = `${len} / 2200`;
-  el.classList.toggle('over', len > 2200);
+  if (el) { el.textContent = `${len} / 2200`; el.classList.toggle('over', len > 2200); }
   updateHashtagPreview();
 }
 
@@ -342,33 +386,53 @@ updateCharCount();
 
 // 今すぐ投稿
 async function publishNow() {
-  {% if client.platform_type == 'wordpress' %}
+  {% if client.platform_type == 'email_only' %}
+  const confirmMsg = '{{ client.client_email or "メールアドレス未設定" }} にメールで送信しますか？';
+  const sendingMsg = '送信中...';
+  const doneLabel  = '送信済み';
+  {% elif client.platform_type == 'wordpress' %}
   const confirmMsg = 'WordPress に今すぐ投稿しますか？';
+  const sendingMsg = '投稿中...';
+  const doneLabel  = '投稿完了';
   {% elif client.platform_type == 'instagram' %}
   const confirmMsg = 'Instagram に今すぐ投稿しますか？';
+  const sendingMsg = '投稿中...';
+  const doneLabel  = '投稿完了';
   {% elif client.platform_type == 'custom_hp' %}
   const confirmMsg = '投稿済みとしてマークしますか？';
+  const sendingMsg = '処理中...';
+  const doneLabel  = '完了';
   {% else %}
   const confirmMsg = 'WordPress と Instagram に今すぐ投稿しますか？';
+  const sendingMsg = '投稿中...';
+  const doneLabel  = '投稿完了';
   {% endif %}
   if (!confirm(confirmMsg)) return;
   const btn = document.getElementById('publish-btn');
   const resultEl = document.getElementById('publish-result');
   btn.disabled = true;
-  btn.textContent = '投稿中...';
+  btn.textContent = sendingMsg;
   resultEl.style.display = 'none';
 
   const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/publish`, { method: 'POST' });
   const data = await res.json();
   resultEl.style.display = '';
   if (data.success) {
-    resultEl.innerHTML = `<span style="color:var(--success);">✓ 投稿完了！</span> ${data.wp_url ? `<a href="${data.wp_url}" target="_blank" style="color:var(--primary);">WordPress 記事 ↗</a>` : ''}`;
-    showToast('投稿しました！', 'success');
+    {% if client.platform_type == 'email_only' %}
+    resultEl.innerHTML = `<span style="color:var(--success);">✓ メールを送信しました（宛先: ${data.to || ''}）</span>`;
+    {% else %}
+    resultEl.innerHTML = `<span style="color:var(--success);">✓ ${doneLabel}！</span> ${data.wp_url ? `<a href="${data.wp_url}" target="_blank" style="color:var(--primary);">WordPress 記事 ↗</a>` : ''}`;
+    {% endif %}
+    showToast(doneLabel + '！', 'success');
     setTimeout(() => location.reload(), 2000);
   } else {
     resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`;
     btn.disabled = false;
+    {% if client.platform_type == 'email_only' %}
+    btn.textContent = 'メール送信';
+    {% else %}
     btn.textContent = '投稿する';
+    {% endif %}
   }
 }
 
