@@ -94,6 +94,26 @@ def index():
     return redirect("/designer/clients")
 
 
+@app.route("/lp")
+def lp():
+    sent = request.args.get("sent") == "1"
+    error = request.args.get("error") == "1"
+    return render_template("lp.html", sent=sent, error=error)
+
+
+@app.route("/lp/contact", methods=["POST"])
+def lp_contact():
+    name    = request.form.get("name", "").strip()
+    company = request.form.get("company", "").strip()
+    email   = request.form.get("email", "").strip()
+    phone   = request.form.get("phone", "").strip()
+    message = request.form.get("message", "").strip()
+    if not name or not email or not message:
+        return redirect("/lp?error=1#contact")
+    mailer.send_contact_email(name, company, email, phone, message)
+    return redirect("/lp?sent=1#contact")
+
+
 @app.route("/create")
 def create():
     company_id = request.args.get("company_id", type=int)

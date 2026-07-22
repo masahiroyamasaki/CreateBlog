@@ -315,6 +315,84 @@ def send_article_email(
         return {"success": False, "reason": str(e)}
 
 
+def send_contact_email(
+    name: str,
+    company: str,
+    email: str,
+    phone: str,
+    message: str,
+) -> dict:
+    """LP お問い合わせフォームの内容を info@rk-rpa.com に転送する。"""
+    to_email = "info@rk-rpa.com"
+    if not is_configured():
+        # SMTP 未設定でも受信アドレスへの通知を試みる（ベストエフォート）
+        pass
+
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f8;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f8;padding:40px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0"
+           style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+      <tr>
+        <td style="background:#2f5d8a;padding:28px 36px;">
+          <p style="margin:0;color:rgba(255,255,255,.7);font-size:13px;">Artivo LP — お問い合わせ</p>
+          <h1 style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:700;">新しいお問い合わせが届きました</h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px 36px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;font-size:13px;color:#64748b;width:120px;vertical-align:top;">お名前</td>
+                <td style="padding:8px 0;font-size:14px;color:#1e293b;font-weight:600;">{name}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#64748b;vertical-align:top;">屋号・アカウント</td>
+                <td style="padding:8px 0;font-size:14px;color:#1e293b;">{company or "（未入力）"}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#64748b;vertical-align:top;">メールアドレス</td>
+                <td style="padding:8px 0;font-size:14px;color:#2f5d8a;">{email}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#64748b;vertical-align:top;">電話番号</td>
+                <td style="padding:8px 0;font-size:14px;color:#1e293b;">{phone or "（未入力）"}</td></tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">
+          <p style="margin:0 0 8px;font-size:13px;color:#64748b;">お問い合わせ内容</p>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;
+                      font-size:14px;color:#334155;line-height:1.8;white-space:pre-wrap;">{message}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 36px;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">Artivo — RKパートナーズ</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"【お問い合わせ】{name} 様 / {company or 'アカウント未記入'}"
+    msg["From"] = f"Artivo LP <{MAIL_FROM}>"
+    msg["To"] = to_email
+    msg["Reply-To"] = email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(MAIL_USERNAME, MAIL_PASSWORD)
+            smtp.send_message(msg)
+        return {"success": True}
+    except smtplib.SMTPAuthenticationError:
+        return {"success": False, "reason": "メール認証失敗"}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 def send_result_notification(
     to_email: str,
     company_name: str,

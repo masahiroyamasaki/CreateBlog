@@ -390,6 +390,19 @@ def client_upload_hp_template(client_id: int):
     return redirect(url_for("designer.client_edit", client_id=client_id))
 
 
+@designer_bp.route("/clients/<int:client_id>/reset-threads", methods=["POST"])
+@login_required
+def client_reset_threads(client_id: int):
+    """Threads ユーザー ID とアクセストークンを削除する。"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    client.threads_user_id = ""
+    client.threads_access_token = ""
+    db.session.commit()
+    flash("Threads の認証情報をリセットしました", "success")
+    return redirect(url_for("designer.client_edit", client_id=client_id))
+
+
 @designer_bp.route("/clients/<int:client_id>/assign", methods=["POST"])
 @login_required
 def client_assign(client_id: int):

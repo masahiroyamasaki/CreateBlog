@@ -8,6 +8,32 @@ _POLL_INTERVAL = 3   # ステータス確認間隔(秒)
 _POLL_MAX = 20       # 最大ポーリング回数(= 最大60秒待機)
 
 
+def _localize_meta_error(err: dict, sns_name: str = "Instagram") -> str:
+    """Meta API エラーを日本語メッセージに変換する。"""
+    code = err.get("code", 0)
+    subcode = err.get("error_subcode", 0)
+    msg_lower = (err.get("message") or "").lower()
+    # コード 190 = OAuth トークン無効系
+    if code == 190:
+        if subcode in (463, 467) or "expir" in msg_lower:
+            return (
+                f"【{sns_name}】アクセストークンの有効期限が切れています。"
+                "企業編集ページからトークンを更新してください。"
+            )
+        return (
+            f"【{sns_name}】アクセストークンが無効です。"
+            "企業編集ページからトークンを更新してください。"
+        )
+    if "access token" in msg_lower and ("expir" in msg_lower or "invalid" in msg_lower):
+        return (
+            f"【{sns_name}】アクセストークンが無効または期限切れです。"
+            "企業編集ページからトークンを更新してください。"
+        )
+    if "permission" in msg_lower:
+        return f"【{sns_name}】権限が不足しています: {err.get('message', '')}"
+    return f"【{sns_name}】{err.get('message', 'API エラーが発生しました')}"
+
+
 # ─── 内部ヘルパー ─────────────────────────────────────────────────────────
 
 def _post(path: str, token: str, params: dict) -> dict:
@@ -21,12 +47,12 @@ def _post(path: str, token: str, params: dict) -> dict:
         )
         data = res.json()
         if "error" in data:
-            return {"success": False, "reason": data["error"].get("message", str(data["error"]))}
+            return {"success": False, "reason": _localize_meta_error(data["error"])}
         return {"success": True, **data}
     except requests.exceptions.Timeout:
-        return {"success": False, "reason": "Instagram API タイムアウト"}
+        return {"success": False, "reason": "【Instagram】API タイムアウト"}
     except Exception as e:
-        return {"success": False, "reason": f"リクエストエラー: {e}"}
+        return {"success": False, "reason": f"【Instagram】リクエストエラー: {e}"}
 
 
 def _get(path: str, token: str, params: dict | None = None) -> dict:

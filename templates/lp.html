@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="デザイナー・フリーランス向けAI自動投稿システムの卸販売。月1〜2日の確認作業だけで、安定した収入の柱を。">
+  <title>Artivo — デザイナーに、安定した収入の柱を。</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #2f5d8a;
+      --navy-dark:   #1e3d5c;
+      --navy-deeper: #132840;
+      --orange:      #d6572f;
+      --orange-lt:   #e97c58;
+      --white:       #ffffff;
+      --bg-light:    #f4f7fb;
+      --bg-mid:      #edf1f7;
+      --text:        #1a2332;
+      --text-body:   #374151;
+      --text-muted:  #6b7280;
+      --border:      #dde3ed;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 16px;
+      background: var(--white);
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ━━━ ナビゲーション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .nav-logo {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--navy);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo span { color: var(--orange); }
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .btn-line {
+      background: #06C755;
+      color: var(--white);
+    }
+    .btn-line:hover { background: #05a849; transform: translateY(-1px); }
+    .btn-navy {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-navy:hover { background: var(--navy-dark); transform: translateY(-1px); }
+    .btn-orange {
+      background: var(--orange);
+      color: var(--white);
+    }
+    .btn-orange:hover { background: #c04827; transform: translateY(-1px); }
+    .btn-outline-navy {
+      background: transparent;
+      color: var(--navy);
+      border: 2px solid var(--navy);
+    }
+    .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
+    .btn-lg { padding: 16px 36px; font-size: 16px; border-radius: 10px; }
+    .btn-xl { padding: 18px 48px; font-size: 18px; border-radius: 12px; }
+
+    /* ━━━ ヒーロー ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .hero {
+      min-height: 100vh;
+      background: linear-gradient(140deg, var(--navy-deeper) 0%, var(--navy) 55%, #3a6fa0 100%);
+      display: flex;
+      align-items: center;
+      padding: 100px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -80px; right: -80px;
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(214,87,47,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; left: -60px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 780px; }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(214,87,47,0.2);
+      color: #f09070;
+      border: 1px solid rgba(214,87,47,0.4);
+      border-radius: 40px;
+      padding: 5px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+    .hero h1 em { color: #f09070; font-style: normal; }
+    .hero-sub {
+      font-size: clamp(15px, 2.2vw, 19px);
+      color: rgba(255,255,255,0.82);
+      line-height: 1.75;
+      margin-bottom: 36px;
+      max-width: 620px;
+    }
+    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 48px; }
+    .hero-stats {
+      display: flex;
+      gap: 0;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      overflow: hidden;
+      max-width: 560px;
+    }
+    .hero-stat {
+      flex: 1;
+      padding: 18px 20px;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.12);
+    }
+    .hero-stat:last-child { border-right: none; }
+    .hero-stat-num {
+      font-size: 26px;
+      font-weight: 900;
+      color: #f09070;
+      line-height: 1;
+    }
+    .hero-stat-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* ━━━ セクション共通 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    section { padding: 88px 0; }
+    section.bg-light { background: var(--bg-light); }
+    section.bg-navy  { background: var(--navy-dark); }
+    .section-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(24px, 3.5vw, 38px);
+      font-weight: 900;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-title.white { color: var(--white); }
+    .section-body {
+      font-size: 16px;
+      color: var(--text-body);
+      line-height: 1.8;
+      max-width: 680px;
+    }
+    .section-body.white { color: rgba(255,255,255,0.78); }
+    .text-center { text-align: center; }
+    .text-center .section-body { margin: 0 auto; }
+
+    /* ━━━ 課題セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .problem-stat {
+      text-align: center;
+      margin: 48px 0;
+    }
+    .problem-stat-num {
+      font-size: clamp(72px, 12vw, 120px);
+      font-weight: 900;
+      color: var(--orange);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+    .problem-stat-unit {
+      font-size: clamp(36px, 6vw, 60px);
+      font-weight: 900;
+      color: var(--orange);
+    }
+    .problem-stat-desc {
+      font-size: clamp(15px, 2.5vw, 20px);
+      color: var(--text-body);
+      margin-top: 8px;
+    }
+
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 48px;
+    }
+    .pain-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .pain-icon {
+      font-size: 32px;
+      margin-bottom: 14px;
+    }
+    .pain-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .pain-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* ━━━ 解決策セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .solution-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 56px;
+    }
+    .solution-card {
+      text-align: center;
+      padding: 36px 24px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+    }
+    .solution-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px; height: 48px;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 900;
+      margin: 0 auto 16px;
+    }
+    .solution-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .solution-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* ━━━ 収益シミュレーション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .sim-box {
+      background: var(--white);
+      border: 2px solid var(--navy);
+      border-radius: 20px;
+      padding: 40px 48px;
+      margin-top: 56px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+    .sim-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+    .sim-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+    }
+    .sim-row:last-child { border-bottom: none; }
+    .sim-row-label { color: var(--text-muted); }
+    .sim-row-val { font-weight: 700; }
+    .sim-highlight {
+      background: linear-gradient(135deg, var(--navy) 0%, #3a6fa0 100%);
+      border-radius: 14px;
+      padding: 28px 32px;
+      text-align: center;
+      color: var(--white);
+    }
+    .sim-highlight-label { font-size: 14px; color: rgba(255,255,255,0.75); margin-bottom: 6px; }
+    .sim-highlight-num {
+      font-size: 52px;
+      font-weight: 900;
+      line-height: 1;
+      color: #f09070;
+      letter-spacing: -0.02em;
+    }
+    .sim-highlight-unit { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.85); }
+    .sim-note { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 8px; }
+
+    /* ━━━ 対応媒体 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 56px;
+    }
+    .media-card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--white);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .media-card-head {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .media-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+    .media-icon.wp   { background: #f0f0ff; }
+    .media-icon.ig   { background: #fff0f8; }
+    .media-icon.hp   { background: #f0fff4; }
+    .media-card-head h3 { font-size: 16px; font-weight: 700; }
+    .media-card-head p  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .media-card-body {
+      padding: 0 24px 24px;
+    }
+    .media-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 0;
+      font-size: 14px;
+      color: var(--text-body);
+      border-bottom: 1px solid var(--bg-light);
+    }
+    .media-feature:last-child { border-bottom: none; }
+    .media-feature::before {
+      content: '✓';
+      color: var(--navy);
+      font-weight: 700;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ━━━ 料金（LINE ゲート） ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .pricing-cta-box {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 56px 48px;
+      text-align: center;
+      max-width: 680px;
+      margin: 48px auto 0;
+    }
+    .pricing-cta-box h3 {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--white);
+      margin-bottom: 10px;
+    }
+    .pricing-cta-box p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.72);
+      margin-bottom: 28px;
+      line-height: 1.75;
+    }
+    .pricing-badge {
+      display: inline-block;
+      background: rgba(214,87,47,0.25);
+      color: #f09070;
+      border: 1px solid rgba(214,87,47,0.4);
+      border-radius: 40px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 20px;
+    }
+
+    /* ━━━ 導入フロー ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      margin-top: 56px;
+      position: relative;
+    }
+    .flow-grid::before {
+      content: '';
+      position: absolute;
+      top: 32px;
+      left: calc(12.5% + 12px);
+      right: calc(12.5% + 12px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--navy) 0%, var(--orange) 100%);
+      z-index: 0;
+    }
+    .flow-step {
+      text-align: center;
+      padding: 0 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .flow-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px; height: 64px;
+      background: var(--white);
+      border: 3px solid var(--navy);
+      border-radius: 50%;
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--navy);
+      margin: 0 auto 20px;
+      box-shadow: 0 0 0 6px var(--bg-light);
+    }
+    .flow-step:last-child .flow-num {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    .flow-step h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .flow-step p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    /* ━━━ FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .faq-list { margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto; }
+    .faq-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      background: var(--white);
+    }
+    .faq-q {
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 20px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+    .faq-q:hover { background: var(--bg-light); }
+    .faq-q::before {
+      content: 'Q.';
+      color: var(--navy);
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .faq-chevron {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--bg-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--navy);
+      transition: transform 0.25s;
+    }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-a {
+      display: none;
+      padding: 0 24px 20px 54px;
+      font-size: 14px;
+      color: var(--text-body);
+      line-height: 1.8;
+    }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ━━━ お問い合わせ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      margin-top: 56px;
+      align-items: start;
+    }
+    .contact-form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    }
+    .contact-form-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-group label span { color: var(--orange); margin-left: 4px; }
+    .form-control {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(47,93,138,0.12);
+    }
+    textarea.form-control { resize: vertical; min-height: 120px; }
+    .form-submit { margin-top: 8px; }
+    .form-submit .btn { width: 100%; justify-content: center; }
+
+    .contact-other { display: flex; flex-direction: column; gap: 20px; }
+    .contact-other-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .contact-other-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      border-color: var(--navy);
+    }
+    .contact-other-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .contact-other-icon.line { background: rgba(6,199,85,0.12); }
+    .contact-other-icon.mail { background: rgba(47,93,138,0.1); }
+    .contact-other-text h4 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+    .contact-other-text p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    .alert {
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .alert-success { background: rgba(16,185,129,0.1); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
+    .alert-error   { background: rgba(239,68,68,0.1); color: #991b1b; border: 1px solid rgba(239,68,68,0.3); }
+
+    /* ━━━ フッター ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .footer {
+      background: var(--navy-deeper);
+      color: rgba(255,255,255,0.65);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--white);
+      text-decoration: none;
+    }
+    .footer-logo span { color: #f09070; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      color: rgba(255,255,255,0.55);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--white); }
+    .footer-copy {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    /* ━━━ レスポンシブ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    @media (max-width: 768px) {
+      section { padding: 64px 0; }
+      .pain-grid, .solution-grid, .media-grid { grid-template-columns: 1fr; }
+      .flow-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .flow-grid::before { display: none; }
+      .flow-step { padding: 0 8px; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .sim-box { grid-template-columns: 1fr; padding: 28px 24px; gap: 24px; }
+      .hero-stats { max-width: 100%; }
+      .hero-stat-num { font-size: 22px; }
+      .pricing-cta-box { padding: 36px 24px; }
+      .nav-actions .btn-outline-navy { display: none; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 28px; }
+      .hero-ctas { flex-direction: column; }
+      .hero-ctas .btn { justify-content: center; }
+      .flow-grid { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: column; }
+      .hero-stat { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.12); }
+      .hero-stat:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ══════════════════ ナビゲーション ══════════════════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">Artiv<span>o</span></a>
+    <div class="nav-actions">
+      <a href="#contact" class="btn btn-outline-navy">資料を受け取る</a>
+      <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line">
+        LINE で相談する
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ ヒーロー ══════════════════ -->
+<section class="hero" id="top">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-tag">デザイナー・フリーランス向け 卸販売パートナー募集</div>
+      <h1>デザイナーに、<br><em>安定した収入の柱</em>を。</h1>
+      <p class="hero-sub">
+        AIが記事もInstagramキャプションも自動生成。<br>
+        あなたは月1〜2日の確認だけで、クライアントへの<br>
+        コンテンツ運用サービスを完結できます。
+      </p>
+      <div class="hero-ctas">
+        <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line btn-xl">
+          LINE で気軽に相談する
+        </a>
+        <a href="#contact" class="btn btn-orange btn-xl">
+          資料を受け取る（無料）
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-num">87%</div>
+          <div class="hero-stat-label">粗利率の目安</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">月1〜2日</div>
+          <div class="hero-stat-label">必要な確認作業</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">3媒体</div>
+          <div class="hero-stat-label">WordPress / IG / 独自HP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 課題提起 ══════════════════ -->
+<section id="problem">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">The Problem</div>
+      <h2 class="section-title">SNS運用代行の、<br>正直な話をします</h2>
+      <p class="section-body">
+        サービスの単価が低い。作業量が多い。そして、継続されない。<br>
+        デザイナーがSNS運用を受けるとき、必ず直面するこの壁について話します。
+      </p>
+    </div>
+
+    <div class="problem-stat">
+      <div>
+        <span class="problem-stat-num">65</span><span class="problem-stat-unit">%</span>
+      </div>
+      <p class="problem-stat-desc">
+        SNS運用代行の契約のうち、<strong>約65%が3〜6ヶ月以内に解約</strong>されます。
+      </p>
+    </div>
+
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="pain-icon">📝</div>
+        <h3>毎月の更新作業が重い</h3>
+        <p>記事作成・画像編集・投稿まで、毎月クライアントごとに繰り返す。本業の時間が削られていく。</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-icon">💸</div>
+        <h3>低単価でも断れない</h3>
+        <p>「月5,000円でSNSやってほしい」という依頼でも、関係上断れない。作業コストが見合わない。</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-icon">😮‍💨</div>
+        <h3>1人で抱えるとキャパオーバー</h3>
+        <p>デザイン案件と並行して更新作業が続くと、スケジュールが崩れ、品質も下がっていく。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 解決策 ══════════════════ -->
+<section class="bg-light" id="solution">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">The Solution</div>
+      <h2 class="section-title">解決策は、<br>"仕組みで回す"こと</h2>
+      <p class="section-body">
+        Artivoは、記事ネタ生成・記事執筆・投稿予約まですべてをAIが担当します。
+        あなたは月1〜2回、内容を確認して承認するだけ。
+      </p>
+    </div>
+
+    <div class="solution-grid">
+      <div class="solution-card">
+        <div class="solution-num">1</div>
+        <h3>AIが毎月ネタを自動生成</h3>
+        <p>クライアントのテーマ・業種・ペルソナに合わせて、AIが月次で記事ネタを複数生成。あなたは初期設定をするだけです。</p>
+      </div>
+      <div class="solution-card">
+        <div class="solution-num">2</div>
+        <h3>記事・キャプションを一括作成</h3>
+        <p>SEOブログ記事・Instagram用キャプション・Threadsテキストを一括生成。ブランドのトーンに合わせた文体設定も可能です。</p>
+      </div>
+      <div class="solution-card">
+        <div class="solution-num">3</div>
+        <h3>予約して自動投稿</h3>
+        <p>曜日・時刻を設定すれば、あとは自動投稿。あなたが確認した記事が、決まったタイミングで公開されます。</p>
+      </div>
+    </div>
+
+    <!-- 収益シミュレーション -->
+    <div class="sim-box">
+      <div>
+        <div class="sim-title">収益シミュレーション（例）</div>
+        <div class="sim-row">
+          <span class="sim-row-label">クライアント数</span>
+          <span class="sim-row-val">10社</span>
+        </div>
+        <div class="sim-row">
+          <span class="sim-row-label">月額受取（平均）</span>
+          <span class="sim-row-val">¥30,000〜50,000 / 社</span>
+        </div>
+        <div class="sim-row">
+          <span class="sim-row-label">月額収入（合計）</span>
+          <span class="sim-row-val">¥300,000〜500,000</span>
+        </div>
+        <div class="sim-row">
+          <span class="sim-row-label">粗利率の目安</span>
+          <span class="sim-row-val" style="color:var(--navy);">約 87%</span>
+        </div>
+        <div class="sim-row">
+          <span class="sim-row-label">毎月の作業時間</span>
+          <span class="sim-row-val">月1〜2日（確認のみ）</span>
+        </div>
+      </div>
+      <div class="sim-highlight">
+        <div class="sim-highlight-label">月間粗利（10社想定）</div>
+        <div>
+          <span class="sim-highlight-num">26〜43</span>
+          <span class="sim-highlight-unit">万円</span>
+        </div>
+        <div class="sim-note">※あくまで目安の試算です</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 対応媒体・機能 ══════════════════ -->
+<section id="plans">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">Supported Platforms</div>
+      <h2 class="section-title">3つの媒体に対応</h2>
+      <p class="section-body">クライアントの業種・目的に合わせて媒体を選べます。複数媒体の組み合わせにも対応予定。</p>
+    </div>
+
+    <div class="media-grid">
+      <div class="media-card">
+        <div class="media-card-head">
+          <div class="media-icon wp">📝</div>
+          <div>
+            <h3>WordPress</h3>
+            <p>SEO記事・ブログ自動投稿</p>
+          </div>
+        </div>
+        <div class="media-card-body">
+          <div class="media-feature">AIが月間記事ネタを自動生成</div>
+          <div class="media-feature">SEOを意識した長文記事を生成</div>
+          <div class="media-feature">指定日時に自動でWP投稿</div>
+          <div class="media-feature">文体・テイストのカスタマイズ可能</div>
+          <div class="media-feature">既存記事の文体を学習して生成</div>
+        </div>
+      </div>
+
+      <div class="media-card">
+        <div class="media-card-head">
+          <div class="media-icon ig">📸</div>
+          <div>
+            <h3>Instagram</h3>
+            <p>キャプション＋自動投稿</p>
+          </div>
+        </div>
+        <div class="media-card-body">
+          <div class="media-feature">ブランドに合ったキャプション生成</div>
+          <div class="media-feature">固定ハッシュタグを自動付与</div>
+          <div class="media-feature">カルーセル・単体画像に対応</div>
+          <div class="media-feature">Threadsへの同時投稿も可能</div>
+          <div class="media-feature">予約日時に自動でIG投稿</div>
+        </div>
+      </div>
+
+      <div class="media-card">
+        <div class="media-card-head">
+          <div class="media-icon hp">🌐</div>
+          <div>
+            <h3>独自HP</h3>
+            <p>コーポレートサイトへの配信</p>
+          </div>
+        </div>
+        <div class="media-card-body">
+          <div class="media-feature">HPのデザインを解析して文体適合</div>
+          <div class="media-feature">ブランドトーンに合わせた記事生成</div>
+          <div class="media-feature">HTML形式での出力に対応</div>
+          <div class="media-feature">メール送信のみプランも選択可</div>
+          <div class="media-feature">Notionなどとの連携も検討中</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 料金（LINE ゲート） ══════════════════ -->
+<section class="bg-navy" id="pricing">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow" style="color:#f09070;">Pricing</div>
+      <h2 class="section-title white">料金プランは<br>LINEで公開しています</h2>
+      <p class="section-body white">
+        ビジネスモデルの詳細・価格表・粗利シミュレーションをPDFでご案内しています。
+        下のボタンからLINEに追加してメッセージを送ってください。
+      </p>
+    </div>
+
+    <div class="pricing-cta-box">
+      <div class="pricing-badge">料金PDF 無料配布中</div>
+      <h3>パートナー向け料金表をLINEで受け取る</h3>
+      <p>
+        クライアントへの提案価格・Artivoへの支払い価格・<br>
+        粗利率の目安をまとめたPDFを無料でお送りします。
+      </p>
+      <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line btn-xl">
+        LINE で料金表を受け取る（無料）
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 導入フロー ══════════════════ -->
+<section class="bg-light" id="flow">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">How to Start</div>
+      <h2 class="section-title">導入の流れ</h2>
+      <p class="section-body">LINEでのご相談から本格運用まで、最短2週間で開始できます。</p>
+    </div>
+
+    <div class="flow-grid">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <h3>LINE でご相談</h3>
+        <p>気軽にメッセージを送ってください。疑問点・料金・導入のご相談に対応します。</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <h3>ヒアリング・初期設定</h3>
+        <p>クライアント情報・テーマ・文体設定をヒアリング。初期設定はRKパートナーズがサポートします。</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <h3>テスト投稿・確認</h3>
+        <p>実際にAIが記事を生成してお見せします。内容・文体を確認して、OKなら本格運用へ。</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <h3>本格運用スタート</h3>
+        <p>あとはAIと自動投稿に任せて、あなたは月1〜2日の確認だけ。安定収入がはじまります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FAQ ══════════════════ -->
+<section id="faq">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">FAQ</div>
+      <h2 class="section-title">よくある質問</h2>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          デザインや技術の知識がなくても使えますか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          はい、使えます。WordPress・Instagramの連携設定（アクセストークンの取得など）は、初回にRKパートナーズがサポートします。その後の運用は管理画面から行うため、技術的な知識は不要です。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          クライアントにはどう説明すればいいですか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          「AI×専任担当によるコンテンツ運用サービス」としてご提案いただけます。裏側でArtivoを使っていることはお伝えしても、しなくても構いません。あなたがディレクションするコンテンツ制作サービスとして展開できます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          AIが生成する記事の品質はどうですか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          Claude AI（Anthropic社）が記事を生成します。クライアントのテーマ・ペルソナ・既存記事の文体を学習して生成するため、精度は高いですが、あなたが月1〜2回内容を確認・承認するフローで品質を担保します。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          契約・解約はいつでもできますか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          月単位での契約・解約が可能です。最低利用期間の縛りはありません。詳細はLINEにてご案内しています。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          何社まで管理できますか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          プランによって異なります。料金PDFに詳細を記載していますので、LINEからお受け取りください。複数社を一元管理できる設計になっており、10社以上でも問題なく運用できます。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          既存のクライアントに追加提案できますか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          はい、既存クライアントへの追加提案に最適です。ホームページ制作後の「保守・運用」として提案することで、継続的な収益を得られます。制作案件の単発売上から、ストック型収益への転換ができます。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ お問い合わせ ══════════════════ -->
+<section class="bg-light" id="contact">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">Contact</div>
+      <h2 class="section-title">お問い合わせ</h2>
+      <p class="section-body">
+        ご不明な点・ご相談はお気軽にどうぞ。<br>
+        LINEが一番お返事が早いです。
+      </p>
+    </div>
+
+    <div class="contact-grid">
+      <!-- フォーム -->
+      <div class="contact-form-card">
+        <h3>メールフォームで問い合わせる</h3>
+
+        {% if sent %}
+        <div class="alert alert-success">
+          お問い合わせありがとうございます！内容を確認の上、ご連絡いたします。
+        </div>
+        {% elif error %}
+        <div class="alert alert-error">
+          送信中にエラーが発生しました。お名前・メールアドレス・お問い合わせ内容をご記入の上、再度お試しください。
+        </div>
+        {% endif %}
+
+        <form action="/lp/contact" method="POST">
+          <div class="form-group">
+            <label>お名前<span>*</span></label>
+            <input class="form-control" type="text" name="name" required placeholder="例: 山田 太郎">
+          </div>
+          <div class="form-group">
+            <label>屋号・SNSアカウント名</label>
+            <input class="form-control" type="text" name="company" placeholder="例: DesignStudio Yamada / @yamada_design">
+          </div>
+          <div class="form-group">
+            <label>メールアドレス<span>*</span></label>
+            <input class="form-control" type="email" name="email" required placeholder="例: yamada@example.com">
+          </div>
+          <div class="form-group">
+            <label>電話番号（任意）</label>
+            <input class="form-control" type="tel" name="phone" placeholder="例: 080-1234-5678">
+          </div>
+          <div class="form-group">
+            <label>お問い合わせ内容<span>*</span></label>
+            <textarea class="form-control" name="message" required placeholder="サービスの詳細・料金・導入についてなど、お気軽にご記入ください"></textarea>
+          </div>
+          <div class="form-submit">
+            <button type="submit" class="btn btn-navy btn-lg">送信する</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- LINE・メール -->
+      <div class="contact-other">
+        <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="contact-other-card">
+          <div class="contact-other-icon line">💬</div>
+          <div class="contact-other-text">
+            <h4>LINE で相談する（おすすめ）</h4>
+            <p>一番お返事が早いです。料金PDF・導入のご相談・デモのご依頼もLINEで受け付けています。</p>
+          </div>
+        </a>
+
+        <a href="mailto:info@rk-rpa.com" class="contact-other-card">
+          <div class="contact-other-icon mail">📧</div>
+          <div class="contact-other-text">
+            <h4>メールで問い合わせる</h4>
+            <p>info@rk-rpa.com<br>営業日2〜3日以内にご返信いたします。</p>
+          </div>
+        </a>
+
+        <div style="padding: 24px; background: var(--white); border: 1px solid var(--border); border-radius: 16px;">
+          <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--navy);">こんな方にご連絡ください</h4>
+          <ul style="list-style: none; font-size: 13px; color: var(--text-body); line-height: 2;">
+            <li>✓ フリーランスデザイナー・Web制作会社</li>
+            <li>✓ 既存クライアントに継続収益を追加したい方</li>
+            <li>✓ SNS運用を受けているが作業が重い方</li>
+            <li>✓ AI × コンテンツ運用に興味がある方</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ フッター ══════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <a href="#top" class="footer-logo">Artiv<span>o</span></a>
+      <div class="footer-links">
+        <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener">LINE</a>
+        <a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a>
+        <a href="#faq">よくある質問</a>
+      </div>
+    </div>
+    <p class="footer-copy">© 2025 RKパートナーズ. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  // 全部閉じる
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  // 今開いていなかったら開く
+  if (!isOpen) item.classList.add('open');
+}
+
+// ページ読み込み時、#contact に sent/error があればスクロール
+(function() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('sent') === '1' || params.get('error') === '1') {
+    const el = document.getElementById('contact');
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+  }
+})();
+</script>
+
+</body>
+</html>
