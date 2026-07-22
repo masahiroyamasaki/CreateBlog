@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>新規登録 — デザイナー管理画面</title>
+  <title>新規登録 — Artivo</title>
+  <link rel="icon" type="image/svg+xml" href="/static/images/logo.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -37,8 +38,13 @@
 </head>
 <body>
   <div class="card">
-    <h1>デザイナー新規登録</h1>
-    <p class="sub">アカウントを作成してください</p>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px;">
+      <img src="/static/images/logo.svg" alt="Artivo" style="width:52px;height:52px;">
+      <div style="text-align:center;">
+        <h1 style="margin-bottom:2px;">Artivo</h1>
+        <p class="sub" style="margin-bottom:0;">アカウントを作成してください</p>
+      </div>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}
