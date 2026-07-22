@@ -194,7 +194,36 @@ def client_new():
             contract_date=_now,
             billing_date=_next_m,
         ))
+        db.session.flush()
+
+        # ── トライアル請求書を発行（¥0）────────────────────────────────────────
+        trial_inv = Invoice(
+            designer_id=assign_id,
+            year=_now.year,
+            month=_now.month,
+            total_amount=0,
+            status="issued",
+            is_trial=True,
+        )
+        db.session.add(trial_inv)
+        db.session.flush()
+        db.session.add(InvoiceItem(
+            invoice_id=trial_inv.id,
+            client_id=client.id,
+            client_name=client.name,
+            description=f"【お試し期間】{_plan_name}",
+            amount=0,
+        ))
         db.session.commit()
+
+        # PDF生成（失敗しても登録は継続）
+        try:
+            from billing import generate_invoice_pdf
+            _items = InvoiceItem.query.filter_by(invoice_id=trial_inv.id).all()
+            trial_inv.pdf_path = generate_invoice_pdf(trial_inv, _items)
+            db.session.commit()
+        except Exception:
+            pass
 
         # ── 記事ネタを契約数分即時生成 ────────────────────────────────────────
         _idea_count = client.monthly_post_count or 4

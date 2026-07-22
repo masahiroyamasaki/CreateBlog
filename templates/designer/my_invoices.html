@@ -31,9 +31,20 @@
       {% for inv in invoices %}
       <tr>
         <td style="font-family:monospace;font-size:12px;">{{ inv.invoice_number }}</td>
-        <td>{{ inv.year }}年{{ inv.month }}月分</td>
+        <td>
+          {{ inv.year }}年{{ inv.month }}月分
+          {% if inv.is_trial %}
+          <span class="badge badge-orange" style="font-size:10px;margin-left:6px;">お試し</span>
+          {% endif %}
+        </td>
         <td style="font-size:12px;">{{ inv.payment_deadline }}</td>
-        <td style="text-align:right;font-weight:700;">¥{{ "{:,}".format(inv.total_with_tax) }}</td>
+        <td style="text-align:right;font-weight:700;">
+          {% if inv.is_trial %}
+          <span style="color:var(--muted);">¥0（無料）</span>
+          {% else %}
+          ¥{{ "{:,}".format(inv.total_with_tax) }}
+          {% endif %}
+        </td>
         <td><span class="badge {{ inv.status_badge }}">{{ inv.status_label }}</span></td>
         <td style="font-size:12px;color:var(--muted);">{{ inv.created_at.strftime('%Y/%m/%d') if inv.created_at }}</td>
         <td>

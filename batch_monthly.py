@@ -61,26 +61,50 @@ def run_monthly_ideas_batch(app, db) -> dict:
 
 def run_monthly_billing_batch(app, db) -> dict:
     """毎月1日: ClientSubscription テーブルをもとに請求書を自動作成・送付する（先払い制）。
-    is_trial=False かつ billing_date が当月以前のもののみ対象。
+
+    トライアル自動解除:
+      - is_trial=True の企業でも、前月以前にトライアル請求書（Invoice.is_trial=True）が
+        存在する場合は自動的に is_trial=False に切り替えて当月から請求する。
     """
     result = {"invoices": 0, "errors": []}
 
     with app.app_context():
         from models import ClientSubscription, Client, Designer, Invoice, InvoiceItem
+        from sqlalchemy import or_, and_
         from billing import generate_invoice_pdf
         from mailer import send_invoice_email
 
         now = datetime.now(_JST)
         year, month = now.year, now.month
-        month_start = datetime(year, month, 1)
 
-        # 請求対象: 無料期間終了済み かつ 請求開始日が今月以前
-        subs = ClientSubscription.query.filter(
-            ClientSubscription.is_trial == False,  # noqa: E712
-            ClientSubscription.billing_date <= month_start,
-        ).all()
+        # ── トライアル自動解除 ─────────────────────────────────────────────────
+        # is_trial=True の subscription に前月以前のトライアル請求書があれば請求切替
+        trial_subs = ClientSubscription.query.filter_by(is_trial=True).all()
+        for sub in trial_subs:
+            has_prev_trial_invoice = (
+                db.session.query(InvoiceItem.id)
+                .join(Invoice, InvoiceItem.invoice_id == Invoice.id)
+                .filter(
+                    InvoiceItem.client_id == sub.client_id,
+                    Invoice.is_trial == True,  # noqa: E712
+                    or_(
+                        Invoice.year < year,
+                        and_(Invoice.year == year, Invoice.month < month),
+                    ),
+                )
+                .first()
+            ) is not None
 
-        # デザイナーごとに集計
+            if has_prev_trial_invoice:
+                sub.is_trial = False
+                logger.info(f"[billing] Client {sub.client_id}: トライアル終了 → 請求開始")
+
+        db.session.commit()
+
+        # ── 請求対象の確定: is_trial=False の全 subscription ─────────────────
+        subs = ClientSubscription.query.filter_by(is_trial=False).all()
+
+        # デザイナーごとに集計（稼働中 or テスト企業のみ）
         designer_subs: dict[int, list] = {}
         for sub in subs:
             client = Client.query.get(sub.client_id)
@@ -89,8 +113,10 @@ def run_monthly_billing_batch(app, db) -> dict:
 
         for designer_id, sub_list in designer_subs.items():
             try:
-                # 同月重複防止
-                if Invoice.query.filter_by(designer_id=designer_id, year=year, month=month).first():
+                # 同月の通常請求書（is_trial=False）が既にあればスキップ
+                if Invoice.query.filter_by(
+                    designer_id=designer_id, year=year, month=month, is_trial=False
+                ).first():
                     logger.info(f"[billing] Designer {designer_id}: {year}/{month} 請求書作成済み、スキップ")
                     continue
 
@@ -100,6 +126,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                     designer_id=designer_id,
                     year=year, month=month,
                     total_amount=total, status="issued",
+                    is_trial=False,
                 )
                 db.session.add(invoice)
                 db.session.flush()
