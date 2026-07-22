@@ -41,6 +41,23 @@ def publish_due_posts(app, db) -> int:
         for post in due_posts:
             client = post.client
             pt = client.platform_type or "wordpress"
+
+            # 停止中クライアントはスキップ（テスト企業・管理者担当は除外）
+            if client.client_status != "test":
+                from models import DesignerClient as _DC, Designer as _Designer
+                assignments = _DC.query.filter_by(client_id=client.id).all()
+                has_active = any(
+                    _Designer.query.get(a.designer_id).role == "admin" or
+                    _Designer.query.get(a.designer_id).subscription_status == "active"
+                    for a in assignments
+                )
+                if not has_active:
+                    logger.info(f"Skipping post {post.id}: client {client.id} has no active subscription")
+                    continue
+                if client.client_status != "active":
+                    logger.info(f"Skipping post {post.id}: client {client.id} status={client.client_status}")
+                    continue
+
             logger.info(f"Processing post {post.id} ({pt}) scheduled_at={post.scheduled_at}")
 
             try:

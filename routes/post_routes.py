@@ -212,8 +212,11 @@ def post_schedule(client_id: int, post_id: int):
     post = Post.query.get_or_404(post_id)
     if post.client_id != client_id:
         abort(403)
-
+    from stripe_utils import is_client_operational
     action = request.form.get("action", "set")  # set or cancel
+    if action != "cancel" and not is_client_operational(client, current_user):
+        flash("企業が停止中のため予約投稿を設定できません。プランをご確認ください。", "error")
+        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
     if action == "cancel":
         post.status = "draft"
         post.publish_mode = None
@@ -276,6 +279,11 @@ def post_publish(client_id: int, post_id: int):
     post = Post.query.get_or_404(post_id)
     if post.client_id != client_id:
         abort(403)
+
+    from stripe_utils import is_client_operational
+    if not is_client_operational(client, current_user):
+        flash("企業が停止中のため投稿できません。プランをご確認ください。", "error")
+        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
 
     from config import decrypt_field
     pt = client.platform_type or "wordpress"

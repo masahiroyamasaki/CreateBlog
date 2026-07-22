@@ -45,8 +45,14 @@ def topic_list(client_id: int):
         Post.status.in_(["creating", "draft", "approved", "scheduled"]),
         Post.created_at >= _month_start,
     ).count()
+    from stripe_utils import is_client_operational
     is_test_client = client.client_status == "test"
-    if is_test_client:
+    is_operational = is_client_operational(client, current_user)
+    if not is_operational:
+        monthly_limit = 0
+        can_generate = False
+        remaining_count = 0
+    elif is_test_client:
         monthly_limit = 0
         can_generate = True
         remaining_count = 9999
@@ -65,6 +71,7 @@ def topic_list(client_id: int):
         can_generate=can_generate,
         remaining_count=remaining_count,
         is_test_client=is_test_client,
+        is_operational=is_operational,
     )
 
 
@@ -171,6 +178,9 @@ def topic_generate(client_id: int, topic_id: int):
         abort(403)
     if topic.status != "pending":
         return jsonify({"success": False, "reason": "このネタはすでに生成済みか処理中です"})
+    from stripe_utils import is_client_operational
+    if not is_client_operational(client, current_user):
+        return jsonify({"success": False, "reason": "企業が停止中のため生成できません。プランをご確認ください。"})
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
     _now = _dt.now(_tz(_td(hours=9)))
     _month_start = _dt(_now.year, _now.month, 1)
@@ -501,6 +511,10 @@ def topic_bulk_generate(client_id: int):
     """未生成の記事ネタを一括で記事に生成する（月間契約数まで）"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
+
+    from stripe_utils import is_client_operational
+    if not is_client_operational(client, current_user):
+        return jsonify({"success": False, "reason": "企業が停止中のため生成できません。プランをご確認ください。"})
 
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
     _now = _dt.now(_tz(_td(hours=9)))

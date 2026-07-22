@@ -24,6 +24,12 @@
 {% endblock %}
 
 {% block content %}
+{% if not is_operational %}
+<div class="alert alert-error" style="display:flex;align-items:center;gap:10px;">
+  🚫 <span>このクライアントは現在<strong>停止中</strong>です。プランをご契約いただくと記事ネタ生成・AI記事生成・予約投稿が再開されます。
+  <a href="{{ url_for('designer.billing') }}" style="color:inherit;text-decoration:underline;margin-left:6px;">プランを確認する →</a></span>
+</div>
+{% endif %}
 {% if processing_count > 0 %}
 <div class="alert" style="background:#ede9fe;border-color:#a78bfa;color:#5b21b6;display:flex;align-items:center;gap:10px;">
   <span class="spinner"></span>
@@ -36,7 +42,9 @@
       <h2>未生成のネタ（{{ pending_count }} 件）</h2>
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
-        {% if is_test_client %}
+        {% if not is_operational %}
+        <span style="font-size:12px;color:var(--danger);">停止中 — 生成不可</span>
+        {% elif is_test_client %}
         <span style="font-size:12px;color:var(--success);">生成可能残数: 無制限（テスト）</span>
         {% elif not can_generate %}
         <span style="font-size:12px;color:var(--warning);">月間契約数（{{ monthly_limit }}件）に達しています</span>

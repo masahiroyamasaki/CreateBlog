@@ -41,14 +41,18 @@
           </td>
           <td style="padding:14px 16px;">
             {% set cs = c.client_status or 'active' %}
-            {% if cs == 'active' %}
+            {% if cs == 'test' %}
+            <span class="badge badge-blue">テスト</span>
+            {% elif current_user.role != 'admin' and current_user.subscription_status != 'active' %}
+            <span class="badge badge-red">停止中</span>
+            {% elif cs == 'active' %}
             <span class="badge badge-green">稼働中</span>
             {% elif cs == 'pending' %}
             <span class="badge badge-orange">保留中</span>
             {% elif cs == 'setting' %}
             <span class="badge badge-gray">設定中</span>
-            {% elif cs == 'test' %}
-            <span class="badge badge-blue">テスト</span>
+            {% else %}
+            <span class="badge badge-red">停止中</span>
             {% endif %}
           </td>
           <td style="padding:14px 16px;color:var(--muted);">

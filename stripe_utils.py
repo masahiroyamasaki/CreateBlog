@@ -22,6 +22,19 @@ def can_add_client(designer) -> bool:
     return designer.subscription_status == "active"
 
 
+def is_client_operational(client, designer) -> bool:
+    """クライアントの操作（生成・投稿）が許可されているか判定する。
+    管理者・テスト企業は常に許可。デザイナーは subscription_status == active かつ client_status == active の場合のみ許可。
+    """
+    if designer.role == "admin":
+        return True
+    if client.client_status == "test":
+        return True
+    if designer.subscription_status != "active":
+        return False
+    return client.client_status == "active"
+
+
 def create_checkout_session(designer, success_url: str, cancel_url: str) -> str | None:
     """Stripe Checkout セッションを作成し URL を返す。失敗時は None。"""
     stripe = get_stripe()
