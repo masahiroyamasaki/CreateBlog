@@ -1,7 +1,7 @@
 """db_migrate.py — 起動時にSQLAlchemyモデルとMySQLを自動同期する"""
 import logging
 from sqlalchemy import inspect, text
-from sqlalchemy.types import Enum as SAEnum
+from sqlalchemy.types import Enum as SAEnum, Text, LargeBinary
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,11 @@ def auto_migrate(app, db):
                     try:
                         col_type = col.type.compile(db.engine.dialect)
                         nullable = "" if col.nullable else " NOT NULL"
-                        # デフォルト値（callableは除外）
-                        if (
+                        # TEXT/BLOB 型は MySQL が DEFAULT '' を許容しないため DEFAULT NULL に固定
+                        is_text_type = isinstance(col.type, (Text, LargeBinary))
+                        if is_text_type:
+                            default = " DEFAULT NULL" if col.nullable else ""
+                        elif (
                             col.default is not None
                             and col.default.arg is not None
                             and not callable(col.default.arg)
