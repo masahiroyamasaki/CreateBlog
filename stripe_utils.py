@@ -19,8 +19,6 @@ def can_add_client(designer) -> bool:
     """デザイナーが企業を追加できるか判定する。"""
     if designer.role == "admin":
         return True
-    if not stripe_enabled():
-        return True  # Stripe 未設定 = 制限なし（開発・移行期間）
     return designer.subscription_status == "active"
 
 
