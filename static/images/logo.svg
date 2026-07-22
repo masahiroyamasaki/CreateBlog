@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Artivo AI ロゴ 案2</title>
+  <desc>角丸スクエアのグラデーション背景にペン先と投稿矢印を組み合わせたアイコンロゴ</desc>
+  <defs>
+    <linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5B51D8"/>
+      <stop offset="30%" stop-color="#C23F8C"/>
+      <stop offset="60%" stop-color="#F0632E"/>
+      <stop offset="100%" stop-color="#FCC24C"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#g2)"/>
+  <g transform="translate(256,256)">
+    <path d="M -90 90 L -60 20 L 60 -100 L 100 -60 L -20 60 Z" fill="#FFFFFF"/>
+    <rect x="-96" y="82" width="40" height="16" rx="8" fill="#FFFFFF"/>
+    <path d="M40 -100 L 90 -50" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(340,140)">
+    <path d="M0 -18 L5 -5 L18 0 L5 5 L0 18 L-5 5 L-18 0 L-5 -5 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

@@ -97,8 +97,14 @@
   <!-- サイドバー -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <h2>Designer Hub</h2>
-      <p>コンテンツ管理システム</p>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}"
+             alt="Artivo" style="width:36px;height:36px;flex-shrink:0;">
+        <div>
+          <h2 style="font-size:15px;font-weight:700;color:var(--text);">Artivo</h2>
+          <p style="font-size:11px;color:var(--muted);margin-top:1px;">コンテンツ管理システム</p>
+        </div>
+      </div>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section">メニュー</div>
