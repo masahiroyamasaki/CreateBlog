@@ -45,9 +45,15 @@ def topic_list(client_id: int):
         Post.status.in_(["creating", "draft", "approved", "scheduled"]),
         Post.created_at >= _month_start,
     ).count()
-    monthly_limit = client.monthly_post_count or 4
-    can_generate = draft_count < monthly_limit
-    remaining_count = max(0, monthly_limit - draft_count)
+    is_test_client = client.client_status == "test"
+    if is_test_client:
+        monthly_limit = 0
+        can_generate = True
+        remaining_count = 9999
+    else:
+        monthly_limit = client.monthly_post_count or 4
+        can_generate = draft_count < monthly_limit
+        remaining_count = max(0, monthly_limit - draft_count)
     return render_template(
         "designer/topics/list.html",
         client=client,
@@ -58,6 +64,7 @@ def topic_list(client_id: int):
         monthly_limit=monthly_limit,
         can_generate=can_generate,
         remaining_count=remaining_count,
+        is_test_client=is_test_client,
     )
 
 
@@ -172,9 +179,10 @@ def topic_generate(client_id: int, topic_id: int):
         Post.status.in_(["creating", "draft", "approved", "scheduled"]),
         Post.created_at >= _month_start,
     ).count()
-    monthly_limit = client.monthly_post_count or 4
-    if draft_count >= monthly_limit:
-        return jsonify({"success": False, "reason": f"今月の生成数が月間契約数({monthly_limit}件)に達しています"})
+    if client.client_status != "test":
+        monthly_limit = client.monthly_post_count or 4
+        if draft_count >= monthly_limit:
+            return jsonify({"success": False, "reason": f"今月の生成数が月間契約数({monthly_limit}件)に達しています"})
 
     # 即座にDBへ処理中マーク＋プレースホルダー投稿を作成（ページ離脱後も状態が見える）
     topic.status = "processing"
@@ -502,10 +510,14 @@ def topic_bulk_generate(client_id: int):
         Post.status.in_(["creating", "draft", "approved", "scheduled"]),
         Post.created_at >= _month_start,
     ).count()
-    monthly_limit = client.monthly_post_count or 4
-    remaining = monthly_limit - draft_count
-    if remaining <= 0:
-        return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
+    is_test = client.client_status == "test"
+    if is_test:
+        remaining = 9999
+    else:
+        monthly_limit = client.monthly_post_count or 4
+        remaining = monthly_limit - draft_count
+        if remaining <= 0:
+            return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
 
     pending_topics = (
         TopicQueue.query.filter_by(client_id=client_id, status="pending")

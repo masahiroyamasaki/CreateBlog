@@ -122,6 +122,10 @@ def client_new():
     designers = Designer.query.order_by(Designer.name).all() if current_user.role == "admin" else None
     if request.method == "POST":
         stype = request.form.get("schedule_type", "weekly")
+        _client_status = request.form.get("client_status", "setting")
+        if _client_status == "test" and current_user.role != "admin":
+            _client_status = "setting"
+        _monthly_fee = 0 if _client_status == "test" else int(request.form.get("monthly_fee", 0) or 0)
         client = Client(
             name=request.form["name"],
             platform_type=request.form.get("platform_type", "wordpress"),
@@ -132,9 +136,9 @@ def client_new():
             target_audience=request.form.get("target_audience", ""),
             character_prompt=request.form.get("character_prompt", ""),
             email_format=request.form.get("email_format", "html"),
-            client_status=request.form.get("client_status", "setting"),
+            client_status=_client_status,
             monthly_post_count=int(request.form.get("monthly_post_count", 4) or 4),
-            monthly_fee=int(request.form.get("monthly_fee", 0) or 0),
+            monthly_fee=_monthly_fee,
             wp_endpoint=request.form.get("wp_endpoint", ""),
             wp_username=request.form.get("wp_username", ""),
             wp_app_password=encrypt_field(request.form.get("wp_app_password", "")),
@@ -182,9 +186,12 @@ def client_edit(client_id: int):
         client.target_audience    = request.form.get("target_audience", "")
         client.character_prompt   = request.form.get("character_prompt", "")
         client.email_format       = request.form.get("email_format", "html")
-        client.client_status = request.form.get("client_status", "active")
+        _new_status = request.form.get("client_status", "active")
+        if _new_status == "test" and current_user.role != "admin":
+            _new_status = "active"
+        client.client_status = _new_status
         client.monthly_post_count = int(request.form.get("monthly_post_count", 4) or 4)
-        client.monthly_fee = int(request.form.get("monthly_fee", 0) or 0)
+        client.monthly_fee = 0 if client.client_status == "test" else int(request.form.get("monthly_fee", 0) or 0)
         client.schedule_type = request.form.get("schedule_type", "weekly")
         client.schedule_days_of_week = ",".join(request.form.getlist("schedule_days_of_week")) or "0"
         client.schedule_days_of_month = ",".join(request.form.getlist("schedule_days_of_month")) or "1"

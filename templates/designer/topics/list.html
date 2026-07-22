@@ -36,7 +36,9 @@
       <h2>未生成のネタ（{{ pending_count }} 件）</h2>
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
-        {% if not can_generate %}
+        {% if is_test_client %}
+        <span style="font-size:12px;color:var(--success);">生成可能残数: 無制限（テスト）</span>
+        {% elif not can_generate %}
         <span style="font-size:12px;color:var(--warning);">月間契約数（{{ monthly_limit }}件）に達しています</span>
         {% else %}
         <span style="font-size:12px;color:var(--muted);">生成可能残数: {{ remaining_count }}件</span>
@@ -50,7 +52,7 @@
         <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()"
           {% if pending_count == 0 or not can_generate %}disabled{% endif %}>
           <span id="bulk-gen-spinner" class="spinner-sm" style="display:none;"></span>
-          未生成ネタを一括生成（{{ [pending_count, remaining_count]|min }}件）
+          未生成ネタを一括生成（{{ pending_count if is_test_client else [pending_count, remaining_count]|min }}件）
         </button>
       </div>
     </div>

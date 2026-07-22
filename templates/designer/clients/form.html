@@ -39,10 +39,13 @@
       <!-- ステータス -->
       <div class="form-group">
         <label>ステータス</label>
-        <select class="form-control" name="client_status">
+        <select class="form-control" name="client_status" id="client_status" onchange="autoCalcFee()">
           <option value="active"  {% if client and client.client_status == 'active'  %}selected{% endif %}>稼働中</option>
           <option value="pending" {% if client and client.client_status == 'pending' %}selected{% endif %}>保留中</option>
           <option value="setting" {% if not client or client.client_status == 'setting' %}selected{% endif %}>設定中</option>
+          {% if current_user.role == 'admin' %}
+          <option value="test" {% if client and client.client_status == 'test' %}selected{% endif %}>テスト（無制限・0円）</option>
+          {% endif %}
         </select>
       </div>
 
@@ -444,6 +447,11 @@ function highlightDate(checkbox) {
 }
 
 function autoCalcFee() {
+  const status = document.getElementById('client_status')?.value;
+  if (status === 'test') {
+    document.getElementById('monthly_fee').value = 0;
+    return;
+  }
   const pt = document.getElementById('platform_type').value;
   const posts = parseInt(document.getElementById('monthly_post_count').value) || 0;
   const plans = PRICING_PLANS[pt] || [];
