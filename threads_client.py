@@ -5,15 +5,20 @@ _BASE = "https://graph.threads.net/v1.0"
 _TEXT_LIMIT = 500
 
 
-def post_text(user_id: str, access_token: str, text: str) -> dict:
-    """Threads にテキスト投稿する。500文字を超える場合は切り詰める。"""
-    if len(text) > _TEXT_LIMIT:
-        text = text[: _TEXT_LIMIT - 1] + "…"
+def post_text(user_id: str, access_token: str, text: str, url: str = "") -> dict:
+    """Threads にテキスト投稿する。
+    url が指定された場合はキャプション末尾に付与し、500文字に収まるよう本文を切り詰める。
+    """
+    suffix = f"\n\n{url}" if url else ""
+    max_body = _TEXT_LIMIT - len(suffix)
+    if len(text) > max_body:
+        text = text[:max_body - 1] + "…"
+    full_text = text + suffix
 
     # Step 1: コンテナ作成
     r = requests.post(
         f"{_BASE}/{user_id}/threads",
-        params={"media_type": "TEXT", "text": text, "access_token": access_token},
+        params={"media_type": "TEXT", "text": full_text, "access_token": access_token},
         timeout=30,
     )
     data = r.json()

@@ -138,6 +138,7 @@ def client_new():
             ig_hashtags=request.form.get("ig_hashtags", ""),
             threads_user_id=request.form.get("threads_user_id", ""),
             threads_access_token=encrypt_field(request.form.get("threads_access_token", "")),
+            threads_fixed_url=request.form.get("threads_fixed_url", ""),
             themes=request.form.get("themes", ""),
             custom_url=request.form.get("custom_url", ""),
             schedule_type=stype,
@@ -196,6 +197,7 @@ def client_edit(client_id: int):
         new_threads_token = request.form.get("threads_access_token", "")
         if new_threads_token:
             client.threads_access_token = encrypt_field(new_threads_token)
+        client.threads_fixed_url = request.form.get("threads_fixed_url", "")
         client.themes = request.form.get("themes", "")
         client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None

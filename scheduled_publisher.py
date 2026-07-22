@@ -103,18 +103,19 @@ def publish_due_posts(app, db) -> int:
 
 
 def _do_threads(client, post, decrypt_field) -> dict:
-    """Threads アクセストークンが設定されている場合のみテキスト投稿する。"""
+    """Threads アクセストークンが設定されている場合のみテキスト投稿する。
+    キャプションはハッシュタグなし・固定 URL 付き。
+    """
     token = decrypt_field(client.threads_access_token or "")
     user_id = (client.threads_user_id or "").strip()
     if not token or not user_id:
         return {"success": False, "reason": ""}  # 未設定はスキップ
     from caption_utils import strip_account_prefix
     import threads_client as th
-    caption = strip_account_prefix(post.ig_caption or "", client.name or "")
-    hashtags = (post.ig_hashtags_post or "").strip()
-    if hashtags:
-        caption = caption.rstrip() + "\n\n" + hashtags
-    return th.post_text(user_id=user_id, access_token=token, text=caption)
+    # Threads はハッシュタグなし・固定 URL を末尾に付与
+    text = strip_account_prefix(post.ig_caption or "", client.name or "")
+    url = (client.threads_fixed_url or "").strip()
+    return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
 def _do_instagram(client, post, ig_client, decrypt_field) -> dict:

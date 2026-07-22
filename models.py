@@ -61,6 +61,7 @@ class Client(db.Model):
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
     threads_user_id = db.Column(db.String(255), default="")   # Threads ユーザー ID
     threads_access_token = db.Column(db.Text)                 # 暗号化保存（DEFAULT NULL で TEXT 制約を回避）
+    threads_fixed_url = db.Column(db.String(500), default="") # Threads 投稿末尾に付ける固定 URL
     business_description = db.Column(db.Text)                  # 事業内容・サービス概要
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL

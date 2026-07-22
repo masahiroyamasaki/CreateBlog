@@ -424,15 +424,19 @@ def _build_caption(post: Post, client: Client) -> str:
 
 
 def _publish_to_threads(client: Client, post: Post) -> dict:
-    """Threads アクセストークンが設定されている場合のみテキスト投稿する。"""
+    """Threads アクセストークンが設定されている場合のみテキスト投稿する。
+    キャプションはハッシュタグなし・固定 URL 付き。
+    """
     from config import decrypt_field
     token = decrypt_field(client.threads_access_token or "")
     user_id = (client.threads_user_id or "").strip()
     if not token or not user_id:
         return {"success": False, "reason": ""}  # 未設定はスキップ（エラーではない）
     import threads_client as th
-    text = _build_caption(post, client)
-    return th.post_text(user_id=user_id, access_token=token, text=text)
+    # Threads はハッシュタグなし・本文のみ
+    text = _strip_account_prefix(post.ig_caption or "", client.name)
+    url = (client.threads_fixed_url or "").strip()
+    return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
 def _publish_to_instagram(client: Client, post: Post) -> dict:

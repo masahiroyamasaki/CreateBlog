@@ -189,6 +189,13 @@
             </div>
             {% endif %}
           </div>
+          <div class="form-group">
+            <label>Threads 固定 URL（投稿末尾に自動追加）</label>
+            <input class="form-control" type="url" name="threads_fixed_url"
+                   value="{{ client.threads_fixed_url if client and client.threads_fixed_url else '' }}"
+                   placeholder="https://example.com">
+            <p class="hint">設定すると Threads 投稿の末尾に URL が追加されます。Instagram 投稿には影響しません。</p>
+          </div>
         </div>
       </div>
 
