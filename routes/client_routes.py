@@ -114,6 +114,11 @@ def client_detail(client_id: int):
 @designer_bp.route("/clients/new", methods=["GET", "POST"])
 @login_required
 def client_new():
+    from stripe_utils import can_add_client
+    if not can_add_client(current_user):
+        flash("企業を追加するにはプランへの登録が必要です。", "error")
+        return redirect(url_for("designer.billing"))
+
     designers = Designer.query.order_by(Designer.name).all() if current_user.role == "admin" else None
     if request.method == "POST":
         stype = request.form.get("schedule_type", "weekly")

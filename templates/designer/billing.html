@@ -1,0 +1,142 @@
+{% extends "designer/base.html" %}
+{% block title %}プラン・お支払い{% endblock %}
+{% block page_title %}プラン・お支払い{% endblock %}
+
+{% block head %}
+<style>
+.billing-wrap { max-width: 600px; }
+
+.status-card {
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.status-card.active   { background: color-mix(in srgb,var(--success) 8%,transparent); border: 1px solid color-mix(in srgb,var(--success) 35%,transparent); }
+.status-card.free     { background: var(--bg2); border: 1px solid var(--border); }
+.status-card.past_due { background: color-mix(in srgb,var(--warning) 8%,transparent); border: 1px solid color-mix(in srgb,var(--warning) 35%,transparent); }
+.status-card.cancelled{ background: color-mix(in srgb,var(--danger) 8%,transparent); border: 1px solid color-mix(in srgb,var(--danger) 35%,transparent); }
+
+.status-icon { font-size: 32px; flex-shrink: 0; margin-top: 2px; }
+.status-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.status-desc  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+.plan-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+.plan-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+.feature-list { list-style: none; padding: 0; margin: 0 0 20px; }
+.feature-list li { font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.feature-list li:last-child { border-bottom: none; }
+.feature-list li::before { content: "✓"; color: var(--success); font-weight: 700; flex-shrink: 0; }
+
+.coming-soon {
+  background: var(--bg3);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="billing-wrap">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ 'success' if cat == 'success' else 'error' if cat == 'error' else 'warning' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- 現在のステータス -->
+  {% set status = current_user.subscription_status or 'free' %}
+
+  {% if status == 'active' %}
+  <div class="status-card active">
+    <div class="status-icon">✅</div>
+    <div>
+      <div class="status-title" style="color:var(--success);">契約中</div>
+      <div class="status-desc">プランが有効です。企業の追加・管理がご利用いただけます。</div>
+    </div>
+  </div>
+
+  {% elif status == 'past_due' %}
+  <div class="status-card past_due">
+    <div class="status-icon">⚠️</div>
+    <div>
+      <div class="status-title" style="color:var(--warning);">支払い遅延</div>
+      <div class="status-desc">お支払いに問題が発生しています。登録済みのカード情報をご確認ください。</div>
+    </div>
+  </div>
+
+  {% elif status == 'cancelled' %}
+  <div class="status-card cancelled">
+    <div class="status-icon">❌</div>
+    <div>
+      <div class="status-title" style="color:var(--danger);">解約済み</div>
+      <div class="status-desc">プランが解約されています。再度ご利用になる場合は下記から登録してください。</div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="status-card free">
+    <div class="status-icon">🔒</div>
+    <div>
+      <div class="status-title">未契約</div>
+      <div class="status-desc">プランに登録すると企業の追加・管理ができるようになります。</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- プラン内容 -->
+  <div class="plan-box">
+    <h3>Artivo スタンダードプラン</h3>
+    <ul class="feature-list">
+      <li>担当企業のブログ・SNS 記事を一元管理</li>
+      <li>AI による記事ネタ自動生成</li>
+      <li>4エージェント AI 記事生成パイプライン</li>
+      <li>WordPress / Instagram / Threads 自動投稿</li>
+      <li>月次バッチによるネタ自動補充</li>
+      <li>請求書の自動作成・PDF 出力</li>
+    </ul>
+
+    {% if stripe_enabled %}
+      {% if status == 'active' %}
+      <!-- キャンセルボタン -->
+      <form method="POST" action="{{ url_for('designer.billing_cancel') }}"
+            onsubmit="return confirm('本当にサブスクリプションをキャンセルしますか？\n次回更新日以降は企業の追加ができなくなります。')">
+        <button type="submit" class="btn btn-danger btn-sm">サブスクリプションを解約</button>
+      </form>
+      {% else %}
+      <!-- Checkout へ -->
+      <form method="POST" action="{{ url_for('designer.billing_checkout') }}">
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;">
+          プランに登録する（Stripe 決済）
+        </button>
+      </form>
+      {% endif %}
+    {% else %}
+    <div class="coming-soon">
+      🔧 決済機能の準備中です。準備が整い次第ご案内いたします。
+    </div>
+    {% endif %}
+  </div>
+
+  {% if status == 'active' and current_user.stripe_subscription_id %}
+  <p style="font-size:11px;color:var(--muted);text-align:center;">
+    サブスクリプション ID: {{ current_user.stripe_subscription_id }}
+  </p>
+  {% endif %}
+
+</div>
+{% endblock %}

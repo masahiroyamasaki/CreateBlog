@@ -23,6 +23,9 @@ class Designer(UserMixin, db.Model):
     bank_account = db.Column(db.String(255), default="")   # 振込口座
     region = db.Column(db.String(100), default="")         # 活動地域
     job_type = db.Column(db.String(100), default="")       # 職種
+    stripe_customer_id = db.Column(db.String(255), default="")      # Stripe 顧客 ID
+    stripe_subscription_id = db.Column(db.String(255), default="")  # Stripe サブスクリプション ID
+    subscription_status = db.Column(db.String(20), default="free")  # free / active / past_due / cancelled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime)
 
