@@ -59,6 +59,8 @@ class Client(db.Model):
     ig_access_token = db.Column(db.Text, default="")          # 暗号化保存
     ig_token_expires_at = db.Column(db.DateTime)
     ig_hashtags = db.Column(db.Text)                           # 固定ハッシュタグ（改行区切り）
+    threads_user_id = db.Column(db.String(255), default="")   # Threads ユーザー ID
+    threads_access_token = db.Column(db.Text, default="")     # 暗号化保存
     business_description = db.Column(db.Text)                  # 事業内容・サービス概要
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL

@@ -56,6 +56,9 @@ def publish_due_posts(app, db) -> int:
                         post.posted_at     = now
                         post.error_message = ""
                         published += 1
+                        th_result = _do_threads(client, post, decrypt_field)
+                        if not th_result.get("success") and th_result.get("reason"):
+                            post.error_message = f"Threads: {th_result['reason']}"
                     else:
                         post.status        = "failed"
                         post.error_message = result.get("reason", "Instagram 投稿失敗")
@@ -97,6 +100,21 @@ def publish_due_posts(app, db) -> int:
                     db.session.rollback()
 
         return published
+
+
+def _do_threads(client, post, decrypt_field) -> dict:
+    """Threads アクセストークンが設定されている場合のみテキスト投稿する。"""
+    token = decrypt_field(client.threads_access_token or "")
+    user_id = (client.threads_user_id or "").strip()
+    if not token or not user_id:
+        return {"success": False, "reason": ""}  # 未設定はスキップ
+    from caption_utils import strip_account_prefix
+    import threads_client as th
+    caption = strip_account_prefix(post.ig_caption or "", client.name or "")
+    hashtags = (post.ig_hashtags_post or "").strip()
+    if hashtags:
+        caption = caption.rstrip() + "\n\n" + hashtags
+    return th.post_text(user_id=user_id, access_token=token, text=caption)
 
 
 def _do_instagram(client, post, ig_client, decrypt_field) -> dict:

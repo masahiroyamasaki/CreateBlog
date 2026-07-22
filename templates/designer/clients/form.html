@@ -166,6 +166,30 @@
           <textarea class="form-control" name="ig_hashtags" rows="4" placeholder="#サンプル&#10;#ハッシュタグ&#10;#一行に一つ入力" style="font-size:14px;">{{ client.ig_hashtags if client else '' }}</textarea>
           <p class="hint">1行に1つ入力。すべての投稿のキャプション末尾に自動で追加されます。</p>
         </div>
+
+        <!-- Threads 連携 -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Threads 連携（オプション）</p>
+          <p class="hint" style="margin-bottom:12px;">アクセストークンを設定すると、Instagram 投稿と同時に Threads にもテキスト投稿されます（最大500文字）。</p>
+          <div class="form-group">
+            <label>Threads ユーザー ID</label>
+            <input class="form-control" type="text" name="threads_user_id"
+                   value="{{ client.threads_user_id if client and client.threads_user_id else '' }}"
+                   placeholder="例: 1234567890">
+            <p class="hint">Meta Developer の Threads ユーザー ID（数字）</p>
+          </div>
+          <div class="form-group">
+            <label>Threads アクセストークン</label>
+            <input class="form-control" type="password" name="threads_access_token"
+                   placeholder="{% if client and form_data is defined and form_data.threads_access_token %}変更する場合のみ入力{% else %}THxxxxxx...{% endif %}"
+                   autocomplete="new-password">
+            {% if client and form_data is defined and form_data.threads_access_token %}
+            <div class="hint" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--success);">✓ 設定済み</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
       </div>
 
       <!-- 記事テーマ（共通） -->

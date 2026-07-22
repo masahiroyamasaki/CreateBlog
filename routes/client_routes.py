@@ -136,6 +136,8 @@ def client_new():
             ig_business_account_id=request.form.get("ig_business_account_id", ""),
             ig_access_token=encrypt_field(request.form.get("ig_access_token", "")),
             ig_hashtags=request.form.get("ig_hashtags", ""),
+            threads_user_id=request.form.get("threads_user_id", ""),
+            threads_access_token=encrypt_field(request.form.get("threads_access_token", "")),
             themes=request.form.get("themes", ""),
             custom_url=request.form.get("custom_url", ""),
             schedule_type=stype,
@@ -190,6 +192,10 @@ def client_edit(client_id: int):
         if new_ig_token:
             client.ig_access_token = encrypt_field(new_ig_token)
         client.ig_hashtags = request.form.get("ig_hashtags", "")
+        client.threads_user_id = request.form.get("threads_user_id", "")
+        new_threads_token = request.form.get("threads_access_token", "")
+        if new_threads_token:
+            client.threads_access_token = encrypt_field(new_threads_token)
         client.themes = request.form.get("themes", "")
         client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None
@@ -200,6 +206,7 @@ def client_edit(client_id: int):
     form_data = {
         "wp_app_password": decrypt_field(client.wp_app_password),
         "ig_access_token": decrypt_field(client.ig_access_token),
+        "threads_access_token": decrypt_field(client.threads_access_token or ""),
     }
     return render_template("designer/clients/form.html", client=client, form_data=form_data)
 

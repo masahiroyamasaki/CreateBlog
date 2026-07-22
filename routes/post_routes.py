@@ -313,7 +313,11 @@ def post_publish(client_id: int, post_id: int):
             post.posted_at     = _now_jst()
             post.error_message = ""
             db.session.commit()
-            return jsonify({"success": True})
+            th_result = _publish_to_threads(client, post)
+            if not th_result.get("success") and th_result.get("reason"):
+                post.error_message = f"Threads: {th_result['reason']}"
+                db.session.commit()
+            return jsonify({"success": True, "threads": th_result})
         else:
             post.status = "failed"
             post.error_message = result.get("reason", "Instagram 投稿失敗")
@@ -417,6 +421,18 @@ def _build_caption(post: Post, client: Client) -> str:
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
     return caption
+
+
+def _publish_to_threads(client: Client, post: Post) -> dict:
+    """Threads アクセストークンが設定されている場合のみテキスト投稿する。"""
+    from config import decrypt_field
+    token = decrypt_field(client.threads_access_token or "")
+    user_id = (client.threads_user_id or "").strip()
+    if not token or not user_id:
+        return {"success": False, "reason": ""}  # 未設定はスキップ（エラーではない）
+    import threads_client as th
+    text = _build_caption(post, client)
+    return th.post_text(user_id=user_id, access_token=token, text=text)
 
 
 def _publish_to_instagram(client: Client, post: Post) -> dict:
