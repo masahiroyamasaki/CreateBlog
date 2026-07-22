@@ -44,12 +44,8 @@
         <span style="font-size:12px;color:var(--muted);">ドラッグで順序変更</span>
         {% if not is_operational %}
         <span style="font-size:12px;color:var(--danger);">停止中 — 生成不可</span>
-        {% elif is_test_client %}
-        <span style="font-size:12px;color:var(--success);">生成可能残数: 無制限（テスト）</span>
-        {% elif not can_generate %}
-        <span style="font-size:12px;color:var(--warning);">月間契約数（{{ monthly_limit }}件）に達しています</span>
         {% else %}
-        <span style="font-size:12px;color:var(--muted);">生成可能残数: {{ remaining_count }}件</span>
+        <span style="font-size:12px;color:var(--muted);">記事生成: 制限なし</span>
         {% endif %}
         {% if current_user.role == 'admin' %}
         <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
@@ -60,7 +56,7 @@
         <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()"
           {% if pending_count == 0 or not can_generate %}disabled{% endif %}>
           <span id="bulk-gen-spinner" class="spinner-sm" style="display:none;"></span>
-          未生成ネタを一括生成（{{ pending_count if is_test_client else [pending_count, remaining_count]|min }}件）
+          未生成ネタを一括生成（{{ pending_count }}件）
         </button>
       </div>
     </div>
@@ -290,7 +286,7 @@ async function bulkGenerate() {
   if (localStorage.getItem(BULK_KEY)) {
     showToast('一括生成はすでに実行済みです', 'error'); return;
   }
-  const count = Math.min({{ pending_count }}, {{ remaining_count }});
+  const count = {{ pending_count }};
   if (!confirm(`このボタンは1回のみしか押下できません。未生成ネタ${count}件を一括で記事に生成しますか?`)) return;
   localStorage.setItem(BULK_KEY, '1');
   const btn = document.getElementById('bulk-gen-btn');

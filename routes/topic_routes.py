@@ -37,40 +37,17 @@ def topic_list(client_id: int):
     )
     pending_count = sum(1 for t in topics if t.status == "pending")
     processing_count = sum(1 for t in topics if t.status == "processing")
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
-    _now = _dt.now(_tz(_td(hours=9)))
-    _month_start = _dt(_now.year, _now.month, 1)
-    draft_count = Post.query.filter(
-        Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
-        Post.created_at >= _month_start,
-    ).count()
     from stripe_utils import is_client_operational
-    is_test_client = client.client_status == "test"
     is_operational = is_client_operational(client, current_user)
-    if not is_operational:
-        monthly_limit = 0
-        can_generate = False
-        remaining_count = 0
-    elif is_test_client:
-        monthly_limit = 0
-        can_generate = True
-        remaining_count = 9999
-    else:
-        monthly_limit = client.monthly_post_count or 4
-        can_generate = draft_count < monthly_limit
-        remaining_count = max(0, monthly_limit - draft_count)
+    # 記事生成・投稿数は無制限。ネタがある分だけ生成できる。
+    can_generate = is_operational
     return render_template(
         "designer/topics/list.html",
         client=client,
         topics=topics,
         pending_count=pending_count,
         processing_count=processing_count,
-        draft_count=draft_count,
-        monthly_limit=monthly_limit,
         can_generate=can_generate,
-        remaining_count=remaining_count,
-        is_test_client=is_test_client,
         is_operational=is_operational,
     )
 
@@ -181,18 +158,6 @@ def topic_generate(client_id: int, topic_id: int):
     from stripe_utils import is_client_operational
     if not is_client_operational(client, current_user):
         return jsonify({"success": False, "reason": "企業が停止中のため生成できません。プランをご確認ください。"})
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
-    _now = _dt.now(_tz(_td(hours=9)))
-    _month_start = _dt(_now.year, _now.month, 1)
-    draft_count = Post.query.filter(
-        Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
-        Post.created_at >= _month_start,
-    ).count()
-    if client.client_status != "test":
-        monthly_limit = client.monthly_post_count or 4
-        if draft_count >= monthly_limit:
-            return jsonify({"success": False, "reason": f"今月の生成数が月間契約数({monthly_limit}件)に達しています"})
 
     # 即座にDBへ処理中マーク＋プレースホルダー投稿を作成（ページ離脱後も状態が見える）
     topic.status = "processing"
@@ -516,27 +481,10 @@ def topic_bulk_generate(client_id: int):
     if not is_client_operational(client, current_user):
         return jsonify({"success": False, "reason": "企業が停止中のため生成できません。プランをご確認ください。"})
 
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
-    _now = _dt.now(_tz(_td(hours=9)))
-    _month_start = _dt(_now.year, _now.month, 1)
-    draft_count = Post.query.filter(
-        Post.client_id == client_id,
-        Post.status.in_(["creating", "draft", "approved", "scheduled"]),
-        Post.created_at >= _month_start,
-    ).count()
-    is_test = client.client_status == "test"
-    if is_test:
-        remaining = 9999
-    else:
-        monthly_limit = client.monthly_post_count or 4
-        remaining = monthly_limit - draft_count
-        if remaining <= 0:
-            return jsonify({"success": False, "reason": f"下書き記事数が月間契約数({monthly_limit}件)に達しています"})
-
+    # 記事生成数は無制限 — pending のネタを全件対象にする
     pending_topics = (
         TopicQueue.query.filter_by(client_id=client_id, status="pending")
         .order_by(TopicQueue.sort_order)
-        .limit(remaining)
         .all()
     )
     if not pending_topics:
