@@ -250,7 +250,7 @@ class Invoice(db.Model):
     )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime)
-    is_trial = db.Column(db.Boolean, default=False)  # True = お試し期間の¥0請求書
+    is_trial = db.Column(db.Boolean, nullable=True)  # True = お試し期間の¥0請求書、NULL/False = 通常請求
     # 割引
     discount_type   = db.Column(db.String(20), default="")       # "amount" | "percent" | ""
     discount_value  = db.Column(db.Float, default=0.0)           # 割引額 or 割引率(%)
