@@ -193,18 +193,6 @@
             {% endif %}
           </div>
 
-          {% if client and (client.threads_user_id or (form_data is defined and form_data.threads_access_token)) %}
-          <div style="margin-top:4px;padding:10px 14px;background:color-mix(in srgb,var(--error) 5%,transparent);border:1px solid color-mix(in srgb,var(--error) 25%,transparent);border-radius:8px;">
-            <div style="font-size:12px;color:var(--error);font-weight:700;margin-bottom:6px;">トークンが期限切れの場合はリセットしてください</div>
-            <form method="POST" action="{{ url_for('designer.client_reset_threads', client_id=client.id) }}" style="display:inline;">
-              <button type="submit" class="btn btn-sm"
-                      style="background:transparent;color:var(--error);border:1px solid var(--error);font-size:12px;"
-                      onclick="return confirm('Threads のユーザーIDとアクセストークンを削除します。よろしいですか？')">
-                Threads 認証情報をリセット
-              </button>
-            </form>
-          </div>
-          {% endif %}
           <div class="form-group">
             <label>Threads 固定 URL（投稿末尾に自動追加）</label>
             <input class="form-control" type="url" name="threads_fixed_url"
@@ -212,6 +200,19 @@
                    placeholder="https://example.com">
             <p class="hint">設定すると Threads 投稿の末尾に URL が追加されます。Instagram 投稿には影響しません。</p>
           </div>
+
+          {% if client and (client.threads_user_id or (form_data is defined and form_data.threads_access_token)) %}
+          <div style="margin-top:4px;padding:12px 16px;background:color-mix(in srgb,var(--error) 5%,transparent);border:1px solid color-mix(in srgb,var(--error) 25%,transparent);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:12px;color:var(--error);font-weight:700;">トークンが期限切れの場合はリセットしてください</div>
+            <form method="POST" action="{{ url_for('designer.client_reset_threads', client_id=client.id) }}" style="display:inline;">
+              <button type="submit"
+                      style="padding:8px 18px;background:var(--error);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;"
+                      onclick="return confirm('Threads のユーザーIDとアクセストークンを削除します。よろしいですか？')">
+                Threads 認証情報をリセット
+              </button>
+            </form>
+          </div>
+          {% endif %}
         </div>
       </div>
 
