@@ -1,5 +1,5 @@
 """routes/client_routes.py — 契約企業の管理"""
-from flask import render_template, request, redirect, url_for, flash, abort, send_file
+from flask import render_template, request, redirect, url_for, flash, abort, send_file, jsonify
 from flask_login import login_required, current_user
 from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem, ClientSubscription
 from config import encrypt_field, decrypt_field
@@ -399,6 +399,8 @@ def client_reset_threads(client_id: int):
     client.threads_user_id = ""
     client.threads_access_token = ""
     db.session.commit()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"success": True})
     flash("Threads の認証情報をリセットしました", "success")
     return redirect(url_for("designer.client_edit", client_id=client_id))
 

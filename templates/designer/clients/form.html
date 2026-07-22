@@ -177,6 +177,7 @@
           <div class="form-group">
             <label>Threads ユーザー ID</label>
             <input class="form-control" type="text" name="threads_user_id"
+                   id="threads-user-id-input"
                    value="{{ client.threads_user_id if client and client.threads_user_id else '' }}"
                    placeholder="例: 1234567890">
             <p class="hint">Meta Developer の Threads ユーザー ID（数字）</p>
@@ -184,10 +185,11 @@
           <div class="form-group">
             <label>Threads アクセストークン</label>
             <input class="form-control" type="password" name="threads_access_token"
+                   id="threads-token-input"
                    placeholder="{% if client and form_data is defined and form_data.threads_access_token %}変更する場合のみ入力{% else %}THxxxxxx...{% endif %}"
                    autocomplete="new-password">
             {% if client and form_data is defined and form_data.threads_access_token %}
-            <div class="hint" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+            <div id="threads-token-set-ok" class="hint" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
               <span style="color:var(--success);">✓ 設定済み</span>
             </div>
             {% endif %}
@@ -202,15 +204,13 @@
           </div>
 
           {% if client and (client.threads_user_id or (form_data is defined and form_data.threads_access_token)) %}
-          <div style="margin-top:4px;padding:12px 16px;background:color-mix(in srgb,var(--error) 5%,transparent);border:1px solid color-mix(in srgb,var(--error) 25%,transparent);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div style="font-size:12px;color:var(--error);font-weight:700;">トークンが期限切れの場合はリセットしてください</div>
-            <form method="POST" action="{{ url_for('designer.client_reset_threads', client_id=client.id) }}" style="display:inline;">
-              <button type="submit"
-                      style="padding:8px 18px;background:var(--error);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;"
-                      onclick="return confirm('Threads のユーザーIDとアクセストークンを削除します。よろしいですか？')">
-                Threads 認証情報をリセット
-              </button>
-            </form>
+          <div id="threads-reset-block" style="margin-top:4px;padding:12px 16px;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:12px;color:#dc2626;font-weight:700;">トークンが期限切れの場合はリセットしてください</div>
+            <button type="button"
+                    style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;box-shadow:0 2px 4px rgba(220,38,38,0.3);"
+                    onclick="resetThreads({{ client.id }})">
+              Threads 認証情報をリセット
+            </button>
           </div>
           {% endif %}
         </div>
@@ -520,6 +520,32 @@ document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
 updateSections();
 updateScheduleUI();
 autoCalcFee();
+
+// Threads 認証情報を AJAX でリセット（ページ遷移なし）
+function resetThreads(clientId) {
+  if (!confirm('Threads のユーザーIDとアクセストークンを削除します。よろしいですか？')) return;
+  fetch('/designer/clients/' + clientId + '/reset-threads', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      const uid = document.getElementById('threads-user-id-input');
+      if (uid) uid.value = '';
+      const tok = document.getElementById('threads-token-input');
+      if (tok) tok.placeholder = 'THxxxxxx...';
+      const setOk = document.getElementById('threads-token-set-ok');
+      if (setOk) setOk.remove();
+      const block = document.getElementById('threads-reset-block');
+      if (block) block.remove();
+      showToast('Threads 認証情報をリセットしました', 'success');
+    } else {
+      showToast('リセットに失敗しました', 'error');
+    }
+  })
+  .catch(() => showToast('リセットに失敗しました', 'error'));
+}
 
 // 送信前: 未選択ならデフォルトをセット
 document.getElementById('main-form').addEventListener('submit', function() {
