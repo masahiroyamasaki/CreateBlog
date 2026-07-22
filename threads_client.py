@@ -2,7 +2,7 @@
 import requests
 
 _BASE = "https://graph.threads.net/v1.0"
-_TEXT_LIMIT = 500
+_TEXT_LIMIT = 400
 
 
 def post_text(user_id: str, access_token: str, text: str, url: str = "") -> dict:
