@@ -1,0 +1,64 @@
+{% extends "designer/base.html" %}
+{% block title %}契約情報を編集{% endblock %}
+{% block page_title %}契約情報を編集{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;">
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ sub.client.name if sub.client else '（企業削除済み）' }}</h2>
+      <a href="{{ url_for('designer.admin_subscriptions') }}" class="btn btn-secondary btn-sm">← 一覧に戻る</a>
+    </div>
+    <div class="card-body">
+
+      <!-- 読み取り専用情報 -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:13px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;">
+          <div><span style="color:var(--muted);font-size:11px;">担当デザイナー</span><br>{{ sub.designer.name if sub.designer else '—' }}</div>
+          <div><span style="color:var(--muted);font-size:11px;">契約日</span><br>{{ sub.contract_date.strftime('%Y/%m/%d') if sub.contract_date else '—' }}</div>
+        </div>
+      </div>
+
+      <form method="POST">
+        <div class="form-group">
+          <label>プラン名</label>
+          <input class="form-control" type="text" name="plan_name" value="{{ sub.plan_name or '' }}" placeholder="例: WordPress 4件/月">
+        </div>
+
+        <div class="form-group">
+          <label>月額料金（円）</label>
+          <input class="form-control" type="number" name="amount" value="{{ sub.amount or 0 }}" min="0">
+          <div class="hint">テストや無料の場合は 0 を設定してください</div>
+        </div>
+
+        <div class="form-group">
+          <label>お試し期間（無料期間）</label>
+          <div style="display:flex;gap:16px;margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="radio" name="is_trial" value="1" {% if sub.is_trial %}checked{% endif %}>
+              <span style="color:var(--warning);font-weight:600;">お試し中（請求しない）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="radio" name="is_trial" value="0" {% if not sub.is_trial %}checked{% endif %}>
+              <span style="color:var(--success);font-weight:600;">請求中</span>
+            </label>
+          </div>
+          <div class="hint">「請求中」に設定すると毎月1日の請求バッチ対象になります</div>
+        </div>
+
+        <div class="form-group">
+          <label>請求開始日（先払い第1回請求日）</label>
+          <input class="form-control" type="date" name="billing_date"
+            value="{{ sub.billing_date.strftime('%Y-%m-%d') if sub.billing_date else '' }}">
+          <div class="hint">この日付以降の毎月1日バッチで請求書が作成されます</div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" class="btn btn-primary">保存する</button>
+          <a href="{{ url_for('designer.admin_subscriptions') }}" class="btn btn-secondary">キャンセル</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

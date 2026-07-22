@@ -1,9 +1,22 @@
 """routes/client_routes.py — 契約企業の管理"""
 from flask import render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
-from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem
+from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem, ClientSubscription
 from config import encrypt_field, decrypt_field
 from routes import designer_bp
+
+_PLATFORM_LABELS = {
+    "wordpress": "WordPress",
+    "instagram": "Instagram",
+    "wordpress_instagram": "WordPress + Instagram",
+    "custom_hp": "独自HP",
+    "email_only": "メール送信",
+}
+
+
+def _build_plan_name(client) -> str:
+    pt = _PLATFORM_LABELS.get(client.platform_type or "wordpress", client.platform_type or "WordPress")
+    return f"{pt} {client.monthly_post_count or 4}件/月"
 
 
 def _get_accessible_clients():
@@ -165,8 +178,39 @@ def client_new():
         else:
             assign_id = current_user.id
         db.session.add(DesignerClient(designer_id=assign_id, client_id=client.id))
+
+        # ── 契約マスタ（ClientSubscription）作成 ──────────────────────────────
+        from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+        _now = _dt.now(_tz(_td(hours=9))).replace(tzinfo=None)
+        # 先払い: 翌月1日が第1回請求日
+        _next_m = (_now.replace(day=1) + _td(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        _plan_name = _build_plan_name(client)
+        db.session.add(ClientSubscription(
+            client_id=client.id,
+            designer_id=assign_id,
+            plan_name=_plan_name,
+            amount=client.monthly_fee,
+            is_trial=True,
+            contract_date=_now,
+            billing_date=_next_m,
+        ))
         db.session.commit()
-        flash(f"「{client.name}」を追加しました", "success")
+
+        # ── 記事ネタを契約数分即時生成 ────────────────────────────────────────
+        _idea_count = client.monthly_post_count or 4
+        if (client.themes or "").strip():
+            try:
+                from batch_monthly import _generate_ideas
+                from config import Config
+                import anthropic as _anthropic
+                _ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+                _generate_ideas(client, _ai, _idea_count, db)
+                flash(f"「{client.name}」を追加し、記事ネタを {_idea_count} 件生成しました", "success")
+            except Exception as _e:
+                flash(f"「{client.name}」を追加しました（記事ネタ生成エラー: {_e}）", "warning")
+        else:
+            flash(f"「{client.name}」を追加しました（記事テーマを設定すると記事ネタが自動生成されます）", "success")
+
         return redirect(url_for("designer.client_detail", client_id=client.id))
     return render_template("designer/clients/form.html", client=None, designers=designers)
 

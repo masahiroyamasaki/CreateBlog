@@ -132,6 +132,9 @@
       <a href="{{ url_for('designer.admin_pricing') }}" class="nav-link {% if 'admin_pricing' in request.endpoint %}active{% endif %}">
         💴 料金プラン
       </a>
+      <a href="{{ url_for('designer.admin_subscriptions') }}" class="nav-link {% if 'admin_subscription' in request.endpoint %}active{% endif %}">
+        📋 契約マスタ
+      </a>
       <a href="{{ url_for('designer.admin_invoices') }}" class="nav-link {% if 'admin_invoice' in request.endpoint %}active{% endif %}">
         🧾 請求書
       </a>

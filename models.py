@@ -318,3 +318,24 @@ class InvoiceItem(db.Model):
     amount = db.Column(db.Integer, default=0)
 
     invoice = db.relationship("Invoice", back_populates="items")
+
+
+# ─── 企業契約・請求マスタ ─────────────────────────────────────────────────────
+
+class ClientSubscription(db.Model):
+    """企業ごとの契約・請求マスタ。請求書生成の唯一の根拠となる。"""
+    __tablename__ = "client_subscriptions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False, unique=True)
+    designer_id = db.Column(db.Integer, db.ForeignKey("designers.id"), nullable=False)
+    plan_name = db.Column(db.String(255), default="")   # 例: "WordPress 4件/月"
+    amount = db.Column(db.Integer, default=0)            # 月額料金（円）
+    is_trial = db.Column(db.Boolean, default=True)       # True = 無料お試し期間中
+    contract_date = db.Column(db.DateTime, nullable=False)  # 契約日（登録日）
+    billing_date = db.Column(db.DateTime)                # 請求開始日（先払い第1回請求日）
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    client = db.relationship("Client", backref=db.backref("subscription", uselist=False))
+    designer = db.relationship("Designer", backref=db.backref("subscriptions", lazy="dynamic"))

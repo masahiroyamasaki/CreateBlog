@@ -60,32 +60,42 @@ def run_monthly_ideas_batch(app, db) -> dict:
 # ── 請求書バッチ ──────────────────────────────────────────────────────────────
 
 def run_monthly_billing_batch(app, db) -> dict:
-    """毎月1日: 稼働中企業に紐づくデザイナー宛の請求書を自動作成・送付する。"""
+    """毎月1日: ClientSubscription テーブルをもとに請求書を自動作成・送付する（先払い制）。
+    is_trial=False かつ billing_date が当月以前のもののみ対象。
+    """
     result = {"invoices": 0, "errors": []}
 
     with app.app_context():
-        from models import Client, Designer, Invoice, InvoiceItem
+        from models import ClientSubscription, Client, Designer, Invoice, InvoiceItem
         from billing import generate_invoice_pdf
         from mailer import send_invoice_email
 
         now = datetime.now(_JST)
         year, month = now.year, now.month
+        month_start = datetime(year, month, 1)
 
-        # 稼働中企業をデザイナーごとに集計
-        active_clients = Client.query.filter_by(client_status="active").all()
-        designer_clients: dict[int, list] = {}
-        for client in active_clients:
-            for assignment in client.assignments:
-                designer_clients.setdefault(assignment.designer_id, []).append(client)
+        # 請求対象: 無料期間終了済み かつ 請求開始日が今月以前
+        subs = ClientSubscription.query.filter(
+            ClientSubscription.is_trial == False,  # noqa: E712
+            ClientSubscription.billing_date <= month_start,
+        ).all()
 
-        for designer_id, clients in designer_clients.items():
+        # デザイナーごとに集計
+        designer_subs: dict[int, list] = {}
+        for sub in subs:
+            client = Client.query.get(sub.client_id)
+            if client and client.client_status in ("active", "test"):
+                designer_subs.setdefault(sub.designer_id, []).append(sub)
+
+        for designer_id, sub_list in designer_subs.items():
             try:
                 # 同月重複防止
                 if Invoice.query.filter_by(designer_id=designer_id, year=year, month=month).first():
                     logger.info(f"[billing] Designer {designer_id}: {year}/{month} 請求書作成済み、スキップ")
                     continue
 
-                total = sum(c.monthly_fee or 0 for c in clients)
+                # テスト企業(amount=0)を含む合計
+                total = sum(s.amount for s in sub_list)
                 invoice = Invoice(
                     designer_id=designer_id,
                     year=year, month=month,
@@ -94,13 +104,14 @@ def run_monthly_billing_batch(app, db) -> dict:
                 db.session.add(invoice)
                 db.session.flush()
 
-                for client in clients:
+                for sub in sub_list:
+                    client = Client.query.get(sub.client_id)
                     db.session.add(InvoiceItem(
                         invoice_id=invoice.id,
-                        client_id=client.id,
-                        client_name=client.name,
-                        description=_plan_description(client),
-                        amount=client.monthly_fee or 0,
+                        client_id=sub.client_id,
+                        client_name=client.name if client else sub.plan_name,
+                        description=sub.plan_name,
+                        amount=sub.amount,
                     ))
                 db.session.commit()
 

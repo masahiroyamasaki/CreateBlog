@@ -2,7 +2,7 @@
 import os
 from flask import render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
-from models import db, Designer, Client, Post, DesignerClient, PricingPlan, Invoice, InvoiceItem
+from models import db, Designer, Client, Post, DesignerClient, PricingPlan, Invoice, InvoiceItem, ClientSubscription
 from routes import designer_bp
 
 
@@ -340,3 +340,44 @@ def admin_invoice_delete(invoice_id: int):
     db.session.commit()
     flash("請求書を削除しました", "success")
     return redirect(url_for("designer.admin_invoices"))
+
+
+# ─── 契約・請求マスタ（ClientSubscription）管理 ────────────────────────────────
+
+@designer_bp.route("/admin/subscriptions")
+@login_required
+def admin_subscriptions():
+    _admin_only()
+    subs = (
+        ClientSubscription.query
+        .join(Client, ClientSubscription.client_id == Client.id)
+        .order_by(Client.name)
+        .all()
+    )
+    return render_template("designer/admin/subscriptions.html", subs=subs)
+
+
+@designer_bp.route("/admin/subscriptions/<int:sub_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_subscription_edit(sub_id: int):
+    _admin_only()
+    sub = ClientSubscription.query.get_or_404(sub_id)
+    if request.method == "POST":
+        sub.plan_name   = request.form.get("plan_name", sub.plan_name).strip()
+        sub.amount      = int(request.form.get("amount", sub.amount) or 0)
+        sub.is_trial    = request.form.get("is_trial") == "1"
+        billing_str     = request.form.get("billing_date", "").strip()
+        if billing_str:
+            from datetime import datetime as _dt
+            try:
+                sub.billing_date = _dt.strptime(billing_str, "%Y-%m-%d")
+            except ValueError:
+                flash("請求日の形式が正しくありません（YYYY-MM-DD）", "error")
+                return redirect(url_for("designer.admin_subscription_edit", sub_id=sub_id))
+        # 紐づくクライアントの monthly_fee も同期
+        if sub.client:
+            sub.client.monthly_fee = sub.amount
+        db.session.commit()
+        flash("契約情報を更新しました", "success")
+        return redirect(url_for("designer.admin_subscriptions"))
+    return render_template("designer/admin/subscription_edit.html", sub=sub)

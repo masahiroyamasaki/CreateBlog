@@ -8,10 +8,12 @@ logger = logging.getLogger(__name__)
 
 def auto_migrate(app, db):
     """
-    モデルに存在するがDBに存在しないカラムを自動でADD COLUMN。
-    ENUMカラムは値セットが不足していれば自動でMODIFY COLUMN。
+    モデルに存在するがDBに存在しないテーブルを CREATE TABLE。
+    既存テーブルに存在しないカラムを自動で ADD COLUMN。
+    ENUMカラムは値セットが不足していれば自動で MODIFY COLUMN。
     """
     with app.app_context():
+        db.create_all()  # 新テーブルを作成（既存テーブルは変更しない）
         inspector = inspect(db.engine)
 
         for table_name, table in db.metadata.tables.items():
