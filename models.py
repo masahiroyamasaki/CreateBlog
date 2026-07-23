@@ -128,6 +128,7 @@ class Post(db.Model):
     body_html = db.Column(db.Text, default="")
     ig_caption = db.Column(db.Text, default="")
     ig_hashtags_post = db.Column(db.Text)               # 投稿固有ハッシュタグ
+    threads_url = db.Column(db.String(500), default="") # Threads投稿用URL（投稿個別）
     status = db.Column(
         db.Enum("creating", "draft", "approved", "scheduled", "posted", "failed"),
         default="draft", nullable=False,

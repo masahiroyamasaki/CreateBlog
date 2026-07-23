@@ -94,6 +94,7 @@ def post_save(client_id: int, post_id: int):
     post.body_html = request.form.get("body_html", post.body_html)
     post.ig_caption = request.form.get("ig_caption", post.ig_caption)
     post.ig_hashtags_post = request.form.get("ig_hashtags_post", post.ig_hashtags_post or "")
+    post.threads_url = request.form.get("threads_url", post.threads_url or "")
     post.created_by_designer_id = current_user.id
     post.updated_at = _now_jst()
     db.session.commit()
@@ -461,9 +462,9 @@ def _publish_to_threads(client: Client, post: Post) -> dict:
     if not token or not user_id:
         return {"success": False, "reason": ""}  # 未設定はスキップ（エラーではない）
     import threads_client as th
-    # Threads はハッシュタグなし・本文のみ
+    # Threads はハッシュタグなし・本文のみ。URLは投稿個別 → クライアント固定 の優先順で使用
     text = _strip_account_prefix(post.ig_caption or "", client.name)
-    url = (client.threads_fixed_url or "").strip()
+    url = (post.threads_url or "").strip() or (client.threads_fixed_url or "").strip()
     return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
