@@ -426,7 +426,33 @@ def client_fetch_threads_uid(client_id: int):
         if "error" in data:
             from threads_client import _localize_error
             return jsonify({"success": False, "reason": _localize_error(data["error"])})
-        return jsonify({"success": True, "id": data.get("id", ""), "username": data.get("username", "")})
+        uid = data.get("id", "")
+        username = data.get("username", "")
+
+        # threads_content_publish スコープを持つか確認（投稿に必要）
+        pub_res = _req.get(
+            f"https://graph.threads.net/v1.0/{uid}/threads_publishing_limit",
+            params={"fields": "config,quota_usage", "access_token": token},
+            timeout=10,
+        )
+        pub_data = pub_res.json()
+        can_publish = "error" not in pub_data
+        publish_error = None
+        if not can_publish:
+            err = pub_data.get("error", {})
+            publish_error = (
+                "トークンに threads_content_publish 権限がありません。"
+                "Meta Developer でアプリの権限を確認してください。"
+                f"（API: {err.get('message', '')}）"
+            )
+
+        return jsonify({
+            "success": True,
+            "id": uid,
+            "username": username,
+            "can_publish": can_publish,
+            "publish_error": publish_error,
+        })
     except Exception as e:
         return jsonify({"success": False, "reason": f"取得失敗: {e}"})
 

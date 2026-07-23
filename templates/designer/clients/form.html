@@ -553,11 +553,19 @@ function fetchThreadsUid(clientId) {
   .then(data => {
     if (data.success) {
       if (uidInput) uidInput.value = data.id;
-      if (hint) {
-        hint.textContent = '✓ 取得成功: @' + data.username + ' (ID: ' + data.id + ')';
-        hint.style.color = 'var(--success)';
+      if (data.can_publish) {
+        if (hint) {
+          hint.textContent = '✓ 接続OK: @' + data.username + ' (ID: ' + data.id + ') — 投稿権限あり';
+          hint.style.color = 'var(--success)';
+        }
+        showToast('Threads 接続OK (@' + data.username + ') — このまま保存してください', 'success');
+      } else {
+        if (hint) {
+          hint.textContent = '⚠ ID取得OK (@' + data.username + ') ですが投稿権限がありません: ' + (data.publish_error || '');
+          hint.style.color = 'var(--error)';
+        }
+        showToast('トークンに threads_content_publish 権限がありません', 'error');
       }
-      showToast('Threads ユーザー ID を自動入力しました (@' + data.username + ')', 'success');
     } else {
       if (hint) { hint.textContent = 'エラー: ' + data.reason; hint.style.color = 'var(--error)'; }
       showToast(data.reason || 'ID の取得に失敗しました', 'error');

@@ -38,10 +38,10 @@ def post_text(user_id: str, access_token: str, text: str, url: str = "") -> dict
         text = text[:max_body - 1] + "…"
     full_text = text + suffix
 
-    # Step 1: コンテナ作成
+    # Step 1: コンテナ作成（POST body で送信 — Meta 公式 curl 仕様に準拠）
     r = requests.post(
         f"{_BASE}/{user_id}/threads",
-        params={"media_type": "TEXT", "text": full_text, "access_token": access_token},
+        data={"media_type": "TEXT", "text": full_text, "access_token": access_token},
         timeout=30,
     )
     data = r.json()
@@ -51,10 +51,10 @@ def post_text(user_id: str, access_token: str, text: str, url: str = "") -> dict
     if not container_id:
         return {"success": False, "reason": "【Threads】コンテナ ID が取得できませんでした"}
 
-    # Step 2: 投稿
+    # Step 2: 投稿（POST body で送信）
     r2 = requests.post(
         f"{_BASE}/{user_id}/threads_publish",
-        params={"creation_id": container_id, "access_token": access_token},
+        data={"creation_id": container_id, "access_token": access_token},
         timeout=30,
     )
     data2 = r2.json()
