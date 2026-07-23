@@ -35,7 +35,7 @@ def is_client_operational(client, designer) -> bool:
     return client.client_status == "active"
 
 
-def create_checkout_session(designer, success_url: str, cancel_url: str) -> str | None:
+def create_checkout_session(designer, success_url: str, cancel_url: str):
     """Stripe Checkout セッションを作成し URL を返す。失敗時は None。"""
     stripe = get_stripe()
     if not stripe:
@@ -76,7 +76,7 @@ def cancel_subscription(subscription_id: str) -> bool:
         return False
 
 
-def handle_webhook(payload: bytes, sig_header: str) -> dict | None:
+def handle_webhook(payload: bytes, sig_header: str):
     """Webhook ペイロードを検証してイベントを返す。署名不一致は None。"""
     stripe = get_stripe()
     if not stripe:
