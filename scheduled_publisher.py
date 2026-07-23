@@ -29,7 +29,7 @@ def publish_due_posts(app, db) -> int:
 
         now = _now_jst()
         due_posts = Post.query.filter(
-            Post.status == "draft",
+            Post.status == "scheduled",
             Post.scheduled_at.isnot(None),
             Post.scheduled_at <= now,
         ).all()
@@ -131,7 +131,7 @@ def _do_threads(client, post, decrypt_field) -> dict:
     import threads_client as th
     # Threads はハッシュタグなし・固定 URL を末尾に付与
     text = strip_account_prefix(post.ig_caption or "", client.name or "")
-    url = (client.threads_fixed_url or "").strip()
+    url = (post.threads_url or "").strip() or (client.threads_fixed_url or "").strip()
     return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
