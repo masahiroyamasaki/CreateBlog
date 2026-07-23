@@ -204,6 +204,7 @@ def topic_generate(client_id: int, topic_id: int):
     target_audience      = client.target_audience or ""
     character_prompt     = client.character_prompt or ""
     business_description = client.business_description or ""
+    threads_limit        = 400 if (client.threads_user_id or "").strip() else 0
 
     def _run():
         run = _generation_runs[run_id]
@@ -281,12 +282,14 @@ def topic_generate(client_id: int, topic_id: int):
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
 
-                # Step 5: IG フォーマッター（プレーンテキスト 1000文字 + ハッシュタグ）
+                # Step 5: IG フォーマッター（Threads設定ありなら400字以内）
                 run.update(step="ig_formatter", step_num=5)
                 ig_caption = IgFormatterAgent().run({
                     "blog_content": final_content,
                     "topic": topic_title,
                     "client_name": client_name,
+                    "threads_limit": threads_limit,
+                    "word_count": target_word_count,
                 })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
@@ -381,6 +384,8 @@ def topic_generate(client_id: int, topic_id: int):
                         "blog_content": final_content,
                         "topic": topic_title,
                         "client_name": client_name,
+                        "threads_limit": threads_limit,
+                        "word_count": target_word_count,
                     })
                     if run.get("cancel_requested"):
                         _cancel_and_cleanup(); return
@@ -503,6 +508,7 @@ def topic_bulk_generate(client_id: int):
     target_audience_bulk      = client.target_audience or ""
     character_prompt_bulk     = client.character_prompt or ""
     business_description_bulk = client.business_description or ""
+    threads_limit_bulk        = 400 if (client.threads_user_id or "").strip() else 0
 
     run_ids = []
 
@@ -535,7 +541,8 @@ def topic_bulk_generate(client_id: int):
                  wp_sample_posts=wp_sample_posts, hp_design_prompt=hp_design_prompt,
                  article_taste=article_taste_bulk, target_word_count=target_word_count_bulk,
                  target_audience=target_audience_bulk, character_prompt=character_prompt_bulk,
-                 business_description=business_description_bulk):
+                 business_description=business_description_bulk,
+                 threads_limit=threads_limit_bulk):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -587,7 +594,13 @@ def topic_bulk_generate(client_id: int):
                 if platform_type == "email_only":
                     ig_caption = final_content  # Markdownをプレーンテキストとして保存
                 else:
-                    ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name})
+                    ig_caption = IgFormatterAgent().run({
+                        "blog_content": final_content,
+                        "topic": topic_title,
+                        "client_name": client_name,
+                        "threads_limit": threads_limit,
+                        "word_count": target_word_count,
+                    })
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
                 run.update(step="saving", step_num=6)

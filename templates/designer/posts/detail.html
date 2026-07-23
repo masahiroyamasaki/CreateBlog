@@ -129,13 +129,20 @@
           {% if not is_email_only %}
           <div class="tab-panel {% if is_instagram %}active{% endif %}" id="tab-ig">
             <textarea class="form-control" name="ig_caption" id="f-ig" rows="{% if is_instagram %}12{% else %}9{% endif %}" oninput="updateCharCount()" placeholder="Instagram キャプション本文（最大2200文字）">{{ post.ig_caption }}</textarea>
-            <div class="char-count" id="char-count">0 / 2200</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+              <div class="char-count" id="char-count">0 / 2200</div>
+              {% if client.threads_user_id %}
+              <div id="threads-char-warning" style="font-size:11px;font-weight:700;">
+                合計 <span id="threads-total-chars">0</span> / 500 字（Threads）
+              </div>
+              {% endif %}
+            </div>
 
             <!-- ハッシュタグ編集欄 -->
             <div style="margin-top:12px;">
               <label style="font-size:12px;font-weight:600;color:var(--muted);">ハッシュタグ</label>
               <textarea class="form-control" name="ig_hashtags_post" id="f-ig-hashtags" rows="3"
-                        oninput="updateHashtagPreview()"
+                        oninput="updateCharCount()"
                         placeholder="#サンプル&#10;#ハッシュタグ"
                         style="font-size:13px;margin-top:6px;">{{ post.ig_hashtags_post or client.ig_hashtags or '' }}</textarea>
             </div>
@@ -337,6 +344,7 @@
 const clientId = {{ client.id }};
 const postId = {{ post.id }};
 const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
+const hasThreads = {{ 'true' if client.threads_user_id else 'false' }};
 
 // タブ切り替え
 function switchTab(tab) {
@@ -372,6 +380,18 @@ function updateCharCount() {
   const el = document.getElementById('char-count');
   if (el) { el.textContent = `${len} / 2200`; el.classList.toggle('over', len > 2200); }
   updateHashtagPreview();
+
+  if (hasThreads) {
+    const hashtags = (document.getElementById('f-ig-hashtags')?.value.trim() || '');
+    const combined = igEl.value.trimEnd() + (hashtags ? '\n\n' + hashtags : '');
+    const total = combined.length;
+    const warningEl = document.getElementById('threads-char-warning');
+    const totalEl   = document.getElementById('threads-total-chars');
+    if (warningEl && totalEl) {
+      totalEl.textContent = total;
+      warningEl.style.color = total > 500 ? 'var(--danger)' : 'var(--success)';
+    }
+  }
 }
 
 function updateHashtagPreview() {

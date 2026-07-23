@@ -239,6 +239,13 @@ def post_schedule(client_id: int, post_id: int):
         return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
 
     pt = client.platform_type or "wordpress"
+
+    if pt == "instagram":
+        threads_err = _check_threads_char_limit(client, post)
+        if threads_err:
+            flash(threads_err, "error")
+            return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+
     post.publish_mode = "scheduled"
     post.scheduled_at = scheduled_at
     post.status = "scheduled"
@@ -314,6 +321,9 @@ def post_publish(client_id: int, post_id: int):
 
     # ── Instagram ─────────────────────────────────────────
     elif pt == "instagram":
+        threads_err = _check_threads_char_limit(client, post)
+        if threads_err:
+            return jsonify({"success": False, "reason": threads_err})
         result = _publish_to_instagram(client, post)
         if result.get("success"):
             post.ig_media_id   = result.get("media_id", "")
@@ -429,6 +439,16 @@ def _build_caption(post: Post, client: Client) -> str:
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
     return caption
+
+
+def _check_threads_char_limit(client: Client, post: Post) -> str | None:
+    """Threads設定あり かつ キャプション+ハッシュタグ > 500字 ならエラーメッセージを返す"""
+    if not (client.threads_user_id or "").strip():
+        return None
+    full_caption = _build_caption(post, client)
+    if len(full_caption) > 500:
+        return "Threadsの設定をされているため、500文字以内で文章を作成してください。"
+    return None
 
 
 def _publish_to_threads(client: Client, post: Post) -> dict:
