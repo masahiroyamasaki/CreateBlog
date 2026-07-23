@@ -138,6 +138,7 @@ class Post(db.Model):
     wp_post_id = db.Column(db.String(100), default="")
     wp_post_url = db.Column(db.String(255), default="")
     ig_media_id = db.Column(db.String(100), default="")
+    threads_media_id = db.Column(db.String(100), default="")  # Threads 投稿済みメディア ID
     error_message = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

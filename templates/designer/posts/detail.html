@@ -319,7 +319,7 @@
     </div>
 
     <!-- 投稿状態 -->
-    {% if post.wp_post_url or post.ig_media_id or post.posted_at or post.error_message %}
+    {% if post.wp_post_url or post.ig_media_id or post.threads_media_id or post.posted_at or post.error_message %}
     <div class="card">
       <div class="card-header"><h2>{% if is_email_only %}送信結果{% else %}投稿結果{% endif %}</h2></div>
       <div class="card-body" style="font-size:13px;">
@@ -332,7 +332,10 @@
           <div style="margin-bottom:8px;">WordPress: <a href="{{ post.wp_post_url }}" target="_blank" style="color:var(--primary);">記事を見る ↗</a></div>
           {% endif %}
           {% if post.ig_media_id %}
-          <div style="margin-bottom:8px;">Instagram: <span style="color:var(--success);">投稿済み ({{ post.ig_media_id }})</span></div>
+          <div style="margin-bottom:8px;">Instagram: <span style="color:var(--success);">✓ 投稿済み</span> <span style="color:var(--muted);font-size:11px;">({{ post.ig_media_id }})</span></div>
+          {% endif %}
+          {% if post.threads_media_id %}
+          <div style="margin-bottom:8px;">Threads: <span style="color:var(--success);">✓ 投稿済み</span> <span style="color:var(--muted);font-size:11px;">({{ post.threads_media_id }})</span></div>
           {% endif %}
         {% endif %}
         {% if post.error_message %}
@@ -454,6 +457,14 @@ async function publishNow() {
   if (data.success) {
     {% if client.platform_type == 'email_only' %}
     resultEl.innerHTML = `<span style="color:var(--success);">✓ メールを送信しました（宛先: ${data.to || ''}）</span>`;
+    {% elif client.platform_type == 'instagram' %}
+    let threadsHtml = '';
+    if (data.threads && data.threads.success) {
+      threadsHtml = ' &nbsp;|&nbsp; <span style="color:var(--success);">Threads: ✓ 投稿済み</span>';
+    } else if (data.threads && data.threads.reason) {
+      threadsHtml = ` &nbsp;|&nbsp; <span style="color:var(--warning);">Threads: ${data.threads.reason}</span>`;
+    }
+    resultEl.innerHTML = `<span style="color:var(--success);">✓ ${doneLabel}！</span>${threadsHtml}`;
     {% else %}
     resultEl.innerHTML = `<span style="color:var(--success);">✓ ${doneLabel}！</span> ${data.wp_url ? `<a href="${data.wp_url}" target="_blank" style="color:var(--primary);">WordPress 記事 ↗</a>` : ''}`;
     {% endif %}

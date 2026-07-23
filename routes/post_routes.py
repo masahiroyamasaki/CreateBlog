@@ -333,9 +333,11 @@ def post_publish(client_id: int, post_id: int):
             post.error_message = ""
             db.session.commit()
             th_result = _publish_to_threads(client, post)
-            if not th_result.get("success") and th_result.get("reason"):
+            if th_result.get("success"):
+                post.threads_media_id = th_result.get("media_id", "")
+            elif th_result.get("reason"):
                 post.error_message = f"Threads: {th_result['reason']}"
-                db.session.commit()
+            db.session.commit()
             return jsonify({"success": True, "threads": th_result})
         else:
             post.status = "failed"
