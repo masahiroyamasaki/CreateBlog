@@ -405,6 +405,32 @@ def client_reset_threads(client_id: int):
     return redirect(url_for("designer.client_edit", client_id=client_id))
 
 
+@designer_bp.route("/clients/<int:client_id>/fetch-threads-uid", methods=["POST"])
+@login_required
+def client_fetch_threads_uid(client_id: int):
+    """Threads アクセストークンから正しい Threads ユーザー ID を取得する。"""
+    import requests as _req
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    # フォームで入力中のトークンを優先、なければ保存済みを使用
+    token = request.form.get("threads_access_token", "").strip() or decrypt_field(client.threads_access_token or "")
+    if not token:
+        return jsonify({"success": False, "reason": "アクセストークンを先に入力してください"})
+    try:
+        res = _req.get(
+            "https://graph.threads.net/v1.0/me",
+            params={"fields": "id,username", "access_token": token},
+            timeout=10,
+        )
+        data = res.json()
+        if "error" in data:
+            from threads_client import _localize_error
+            return jsonify({"success": False, "reason": _localize_error(data["error"])})
+        return jsonify({"success": True, "id": data.get("id", ""), "username": data.get("username", "")})
+    except Exception as e:
+        return jsonify({"success": False, "reason": f"取得失敗: {e}"})
+
+
 @designer_bp.route("/clients/<int:client_id>/assign", methods=["POST"])
 @login_required
 def client_assign(client_id: int):

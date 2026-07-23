@@ -176,11 +176,21 @@
           <p class="hint" style="margin-bottom:12px;">アクセストークンを設定すると、Instagram 投稿と同時に Threads にもテキスト投稿されます（最大400文字）。</p>
           <div class="form-group">
             <label>Threads ユーザー ID</label>
-            <input class="form-control" type="text" name="threads_user_id"
-                   id="threads-user-id-input"
-                   value="{{ client.threads_user_id if client and client.threads_user_id else '' }}"
-                   placeholder="例: 1234567890">
-            <p class="hint">Meta Developer の Threads ユーザー ID（数字）</p>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="form-control" type="text" name="threads_user_id"
+                     id="threads-user-id-input"
+                     value="{{ client.threads_user_id if client and client.threads_user_id else '' }}"
+                     placeholder="例: 1234567890"
+                     style="flex:1;">
+              {% if client %}
+              <button type="button" id="threads-fetch-uid-btn"
+                      style="padding:9px 14px;background:#2f5d8a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;"
+                      onclick="fetchThreadsUid({{ client.id }})">
+                ID を自動取得
+              </button>
+              {% endif %}
+            </div>
+            <p class="hint" id="threads-uid-hint">アクセストークンを入力または保存済みの場合、「ID を自動取得」でトークンから正しい Threads User ID を自動入力できます。</p>
           </div>
           <div class="form-group">
             <label>Threads アクセストークン</label>
@@ -520,6 +530,42 @@ document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
 updateSections();
 updateScheduleUI();
 autoCalcFee();
+
+// Threads ユーザー ID をアクセストークンから自動取得
+function fetchThreadsUid(clientId) {
+  const btn = document.getElementById('threads-fetch-uid-btn');
+  const hint = document.getElementById('threads-uid-hint');
+  const tokenInput = document.getElementById('threads-token-input');
+  const uidInput = document.getElementById('threads-user-id-input');
+  if (btn) { btn.textContent = '取得中…'; btn.disabled = true; }
+
+  const body = new URLSearchParams();
+  if (tokenInput && tokenInput.value.trim()) {
+    body.append('threads_access_token', tokenInput.value.trim());
+  }
+
+  fetch('/designer/clients/' + clientId + '/fetch-threads-uid', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      if (uidInput) uidInput.value = data.id;
+      if (hint) {
+        hint.textContent = '✓ 取得成功: @' + data.username + ' (ID: ' + data.id + ')';
+        hint.style.color = 'var(--success)';
+      }
+      showToast('Threads ユーザー ID を自動入力しました (@' + data.username + ')', 'success');
+    } else {
+      if (hint) { hint.textContent = 'エラー: ' + data.reason; hint.style.color = 'var(--error)'; }
+      showToast(data.reason || 'ID の取得に失敗しました', 'error');
+    }
+  })
+  .catch(() => showToast('ID の取得に失敗しました', 'error'))
+  .finally(() => { if (btn) { btn.textContent = 'ID を自動取得'; btn.disabled = false; } });
+}
 
 // Threads 認証情報を AJAX でリセット（ページ遷移なし）
 function resetThreads(clientId) {
