@@ -453,8 +453,8 @@ def _check_threads_char_limit(client: Client, post: Post) -> str | None:
 
 
 def _publish_to_threads(client: Client, post: Post) -> dict:
-    """Threads アクセストークンが設定されている場合のみテキスト投稿する。
-    キャプションはハッシュタグなし・固定 URL 付き。
+    """Threads に投稿する（画像あり→画像/カルーセル、なし→テキスト）。
+    キャプションはハッシュタグなし。URLは投稿個別 → クライアント固定 の優先順。
     """
     from config import decrypt_field
     token = decrypt_field(client.threads_access_token or "")
@@ -462,10 +462,18 @@ def _publish_to_threads(client: Client, post: Post) -> dict:
     if not token or not user_id:
         return {"success": False, "reason": ""}  # 未設定はスキップ（エラーではない）
     import threads_client as th
-    # Threads はハッシュタグなし・本文のみ。URLは投稿個別 → クライアント固定 の優先順で使用
     text = _strip_account_prefix(post.ig_caption or "", client.name)
     url = (post.threads_url or "").strip() or (client.threads_fixed_url or "").strip()
-    return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
+    images = post.image_list
+    if len(images) == 1:
+        return th.post_image(user_id=user_id, access_token=token,
+                             image_url=images[0].image_url, text=text, url=url)
+    elif len(images) > 1:
+        return th.post_carousel(user_id=user_id, access_token=token,
+                                image_urls=[img.image_url for img in images],
+                                text=text, url=url)
+    else:
+        return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
 def _publish_to_instagram(client: Client, post: Post) -> dict:
