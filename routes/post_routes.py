@@ -444,7 +444,7 @@ def _build_caption(post: Post, client: Client) -> str:
     return caption
 
 
-def _check_threads_char_limit(client: Client, post: Post) -> str | None:
+def _check_threads_char_limit(client: Client, post: Post):
     """Threads設定あり かつ キャプション+ハッシュタグ > 500字 ならエラーメッセージを返す"""
     if not (client.threads_user_id or "").strip():
         return None
