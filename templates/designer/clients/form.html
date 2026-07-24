@@ -123,6 +123,46 @@
           <input class="form-control" type="url" name="custom_url" value="{{ client.custom_url if client and client.custom_url else '' }}" placeholder="https://example.com">
           <p class="hint">参考情報として保存されます。</p>
         </div>
+
+        {% if client %}
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">ホームページテンプレート（デザイン解析）</p>
+          <p class="hint" style="margin-bottom:10px;">HTML/CSSファイルをアップロードすると、AIがデザイン・文体指示を自動抽出します。</p>
+
+          {% if client.hp_template_path %}
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:10px 14px;background:color-mix(in srgb,var(--success) 8%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:8px;">
+            <span style="font-size:16px;margin-top:1px;">✓</span>
+            <div style="min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:var(--success);">テンプレート登録済み</div>
+              <code style="display:inline-block;margin-top:4px;font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:4px;word-break:break-all;">{{ client.hp_template_path.split('/')[-1].split('\\')[-1] }}</code>
+            </div>
+          </div>
+          {% else %}
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:16px;color:var(--muted);">—</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--muted);">未登録</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px;">HPのHTMLファイルをアップロードするとデザイン指示が自動生成されます</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="file" name="template_file" accept=".html,.htm,.css" form="hp-template-form"
+                   style="font-size:13px;border:1px solid var(--border);padding:4px 8px;border-radius:6px;background:var(--bg2);">
+            <button type="submit" form="hp-template-form" class="btn btn-secondary btn-sm">
+              {% if client.hp_template_path %}再アップロード・解析{% else %}解析・保存{% endif %}
+            </button>
+          </div>
+
+          {% if client.hp_design_prompt %}
+          <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">自動抽出されたデザイン指示</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;">{{ client.hp_design_prompt }}</div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
 
       <!-- WordPress セクション -->
@@ -391,51 +431,7 @@
 
     {% if client %}
     <form id="wp-fetch-form" method="POST" action="{{ url_for('designer.client_fetch_wp_posts', client_id=client.id) }}"></form>
-
-    <!-- AI記事スタイル設定（メインフォームの外に配置してフォームネストを回避） -->
-    <div class="section-block" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
-      <p class="section-title">AI 記事スタイル設定</p>
-
-      <!-- 独自HPテンプレートアップロード -->
-      <div class="form-group" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
-        <label>ホームページテンプレート（デザイン解析）</label>
-        <p class="hint" style="margin-bottom:10px;">HTML/CSSファイルをアップロードすると、AIがデザイン・文体指示を自動抽出します。</p>
-
-        {% if client.hp_template_path %}
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:10px 14px;background:color-mix(in srgb,var(--success) 8%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:8px;">
-          <span style="font-size:16px;margin-top:1px;">✓</span>
-          <div style="min-width:0;">
-            <div style="font-size:13px;font-weight:700;color:var(--success);">テンプレート登録済み</div>
-            <code style="display:inline-block;margin-top:4px;font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:4px;word-break:break-all;">{{ client.hp_template_path.split('/')[-1].split('\\')[-1] }}</code>
-          </div>
-        </div>
-        {% else %}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
-          <span style="font-size:16px;color:var(--muted);">—</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--muted);">未登録</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">HPのHTMLファイルをアップロードするとデザイン指示が自動生成されます</div>
-          </div>
-        </div>
-        {% endif %}
-
-        <form method="POST" action="{{ url_for('designer.client_upload_hp_template', client_id=client.id) }}"
-              enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input type="file" name="template_file" accept=".html,.htm,.css"
-                 style="font-size:13px;border:1px solid var(--border);padding:4px 8px;border-radius:6px;background:var(--bg2);">
-          <button type="submit" class="btn btn-secondary btn-sm">
-            {% if client.hp_template_path %}再アップロード・解析{% else %}解析・保存{% endif %}
-          </button>
-        </form>
-
-        {% if client.hp_design_prompt %}
-        <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">自動抽出されたデザイン指示</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;">{{ client.hp_design_prompt }}</div>
-        </div>
-        {% endif %}
-      </div>
-    </div>
+    <form id="hp-template-form" method="POST" action="{{ url_for('designer.client_upload_hp_template', client_id=client.id) }}" enctype="multipart/form-data"></form>
     {% endif %}
   </div>
 </div>
