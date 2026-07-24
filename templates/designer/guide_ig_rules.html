@@ -1,0 +1,365 @@
+{% extends "designer/base.html" %}
+{% block title %}Instagram / Threads 運用ルール{% endblock %}
+{% block page_title %}Instagram / Threads 運用ルール{% endblock %}
+
+{% block head %}
+<style>
+.guide-wrap {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 32px;
+  align-items: start;
+  max-width: 1020px;
+}
+.guide-toc {
+  position: sticky;
+  top: 76px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.guide-toc h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.guide-toc a { display: block; font-size: 12px; color: var(--muted); text-decoration: none; padding: 5px 8px; border-radius: 5px; line-height: 1.4; transition: all .12s; }
+.guide-toc a:hover { color: var(--text); background: var(--bg3); }
+.guide-toc a.sub { padding-left: 20px; font-size: 11px; }
+
+.guide-body h2 { font-size: 18px; font-weight: 700; margin: 40px 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+.guide-body h2:first-child { margin-top: 0; }
+.guide-body h3 { font-size: 14px; font-weight: 700; margin: 24px 0 10px; color: var(--text); }
+.guide-body p { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 12px; }
+.guide-body ul, .guide-body ol { padding-left: 20px; margin-bottom: 12px; }
+.guide-body li { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 4px; }
+.guide-body strong { color: var(--text); }
+
+.rule-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.rule-card h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.rule-card p, .rule-card li { font-size: 13px; line-height: 1.8; color: var(--muted); }
+
+.info-box {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.info-box.tip { background: #6366f115; border-left: 3px solid var(--primary); color: var(--text); }
+.info-box.warn { background: #f59e0b15; border-left: 3px solid var(--warning); color: #fbbf24; }
+.info-box.danger { background: #ef444415; border-left: 3px solid var(--danger); color: #f87171; }
+.info-box.success { background: #10b98115; border-left: 3px solid var(--success); color: #34d399; }
+
+.ban-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+.ban-item {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.ban-item.bad { background: #ef444410; border: 1px solid #ef444430; }
+.ban-item.good { background: #10b98110; border: 1px solid #10b98130; }
+.ban-item .label { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+.ban-item.bad .label { color: var(--danger); }
+.ban-item.good .label { color: var(--success); }
+
+.profile-tip {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.profile-tip .icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.profile-tip h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.profile-tip p { font-size: 12px; color: var(--muted); line-height: 1.7; margin: 0; }
+
+.section-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.section-label.ig { background: #e1306c20; color: #e1306c; }
+.section-label.th { background: #ffffff15; color: #aaa; border: 1px solid #444; }
+
+.freq-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+.freq-table th { padding: 8px 12px; text-align: left; background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.freq-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.freq-table td strong { color: var(--text); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-wrap">
+  <!-- 目次 -->
+  <div class="guide-toc">
+    <h3>目次</h3>
+    <a href="#ig-rules">Instagram 投稿ルール</a>
+    <a class="sub" href="#content-policy">コンテンツポリシー</a>
+    <a class="sub" href="#frequency">投稿頻度の目安</a>
+    <a href="#ban">垢BAN になるケース</a>
+    <a class="sub" href="#ban-cause">主な原因</a>
+    <a class="sub" href="#ban-signs">警告サインと対処</a>
+    <a href="#threads-rules">Threads 投稿ルール</a>
+    <a href="#profile">伸びるプロフィールの作り方</a>
+    <a class="sub" href="#bio">プロフィール文</a>
+    <a class="sub" href="#photo">アイコン・ハイライト</a>
+    <a href="#growth">アクセス数を伸ばす方法</a>
+    <a class="sub" href="#hashtag">ハッシュタグ戦略</a>
+    <a class="sub" href="#algorithm">アルゴリズム対策</a>
+    <a href="#api-rules">API利用上の注意</a>
+  </div>
+
+  <!-- 本文 -->
+  <div class="guide-body">
+
+    <!-- Instagram 投稿ルール -->
+    <h2 id="ig-rules">Instagram 投稿ルール</h2>
+    <span class="section-label ig">Instagram</span>
+
+    <h3 id="content-policy">コンテンツポリシー（禁止事項）</h3>
+    <p>Instagramは Meta の「コミュニティガイドライン」に基づいて投稿を審査しています。以下を含む投稿は削除・アカウント停止の対象になります。</p>
+
+    <div class="rule-card">
+      <h4>絶対に投稿してはいけないもの</h4>
+      <ul>
+        <li>裸・性的コンテンツ（フィルタリングあり）</li>
+        <li>暴力・残酷な描写</li>
+        <li>ヘイトスピーチ（人種・宗教・性別等による差別的発言）</li>
+        <li>危険物の売買・製造方法</li>
+        <li>自傷・自殺の促進コンテンツ</li>
+        <li>スパム・詐欺的コンテンツ（偽の情報、フォロワー購入宣伝など）</li>
+        <li>著作権侵害（他者の写真・音楽・動画の無断使用）</li>
+      </ul>
+    </div>
+
+    <h3 id="frequency">投稿頻度の目安</h3>
+    <table class="freq-table">
+      <tr><th>投稿タイプ</th><th>推奨頻度</th><th>補足</th></tr>
+      <tr><td><strong>フィード投稿</strong></td><td>週3〜5回</td><td>毎日投稿でも問題ないが、質を優先</td></tr>
+      <tr><td><strong>ストーリーズ</strong></td><td>毎日1〜3件</td><td>24時間で消えるため頻度高め推奨</td></tr>
+      <tr><td><strong>リール</strong></td><td>週2〜3回</td><td>現在最もリーチが広がりやすい形式</td></tr>
+      <tr><td><strong>Threads</strong></td><td>毎日1〜3投稿</td><td>テキストなので作成コストが低い</td></tr>
+    </table>
+
+    <div class="info-box tip">
+      <strong>このアプリのAPI投稿について</strong><br>
+      現在このアプリはフィード投稿（画像）のみ対応しています。ストーリーズ・リールは別途手動で行ってください。
+    </div>
+
+    <!-- 垢BAN -->
+    <h2 id="ban">垢BAN（アカウント停止）になるケース</h2>
+
+    <div class="info-box danger">
+      アカウントが停止されると、それまでの投稿・フォロワーがすべて失われます。API経由の自動投稿でも同じルールが適用されます。
+    </div>
+
+    <h3 id="ban-cause">主な原因</h3>
+
+    <div class="ban-grid">
+      <div class="ban-item bad">
+        <div class="label">NG — 短時間での大量アクション</div>
+        1時間に大量のフォロー・いいね・コメントを行うとスパム判定されます。APIの自動投稿も1日数件程度に抑えるのが安全です。
+      </div>
+      <div class="ban-item bad">
+        <div class="label">NG — フォロワー・いいねの購入</div>
+        フォロワーやいいねを購入するサービスの利用は規約違反です。発覚するとアカウントが永久停止される場合があります。
+      </div>
+      <div class="ban-item bad">
+        <div class="label">NG — 同一または類似コンテンツの連続投稿</div>
+        まったく同じ画像・キャプションを繰り返し投稿するとスパム判定されます。
+      </div>
+      <div class="ban-item bad">
+        <div class="label">NG — 禁止コンテンツの投稿</div>
+        コンテンツポリシー違反の投稿が複数回あると、警告なしで停止されることがあります。
+      </div>
+      <div class="ban-item bad">
+        <div class="label">NG — 第三者ツールの過剰使用</div>
+        フォロー・いいねを自動化する非公式ツールはMetaの規約違反です（このアプリはMeta公式APIを使用しています）。
+      </div>
+      <div class="ban-item bad">
+        <div class="label">NG — コミュニティガイドライン違反の通報が集中</div>
+        多くのユーザーから通報を受けると審査が入り、停止されることがあります。
+      </div>
+    </div>
+
+    <h3 id="ban-signs">警告サインと対処</h3>
+    <div class="rule-card">
+      <h4>こんな症状が出たら注意</h4>
+      <ul>
+        <li><strong>「アクションをブロックされました」</strong>表示 → 一時的な制限。数時間〜数日休む</li>
+        <li><strong>投稿が表示されない・リーチが極端に低い</strong>→「シャドウバン」の可能性。禁止ハッシュタグを使っていないか確認</li>
+        <li><strong>ログインできなくなった</strong>→ アカウント停止。Metaのサポートに異議申し立てが可能</li>
+      </ul>
+    </div>
+
+    <!-- Threads ルール -->
+    <h2 id="threads-rules">Threads 投稿ルール</h2>
+    <span class="section-label th">Threads</span>
+
+    <p>ThreadsはMetaが運営するため、基本的にInstagramと同じコミュニティガイドラインが適用されます。</p>
+
+    <div class="rule-card">
+      <h4>Threads 固有の注意点</h4>
+      <ul>
+        <li>1投稿あたり<strong>最大500文字</strong>（このアプリでは400文字以内を推奨）</li>
+        <li>リンクは投稿末尾に1つ追加可能（このアプリの固定URL設定で対応）</li>
+        <li>ハッシュタグは現在サポートが限定的 — 多用しない方が無難</li>
+        <li>InstagramのBANがThreadsにも連動することがある</li>
+        <li>同一内容をInstagramとThreadsに同時投稿することは問題ない</li>
+      </ul>
+    </div>
+
+    <!-- プロフィール -->
+    <h2 id="profile">アクセス数が伸びるプロフィールの作り方</h2>
+
+    <h3 id="bio">プロフィール文（Bio）</h3>
+
+    <div class="profile-tip">
+      <div class="icon">🎯</div>
+      <div>
+        <h4>誰のための何が得られるアカウントかを明記する</h4>
+        <p>「〇〇専門の△△です。□□のお役立ち情報を毎日発信」のように、<strong>ターゲット → 発信内容 → 更新頻度</strong>の3点を入れると新規フォロワーが増えやすくなります。</p>
+      </div>
+    </div>
+
+    <div class="profile-tip">
+      <div class="icon">🔗</div>
+      <div>
+        <h4>URLは必ず設定する</h4>
+        <p>プロフィールのリンクは唯一クリック可能なURLです。サービスページ・ブログ・LINE公式アカウントへの導線として必ず設定してください。Linktree等を使って複数リンクをまとめるのも効果的です。</p>
+      </div>
+    </div>
+
+    <div class="profile-tip">
+      <div class="icon">📌</div>
+      <div>
+        <h4>改行・絵文字で視認性を上げる</h4>
+        <p>長文より箇条書きで読みやすく。絵文字を使って各行の頭をアイコン化すると視覚的にスキャンしやすくなります。</p>
+      </div>
+    </div>
+
+    <h3 id="photo">アイコン・ハイライト・固定投稿</h3>
+
+    <div class="ban-grid">
+      <div class="ban-item good">
+        <div class="label">アイコン</div>
+        顔写真（個人）または明確なロゴ（企業）を使用。背景がごちゃごちゃしていない、正方形に収まるデザインにする。
+      </div>
+      <div class="ban-item good">
+        <div class="label">ストーリーズハイライト</div>
+        「サービス紹介」「よくある質問」「お客様の声」など、新規訪問者が知りたい情報をハイライトにまとめて固定。
+      </div>
+      <div class="ban-item good">
+        <div class="label">固定投稿（ピン）</div>
+        最も見せたい投稿を最大3件ピン留め。自己紹介・人気コンテンツ・最新キャンペーン等が効果的。
+      </div>
+      <div class="ban-item good">
+        <div class="label">ユーザーネーム</div>
+        覚えやすく、ブランド名に近いものを選ぶ。記号は最小限に。他のSNSと統一すると検索されやすい。
+      </div>
+    </div>
+
+    <!-- アクセス数を伸ばす -->
+    <h2 id="growth">アクセス数を伸ばす方法</h2>
+
+    <h3 id="hashtag">ハッシュタグ戦略</h3>
+
+    <div class="rule-card">
+      <h4>効果的なハッシュタグの使い方</h4>
+      <ul>
+        <li><strong>数は5〜10個が目安</strong>（30個付けるより関連性の高いもの厳選の方が効果的）</li>
+        <li><strong>大中小を混ぜる</strong> — 大（100万件以上）：中（1〜100万）：小（1万未満）＝1：2：2 程度</li>
+        <li><strong>禁止ハッシュタグを使わない</strong> — 一部のハッシュタグはBAN対象。使う前に検索して確認</li>
+        <li><strong>業界・地域・内容に直結したタグ</strong>を優先する</li>
+        <li>毎回同じタグをコピペするのはスパム判定リスクあり。投稿ごとに一部変える</li>
+      </ul>
+    </div>
+
+    <div class="info-box tip">
+      このアプリの「固定ハッシュタグ」設定で、全投稿に自動追加するタグをまとめて設定できます。投稿ごとに変えたいタグは記事ネタの「ハッシュタグ」欄を使ってください。
+    </div>
+
+    <h3 id="algorithm">アルゴリズムに好まれる投稿</h3>
+
+    <div class="profile-tip">
+      <div class="icon">⏰</div>
+      <div>
+        <h4>投稿時間を最適化する</h4>
+        <p>フォロワーが最もアクティブな時間帯（一般的に朝7〜9時、昼12〜13時、夜19〜21時）に投稿する。インサイトで自分のフォロワーのアクティブ時間を確認して合わせる。</p>
+      </div>
+    </div>
+
+    <div class="profile-tip">
+      <div class="icon">💬</div>
+      <div>
+        <h4>エンゲージメントを促す</h4>
+        <p>キャプション末尾に質問を入れる（「あなたはどう思いますか？」等）。コメントには必ず返信する。保存・シェアされる「有益コンテンツ」はいいねより効果的。</p>
+      </div>
+    </div>
+
+    <div class="profile-tip">
+      <div class="icon">🎨</div>
+      <div>
+        <h4>フィードの統一感を出す</h4>
+        <p>投稿の色調・フォント・デザインを統一すると、プロフィールを訪問した際の印象が良くなりフォロー率が上がります。このアプリの「記事テイスト」設定で文体を統一できます。</p>
+      </div>
+    </div>
+
+    <div class="profile-tip">
+      <div class="icon">📊</div>
+      <div>
+        <h4>定期的にインサイトを確認する</h4>
+        <p>どの投稿がリーチ・保存数が多いかを分析し、好まれるコンテンツを増やす。インサイトはInstagramアプリの「プロフェッショナルダッシュボード」から確認できます。</p>
+      </div>
+    </div>
+
+    <!-- API利用の注意 -->
+    <h2 id="api-rules">API 利用上の注意</h2>
+
+    <div class="info-box warn">
+      <strong>API経由の自動投稿にも同じルールが適用されます。</strong><br>
+      Metaは投稿元がAPIかアプリかを区別しません。自動投稿でも手動投稿と同じコンテンツポリシーに従う必要があります。
+    </div>
+
+    <div class="rule-card">
+      <h4>API利用時の制限事項</h4>
+      <ul>
+        <li>Instagram API：1日あたりの投稿数は<strong>50件まで</strong>（通常の運用では問題なし）</li>
+        <li>Threads API：1日あたり<strong>250投稿まで</strong></li>
+        <li>画像はHTTPS経由で公開アクセス可能なURLが必要（このアプリが自動処理します）</li>
+        <li>投稿に使用する画像は著作権フリーか自社所有のものを使用する</li>
+        <li>アクセストークンを第三者と共有しない。漏洩した場合はすぐにMeta Developerで失効させる</li>
+      </ul>
+    </div>
+
+    <div class="info-box success">
+      <strong>安全に運用するためのチェックリスト</strong>
+      <ul style="margin-top:8px;">
+        <li>✅ Instagramがビジネスアカウントになっている</li>
+        <li>✅ 投稿内容はコミュニティガイドラインに準拠している</li>
+        <li>✅ ハッシュタグは禁止タグを除外した適切なものを使用</li>
+        <li>✅ アクセストークンの有効期限を定期的に確認・更新している</li>
+        <li>✅ 自動投稿の頻度は1日数件以内に抑えている</li>
+        <li>✅ コメントへの返信など手動のエンゲージメントも行っている</li>
+      </ul>
+    </div>
+
+  </div><!-- /guide-body -->
+</div>
+{% endblock %}

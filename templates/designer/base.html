@@ -160,6 +160,12 @@
           <a href="{{ url_for('designer.guide') }}" class="nav-link {% if request.endpoint == 'designer.guide' %}active{% endif %}">
             📖 使い方
           </a>
+          <a href="{{ url_for('designer.guide_api_setup') }}" class="nav-link {% if request.endpoint == 'designer.guide_api_setup' %}active{% endif %}">
+            🔑 API取得手順
+          </a>
+          <a href="{{ url_for('designer.guide_ig_rules') }}" class="nav-link {% if request.endpoint == 'designer.guide_ig_rules' %}active{% endif %}">
+            📱 Instagram運用ルール
+          </a>
         </div>
       </nav>
       <div class="sidebar-user">

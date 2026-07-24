@@ -1,0 +1,310 @@
+{% extends "designer/base.html" %}
+{% block title %}API取得手順 — Instagram / Threads{% endblock %}
+{% block page_title %}API取得手順 — Instagram / Threads{% endblock %}
+
+{% block head %}
+<style>
+.guide-wrap {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 32px;
+  align-items: start;
+  max-width: 1020px;
+}
+.guide-toc {
+  position: sticky;
+  top: 76px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.guide-toc h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.guide-toc a { display: block; font-size: 12px; color: var(--muted); text-decoration: none; padding: 5px 8px; border-radius: 5px; line-height: 1.4; transition: all .12s; }
+.guide-toc a:hover { color: var(--text); background: var(--bg3); }
+.guide-toc a.sub { padding-left: 20px; font-size: 11px; }
+
+.guide-body h2 { font-size: 18px; font-weight: 700; margin: 40px 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+.guide-body h2:first-child { margin-top: 0; }
+.guide-body h3 { font-size: 14px; font-weight: 700; margin: 24px 0 10px; color: var(--text); }
+.guide-body p { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 12px; }
+.guide-body ul, .guide-body ol { padding-left: 20px; margin-bottom: 12px; }
+.guide-body li { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 4px; }
+.guide-body strong { color: var(--text); }
+
+.step-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+.step-title {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.step-body { font-size: 13px; line-height: 1.8; color: var(--muted); }
+.step-body ul { padding-left: 18px; margin-top: 8px; }
+.step-body li { margin-bottom: 4px; }
+
+.info-box {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.info-box.tip { background: #6366f115; border-left: 3px solid var(--primary); color: var(--text); }
+.info-box.warn { background: #f59e0b15; border-left: 3px solid var(--warning); color: #fbbf24; }
+.info-box.danger { background: #ef444415; border-left: 3px solid var(--danger); color: #f87171; }
+
+code.inline { background: var(--bg3); border: 1px solid var(--border); padding: 2px 7px; border-radius: 4px; font-size: 12px; color: var(--primary); }
+
+.section-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.section-label.ig { background: #e1306c20; color: #e1306c; }
+.section-label.th { background: #00000030; color: #aaa; border: 1px solid #444; }
+.section-label.meta { background: #1877f220; color: #60a5fa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-wrap">
+  <!-- 目次 -->
+  <div class="guide-toc">
+    <h3>目次</h3>
+    <a href="#overview">概要・必要なもの</a>
+    <a href="#meta-account">Meta開発者環境の構築</a>
+    <a class="sub" href="#meta-account">アカウント作成</a>
+    <a class="sub" href="#fb-page">Facebookページ連携</a>
+    <a class="sub" href="#meta-app">Metaアプリ作成</a>
+    <a href="#ig-api">Instagram API</a>
+    <a class="sub" href="#ig-token">アクセストークン取得</a>
+    <a class="sub" href="#ig-long">長期トークン変換</a>
+    <a href="#threads-api">Threads API</a>
+    <a class="sub" href="#threads-token">アクセストークン取得</a>
+    <a href="#app-settings">アプリへの設定</a>
+    <a href="#faq">よくあるトラブル</a>
+  </div>
+
+  <!-- 本文 -->
+  <div class="guide-body">
+
+    <h2 id="overview">概要・必要なもの</h2>
+    <p>Instagram / Threads に自動投稿するには、Meta（Facebook）の開発者機能を使ってAPIアクセストークンを取得する必要があります。取得後、このアプリの企業設定画面に貼り付けるだけで自動投稿が有効になります。</p>
+
+    <div class="info-box tip">
+      <strong>必要なもの（事前に準備）</strong>
+      <ul style="margin-top:6px;">
+        <li><strong>Facebookアカウント</strong> — 個人アカウントでOK</li>
+        <li><strong>Instagramビジネスアカウント</strong> — 個人アカウントから変更可能</li>
+        <li><strong>Facebookページ</strong> — Instagramビジネスアカウントと連携が必要</li>
+        <li><strong>スマートフォン</strong> — Instagram/Threadsアプリが必要な手順あり</li>
+      </ul>
+    </div>
+
+    <div class="info-box warn">
+      Instagramの個人アカウントではAPIは使えません。<strong>ビジネスアカウントまたはクリエイターアカウント</strong>への変更が必須です。
+    </div>
+
+    <!-- Meta開発者環境 -->
+    <h2 id="meta-account">Meta 開発者環境の構築</h2>
+    <span class="section-label meta">Meta Developer</span>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">1</span>Instagramをビジネスアカウントに変更</div>
+      <div class="step-body">
+        Instagramアプリ → プロフィール → 右上メニュー → <strong>「アカウントの種類とツール」</strong> → 「プロアカウントに切り替える」→ <strong>ビジネス</strong>を選択
+        <div class="info-box tip" style="margin-top:10px;">クリエイターアカウントでも可ですが、ビジネスアカウントの方が安定しています。</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="fb-page">
+      <div class="step-title"><span class="step-num">2</span>FacebookページをInstagramと連携</div>
+      <div class="step-body">
+        <ol>
+          <li>Facebookで新しいページを作成（または既存ページを使用）</li>
+          <li>Instagramアプリ → プロフィール → <strong>「プロフィールを編集」</strong></li>
+          <li>「ソーシャルリンクを追加」→「Facebookページをリンク」で連携</li>
+        </ol>
+        <div class="info-box warn" style="margin-top:10px;">この連携がないとInstagram Graph APIが動作しません。必ず先に行ってください。</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="meta-app">
+      <div class="step-title"><span class="step-num">3</span>Meta for Developers でアプリを作成</div>
+      <div class="step-body">
+        <ol>
+          <li><strong>developers.facebook.com</strong> にアクセスし、Facebookアカウントでログイン</li>
+          <li>「マイアプリ」→「アプリを作成」をクリック</li>
+          <li>ユースケース：<strong>「その他」</strong>を選択 → 次へ</li>
+          <li>アプリタイプ：<strong>「ビジネス」</strong>を選択 → 次へ</li>
+          <li>アプリ名を入力（例：<code class="inline">MyBlog Poster</code>）→ 「アプリを作成」</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">4</span>Instagram Graph API 製品を追加</div>
+      <div class="step-body">
+        <ol>
+          <li>作成したアプリのダッシュボードで「製品を追加」をクリック</li>
+          <li>「<strong>Instagram Graph API</strong>」→「設定」をクリック</li>
+          <li>左メニューに「Instagram」が追加される</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Instagram API -->
+    <h2 id="ig-api">Instagram API の設定</h2>
+    <span class="section-label ig">Instagram</span>
+
+    <div class="step-card" id="ig-token">
+      <div class="step-title"><span class="step-num">5</span>Instagram ビジネスアカウントIDとトークンを取得</div>
+      <div class="step-body">
+        <ol>
+          <li>アプリダッシュボード → 左メニュー「Instagram」→「APIのセットアップ（Instagram Graph API）」</li>
+          <li>「Instagramビジネスアカウントを追加または削除」→ <strong>自分のInstagramアカウントを連携</strong></li>
+          <li>「アクセストークンを生成」→ 表示されたトークンをコピー</li>
+          <li>「Instagramビジネスアカウントに接続されているページ」欄の<strong>IG User ID</strong>（数字）もコピー</li>
+        </ol>
+        <div class="info-box tip" style="margin-top:10px;">
+          <strong>コピーすべき2つの値</strong>
+          <ul style="margin-top:6px;">
+            <li>IG User ID（例：<code class="inline">17841400000000000</code>）→ アプリの「IGビジネスアカウントID」に入力</li>
+            <li>アクセストークン（<code class="inline">EAA...</code>で始まる長い文字列）→ アプリの「長期アクセストークン」に入力</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card" id="ig-long">
+      <div class="step-title"><span class="step-num">6</span>アクセストークンを長期トークンに変換（重要）</div>
+      <div class="step-body">
+        <p>デフォルトのトークンは<strong>有効期限が約60日</strong>です。このアプリは長期トークンをそのまま保存します。定期的な更新が必要です。</p>
+        <div class="info-box warn">
+          <strong>トークンの有効期限について</strong><br>
+          約60日で失効します。失効するとInstagramへの自動投稿が停止します。有効期限が近づいたら企業設定から新しいトークンを発行・更新してください。
+        </div>
+        <p>Meta for Developers の「アクセストークンデバッガー」（<code class="inline">developers.facebook.com/tools/debug/accesstoken</code>）でトークンの残り有効期間を確認できます。</p>
+      </div>
+    </div>
+
+    <!-- Threads API -->
+    <h2 id="threads-api">Threads API の設定</h2>
+    <span class="section-label th">Threads</span>
+
+    <p>ThreadsのAPIはInstagramとは別のフローです。Instagramアカウントと同じMetaアカウントで取得します。</p>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">7</span>Threads API 製品を追加</div>
+      <div class="step-body">
+        <ol>
+          <li>Metaアプリダッシュボード → 「製品を追加」</li>
+          <li>「<strong>Threads API</strong>」→「設定」をクリック</li>
+          <li>左メニューに「Threads」が追加される</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step-card" id="threads-token">
+      <div class="step-title"><span class="step-num">8</span>Threads アクセストークンを取得</div>
+      <div class="step-body">
+        <ol>
+          <li>左メニュー「Threads」→「クイックスタート」</li>
+          <li>「Threadsアカウントを追加」→ Threadsにログインして連携を許可</li>
+          <li>「アクセストークンを生成」→ トークンをコピー</li>
+        </ol>
+        <div class="info-box tip" style="margin-top:10px;">
+          <strong>コピーすべき値</strong>
+          <ul style="margin-top:6px;">
+            <li>Threads User ID（数字）→ 企業設定の「Threads ユーザーID」に入力<br>
+              ※ 企業設定の「IDを自動取得」ボタンでトークンから自動取得することも可能</li>
+            <li>アクセストークン → 企業設定の「Threadsアクセストークン」に入力</li>
+          </ul>
+        </div>
+        <div class="info-box warn" style="margin-top:10px;">
+          Threads投稿には <strong>threads_content_publish</strong> 権限が必要です。アプリが「開発モード」の場合はテストユーザーのみ投稿可能です。本番公開が必要な場合はMetaの審査を申請してください。
+        </div>
+      </div>
+    </div>
+
+    <!-- アプリへの設定 -->
+    <h2 id="app-settings">アプリへの設定方法</h2>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">9</span>企業設定画面に入力</div>
+      <div class="step-body">
+        企業一覧 → 該当企業の「設定編集」を開き、以下に入力して保存します。
+        <ul style="margin-top:10px;">
+          <li>投稿タイプ：<strong>Instagram</strong> を選択</li>
+          <li><strong>IGビジネスアカウントID</strong> — IG User ID（手順5でコピーした数字）</li>
+          <li><strong>長期アクセストークン</strong> — Instagram APIトークン（手順5でコピー）</li>
+          <li><strong>Threadsユーザーid</strong> — Threads User ID（手順8）または「IDを自動取得」</li>
+          <li><strong>Threadsアクセストークン</strong> — Threads APIトークン（手順8でコピー）</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- よくあるトラブル -->
+    <h2 id="faq">よくあるトラブル</h2>
+
+    <div class="step-card">
+      <div class="step-title" style="color:var(--danger);">「投稿に失敗しました」と表示される</div>
+      <div class="step-body">
+        <ul>
+          <li><strong>トークンが失効</strong>している可能性が高いです。Meta Developer でトークンを再発行し、企業設定を更新してください。</li>
+          <li>Instagramアカウントが<strong>ビジネスアカウントに変更されていない</strong>場合も発生します。</li>
+          <li>FacebookページとInstagramの<strong>連携が解除</strong>されていないか確認してください。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-title" style="color:var(--danger);">「IG User IDが見つからない」</div>
+      <div class="step-body">
+        <ul>
+          <li>Instagram がビジネスアカウントになっていることを確認</li>
+          <li>FacebookページとInstagramが正しく連携されていることを確認</li>
+          <li>Metaアプリのダッシュボードで、Instagramアカウントが「連携済み」になっているか確認</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-title" style="color:var(--danger);">Threadsの「threads_content_publish 権限がありません」</div>
+      <div class="step-body">
+        <ul>
+          <li>アプリが<strong>開発モード</strong>の場合、投稿できるのはアプリに「テストユーザー」として追加されたアカウントのみです</li>
+          <li>自分のアカウントをテストユーザーに追加：アプリダッシュボード →「役割」→「テストユーザー」→「テストユーザーを追加」</li>
+          <li>それでも解決しない場合はMetaに<strong>権限の審査</strong>を申請する必要があります</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /guide-body -->
+</div>
+{% endblock %}
