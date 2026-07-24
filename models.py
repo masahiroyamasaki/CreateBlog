@@ -68,6 +68,8 @@ class Client(db.Model):
     business_description = db.Column(db.Text)                  # 事業内容・サービス概要
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
+    delivery_method = db.Column(db.String(20), default="email")  # 配信方法: email / webhook
+    webhook_url = db.Column(db.String(500), default="")          # Webhook 送信先 URL
     client_email = db.Column(db.String(255), default="")       # メール送信先（email_onlyプラン用）
     wp_sample_posts_json = db.Column(db.Text)                 # WP既存記事キャッシュ（JSON）
     hp_template_path = db.Column(db.String(500), default="") # 独自HPテンプレートファイルパス

@@ -81,10 +81,46 @@ def publish_due_posts(app, db) -> int:
                         post.error_message = result.get("reason", "Instagram 投稿失敗")
 
                 elif pt == "custom_hp":
-                    post.status        = "posted"
-                    post.posted_at     = now
-                    post.error_message = ""
-                    published += 1
+                    dm = client.delivery_method or "email"
+                    if dm == "webhook":
+                        import requests as _rq
+                        wh_url = (client.webhook_url or "").strip()
+                        if wh_url:
+                            _r = _rq.post(wh_url, json={
+                                "title": post.title,
+                                "body_html": post.body_html or "",
+                                "post_id": post.id,
+                                "client_name": client.name,
+                            }, timeout=15)
+                            wh_ok = _r.status_code < 300
+                        else:
+                            wh_ok = False
+                        if wh_ok:
+                            post.status        = "posted"
+                            post.posted_at     = now
+                            post.error_message = ""
+                            published += 1
+                        else:
+                            post.status        = "failed"
+                            post.error_message = "Webhook 送信失敗"
+                    else:
+                        from mailer import send_article_email
+                        _mr = send_article_email(
+                            to_email=client.client_email or "",
+                            company_name=client.name,
+                            title=post.title,
+                            body_html=post.body_html or "",
+                            email_format=client.email_format or "html",
+                            plain_body=post.ig_caption or "",
+                        )
+                        if _mr.get("success"):
+                            post.status        = "posted"
+                            post.posted_at     = now
+                            post.error_message = ""
+                            published += 1
+                        else:
+                            post.status        = "failed"
+                            post.error_message = _mr.get("reason", "メール送信失敗")
 
                 elif pt == "email_only":
                     from mailer import send_article_email

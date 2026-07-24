@@ -52,23 +52,41 @@
       <!-- 料金プラン（投稿タイプ → 投稿数 → 月額自動計算） -->
       <div class="form-group section-block">
         <p class="section-title">料金プラン</p>
+
+        {% if client and plan_locked %}
+        <div style="margin-bottom:14px;padding:10px 14px;background:#f59e0b15;border:1px solid #f59e0b;border-radius:8px;font-size:12px;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+          <span>🔒</span>
+          <span>投稿タイプ・月間投稿数は <strong>毎月25日〜末日</strong> のみ変更できます。現在はロック中です。</span>
+        </div>
+        {% endif %}
+
         <label>投稿タイプ</label>
-        <select class="form-control" name="platform_type" id="platform_type" onchange="updateSections(); autoCalcFee();">
+        <select class="form-control" name="platform_type" id="platform_type"
+                onchange="updateSections(); autoCalcFee();"
+                {% if client and plan_locked %}disabled{% endif %}>
           <option value="wordpress"  {% if not client or client.platform_type in ('wordpress', 'wordpress_instagram') %}selected{% endif %}>WordPress</option>
           <option value="instagram"  {% if client and client.platform_type == 'instagram'  %}selected{% endif %}>Instagram</option>
           <option value="custom_hp"  {% if client and client.platform_type == 'custom_hp'  %}selected{% endif %}>独自HP</option>
           <option value="email_only" {% if client and client.platform_type == 'email_only' %}selected{% endif %}>メール送信のみ</option>
         </select>
+        {% if client and plan_locked %}
+        <input type="hidden" name="platform_type" value="{{ client.platform_type or 'wordpress' }}">
+        {% endif %}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div class="form-group">
         <label>月間投稿数（契約数）</label>
         {% set cur_count = (client.monthly_post_count if client and client.monthly_post_count else 4) %}
-        <select class="form-control" name="monthly_post_count" id="monthly_post_count" onchange="autoCalcFee(); recheckLimits();">
+        <select class="form-control" name="monthly_post_count" id="monthly_post_count"
+                onchange="autoCalcFee(); recheckLimits();"
+                {% if client and plan_locked %}disabled{% endif %}>
           {% for n in [4, 8, 12, 16, 20, 24, 28] %}
           <option value="{{ n }}" {% if cur_count == n %}selected{% endif %}>{{ n }}件 / 月</option>
           {% endfor %}
         </select>
+        {% if client and plan_locked %}
+        <input type="hidden" name="monthly_post_count" value="{{ client.monthly_post_count or 4 }}">
+        {% endif %}
         <p class="hint">自動生成バッチで使用</p>
       </div>
       <div class="form-group">
@@ -122,6 +140,50 @@
           <label>サイトURL</label>
           <input class="form-control" type="url" name="custom_url" value="{{ client.custom_url if client and client.custom_url else '' }}" placeholder="https://example.com">
           <p class="hint">参考情報として保存されます。</p>
+        </div>
+
+        <!-- 配信方法 -->
+        <div class="form-group">
+          <label>配信方法</label>
+          {% set cur_dm = (client.delivery_method if client and client.delivery_method else 'email') %}
+          <div style="display:flex;gap:24px;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+              <input type="radio" name="delivery_method" value="email"
+                     {% if cur_dm == 'email' %}checked{% endif %}
+                     onchange="updateDeliveryMethod()">
+              <span>
+                <strong>メール送信</strong>
+                <span style="font-size:12px;color:var(--muted);display:block;">記事完成時にメールで担当者へ送信</span>
+              </span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+              <input type="radio" name="delivery_method" value="webhook"
+                     {% if cur_dm == 'webhook' %}checked{% endif %}
+                     onchange="updateDeliveryMethod()">
+              <span>
+                <strong>Webhook で送信</strong>
+                <span style="font-size:12px;color:var(--muted);display:block;">指定URLに記事データをPOST</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- メール送信先（delivery_method=email 時のみ表示） -->
+        <div class="form-group" id="custom-hp-email-field">
+          <label>記事送信先メールアドレス</label>
+          <input class="form-control" type="email" name="client_email"
+                 value="{{ client.client_email if client and client.client_email else '' }}"
+                 placeholder="client@example.com">
+          <p class="hint">記事完成・予約日時になるとこのアドレスに記事が送信されます。</p>
+        </div>
+
+        <!-- Webhook URL（delivery_method=webhook 時のみ表示） -->
+        <div class="form-group" id="custom-hp-webhook-field">
+          <label>Webhook URL</label>
+          <input class="form-control" type="url" name="webhook_url"
+                 value="{{ client.webhook_url if client and client.webhook_url else '' }}"
+                 placeholder="https://example.com/api/webhook">
+          <p class="hint">記事データ（title・body_html・post_id）をJSONでPOSTします。</p>
         </div>
 
         {% if client %}
@@ -452,11 +514,21 @@
 const PRICING_PLANS = {{ pricing_plans | tojson }};
 
 function updateSections() {
-  const pt = document.getElementById('platform_type').value;
+  const sel = document.getElementById('platform_type');
+  const pt = sel ? sel.value : '{{ client.platform_type if client else "wordpress" }}';
   document.getElementById('section-wordpress').style.display  = (pt === 'wordpress')  ? '' : 'none';
   document.getElementById('section-instagram').style.display  = (pt === 'instagram')  ? '' : 'none';
   document.getElementById('section-custom-hp').style.display  = (pt === 'custom_hp')  ? '' : 'none';
   document.getElementById('section-email-only').style.display = (pt === 'email_only') ? '' : 'none';
+  updateDeliveryMethod();
+}
+
+function updateDeliveryMethod() {
+  const dm = document.querySelector('input[name="delivery_method"]:checked')?.value || 'email';
+  const emailF = document.getElementById('custom-hp-email-field');
+  const webhookF = document.getElementById('custom-hp-webhook-field');
+  if (emailF) emailF.style.display = (dm === 'email') ? '' : 'none';
+  if (webhookF) webhookF.style.display = (dm === 'webhook') ? '' : 'none';
 }
 
 function updateScheduleUI() {

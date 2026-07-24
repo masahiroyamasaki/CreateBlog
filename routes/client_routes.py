@@ -244,14 +244,28 @@ def client_new():
     return render_template("designer/clients/form.html", client=None, designers=designers)
 
 
+def _plan_locked() -> bool:
+    """毎月25日〜末日以外はプラン変更をロックする。管理者は常に変更可。"""
+    if current_user.role == "admin":
+        return False
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone(timedelta(hours=9)))
+    return now.day < 25
+
+
 @designer_bp.route("/clients/<int:client_id>/edit", methods=["GET", "POST"])
 @login_required
 def client_edit(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
+    locked = _plan_locked()
     if request.method == "POST":
         client.name = request.form["name"]
-        client.platform_type = request.form.get("platform_type", "wordpress_instagram")
+        # プランロック中は platform_type / monthly_post_count を変更不可
+        if not locked:
+            client.platform_type = request.form.get("platform_type", client.platform_type)
+            client.monthly_post_count = int(request.form.get("monthly_post_count", client.monthly_post_count) or client.monthly_post_count)
+            client.monthly_fee = 0 if request.form.get("client_status") == "test" else int(request.form.get("monthly_fee", 0) or 0)
         client.client_email       = request.form.get("client_email", "")
         client.business_description = request.form.get("business_description", "")
         client.article_taste      = request.form.get("article_taste", "standard")
@@ -263,8 +277,8 @@ def client_edit(client_id: int):
         if _new_status == "test" and current_user.role != "admin":
             _new_status = "active"
         client.client_status = _new_status
-        client.monthly_post_count = int(request.form.get("monthly_post_count", 4) or 4)
-        client.monthly_fee = 0 if client.client_status == "test" else int(request.form.get("monthly_fee", 0) or 0)
+        client.delivery_method = request.form.get("delivery_method", "email")
+        client.webhook_url = request.form.get("webhook_url", "")
         client.schedule_type = request.form.get("schedule_type", "weekly")
         client.schedule_days_of_week = ",".join(request.form.getlist("schedule_days_of_week")) or "0"
         client.schedule_days_of_month = ",".join(request.form.getlist("schedule_days_of_month")) or "1"
@@ -287,7 +301,10 @@ def client_edit(client_id: int):
         client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None
         db.session.commit()
-        flash("変更を保存しました", "success")
+        if locked:
+            flash("変更を保存しました（投稿タイプ・月間投稿数は25日〜末日のみ変更可）", "success")
+        else:
+            flash("変更を保存しました", "success")
         return redirect(url_for("designer.client_detail", client_id=client_id))
     # フォームには復号して渡す
     form_data = {
@@ -295,7 +312,7 @@ def client_edit(client_id: int):
         "ig_access_token": decrypt_field(client.ig_access_token),
         "threads_access_token": decrypt_field(client.threads_access_token or ""),
     }
-    return render_template("designer/clients/form.html", client=client, form_data=form_data)
+    return render_template("designer/clients/form.html", client=client, form_data=form_data, plan_locked=locked)
 
 
 @designer_bp.route("/clients/<int:client_id>/fetch-wp-posts", methods=["POST"])

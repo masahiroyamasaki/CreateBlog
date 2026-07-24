@@ -345,13 +345,32 @@ def post_publish(client_id: int, post_id: int):
             db.session.commit()
             return jsonify({"success": False, "reason": post.error_message})
 
-    # ── 独自HP（投稿済みマーク）──────────────────────────
+    # ── 独自HP ────────────────────────────────────────────
     elif pt == "custom_hp":
-        post.status        = "posted"
-        post.posted_at     = _now_jst()
-        post.error_message = ""
-        db.session.commit()
-        return jsonify({"success": True})
+        dm = client.delivery_method or "email"
+        if dm == "webhook":
+            result = _deliver_webhook(client, post)
+        else:
+            from mailer import send_article_email
+            result = send_article_email(
+                to_email=client.client_email or "",
+                company_name=client.name,
+                title=post.title,
+                body_html=post.body_html or "",
+                email_format=client.email_format or "html",
+                plain_body=post.ig_caption or "",
+            )
+        if result.get("success"):
+            post.status        = "posted"
+            post.posted_at     = _now_jst()
+            post.error_message = ""
+            db.session.commit()
+            return jsonify({"success": True})
+        else:
+            post.status        = "failed"
+            post.error_message = result.get("reason", "配信失敗")
+            db.session.commit()
+            return jsonify({"success": False, "reason": post.error_message})
 
     # ── メール送信のみ ────────────────────────────────────
     elif pt == "email_only":
@@ -442,6 +461,26 @@ def _build_caption(post: Post, client: Client) -> str:
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
     return caption
+
+
+def _deliver_webhook(client, post) -> dict:
+    """Webhook URL に記事データを POST する。"""
+    url = (client.webhook_url or "").strip()
+    if not url:
+        return {"success": False, "reason": "Webhook URLが設定されていません"}
+    import requests as _req
+    try:
+        res = _req.post(url, json={
+            "title": post.title,
+            "body_html": post.body_html or "",
+            "post_id": post.id,
+            "client_name": client.name,
+        }, timeout=15)
+        if res.status_code < 300:
+            return {"success": True}
+        return {"success": False, "reason": f"Webhook HTTP {res.status_code}"}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
 
 
 def _check_threads_char_limit(client: Client, post: Post):
