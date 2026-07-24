@@ -9,6 +9,31 @@ def _auth_header(username: str, app_password: str) -> dict:
     return {"Authorization": f"Basic {token}", "Content-Type": "application/json"}
 
 
+def _urls(base: str, resource: str):
+    """REST API URL を2形式で返す。(標準形式, クエリ形式)"""
+    b = base.rstrip("/")
+    return (
+        f"{b}/wp-json/wp/v2/{resource}",
+        f"{b}/?rest_route=/wp/v2/{resource}",
+    )
+
+
+def _get_with_fallback(base, resource, headers, params=None, timeout=10):
+    primary, fallback = _urls(base, resource)
+    res = requests.get(primary, headers=headers, params=params, timeout=timeout)
+    if res.status_code == 404:
+        res = requests.get(fallback, headers=headers, params=params, timeout=timeout)
+    return res
+
+
+def _post_with_fallback(base, resource, headers, json=None, timeout=(15, 90)):
+    primary, fallback = _urls(base, resource)
+    res = requests.post(primary, headers=headers, json=json, timeout=timeout)
+    if res.status_code == 404:
+        res = requests.post(fallback, headers=headers, json=json, timeout=timeout)
+    return res
+
+
 def post_article(
     endpoint: str,
     username: str,
@@ -44,11 +69,10 @@ def post_article(
         }
 
     try:
-        res = requests.post(
-            f"{wp_url}/wp-json/wp/v2/posts",
+        res = _post_with_fallback(
+            wp_url, "posts",
             headers=_auth_header(username, app_password),
             json=body,
-            timeout=(15, 90),
         )
     except requests.exceptions.ConnectionError:
         return {"success": False, "reason": "WordPress に接続できません"}
@@ -75,10 +99,9 @@ def test_connection(endpoint: str, username: str, app_password: str) -> dict:
     if not endpoint:
         return {"success": False, "reason": "エンドポイントが未設定です"}
     try:
-        res = requests.get(
-            f"{endpoint.rstrip('/')}/wp-json/wp/v2/users/me",
+        res = _get_with_fallback(
+            endpoint, "users/me",
             headers=_auth_header(username, app_password),
-            timeout=10,
         )
         if res.status_code == 200:
             return {"success": True, "name": res.json().get("name", "")}

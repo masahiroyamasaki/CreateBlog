@@ -313,8 +313,9 @@ def client_fetch_wp_posts(client_id: int):
     try:
         username = client.wp_username or ""
         password = decrypt_field(client.wp_app_password)
-        res = _req.get(
-            f"{endpoint}/wp-json/wp/v2/posts",
+        from wp_client import _get_with_fallback
+        res = _get_with_fallback(
+            endpoint, "posts",
             headers=_auth_header(username, password),
             params={"per_page": 5, "orderby": "date", "order": "desc",
                     "_fields": "id,title,content,date"},
