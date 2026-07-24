@@ -142,6 +142,35 @@
             <input class="form-control" type="password" name="wp_app_password" placeholder="{% if client %}変更する場合のみ入力{% else %}xxxx xxxx xxxx{% endif %}" autocomplete="new-password">
           </div>
         </div>
+
+        {% if client %}
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">既存記事（文体参照）</p>
+          <p class="hint" style="margin-bottom:10px;">最新5件をWordPressから取得して、AIが文体・トーン・構成を揃えた記事を生成します。</p>
+          {% if client.wp_sample_posts_json %}
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:color-mix(in srgb,var(--success) 8%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:8px;">
+            <span style="font-size:16px;">✓</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--success);">取得済み</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px;">AIが文体・構成の参考に使用します</div>
+            </div>
+          </div>
+          {% else %}
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:16px;color:var(--muted);">—</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--muted);">未取得</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px;">取得するとAIが文体を揃えた記事を生成できます</div>
+            </div>
+          </div>
+          {% endif %}
+          <button type="submit" form="wp-fetch-form"
+                  class="btn btn-secondary btn-sm"
+                  onclick="return confirm('WordPressから既存記事を取得します。現在のキャッシュは上書きされます。')">
+            {% if client.wp_sample_posts_json %}再取得{% else %}WP記事を取得{% endif %}
+          </button>
+        </div>
+        {% endif %}
       </div>
 
       <!-- Instagram セクション -->
@@ -361,40 +390,11 @@
     </form>
 
     {% if client %}
+    <form id="wp-fetch-form" method="POST" action="{{ url_for('designer.client_fetch_wp_posts', client_id=client.id) }}"></form>
+
     <!-- AI記事スタイル設定（メインフォームの外に配置してフォームネストを回避） -->
     <div class="section-block" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
       <p class="section-title">AI 記事スタイル設定</p>
-
-      <!-- WordPress記事取得 -->
-      <div class="form-group">
-        <label>WordPress 既存記事（文体参照）</label>
-        <p class="hint" style="margin-bottom:10px;">最新5件をWordPressから取得して、AIが文体・トーン・構成を揃えた記事を生成します。</p>
-
-        {% if client.wp_sample_posts_json %}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:color-mix(in srgb,var(--success) 8%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:8px;">
-          <span style="font-size:16px;">✓</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--success);">取得済み</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">AIが文体・構成の参考に使用します</div>
-          </div>
-        </div>
-        {% else %}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
-          <span style="font-size:16px;color:var(--muted);">—</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--muted);">未取得</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">取得するとAIが文体を揃えた記事を生成できます</div>
-          </div>
-        </div>
-        {% endif %}
-
-        <form method="POST" action="{{ url_for('designer.client_fetch_wp_posts', client_id=client.id) }}" style="display:inline;">
-          <button type="submit" class="btn btn-secondary btn-sm"
-                  onclick="return confirm('WordPressから既存記事を取得します。現在のキャッシュは上書きされます。')">
-            {% if client.wp_sample_posts_json %}再取得{% else %}WP記事を取得{% endif %}
-          </button>
-        </form>
-      </div>
 
       <!-- 独自HPテンプレートアップロード -->
       <div class="form-group" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
