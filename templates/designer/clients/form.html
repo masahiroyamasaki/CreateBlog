@@ -127,7 +127,15 @@
         {% if client %}
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
           <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">ホームページテンプレート（デザイン解析）</p>
-          <p class="hint" style="margin-bottom:10px;">HTML/CSSファイルをアップロードすると、AIがデザイン・文体指示を自動抽出します。</p>
+          <p class="hint" style="margin-bottom:10px;">HPのソースコードを1ファイルアップロードすると、AIがデザイン・文体指示を自動抽出し、生成記事のトンマナを揃えます。</p>
+          <div style="margin-bottom:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:12px;line-height:1.8;color:var(--muted);">
+            <div style="font-weight:700;color:var(--text);margin-bottom:6px;">どのファイルをアップロードすればいいか</div>
+            <div>・<strong>静的HTML</strong> → トップページまたは記事ページの <code>.html</code> ファイル</div>
+            <div>・<strong>WordPress</strong> → テーマの <code>style.css</code> または <code>single.php</code></div>
+            <div>・<strong>React / Next.js</strong> → レイアウトコンポーネント（<code>Layout.tsx</code> など）</div>
+            <div>・<strong>PHP製サイト</strong> → <code>header.php</code> または記事ページのPHPファイル</div>
+            <div style="margin-top:6px;color:var(--muted);">※ デザインや文体が一番よく表れているファイルを1つ選んでください。</div>
+          </div>
 
           {% if client.hp_template_path %}
           <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:10px 14px;background:color-mix(in srgb,var(--success) 8%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:8px;">
@@ -148,7 +156,7 @@
           {% endif %}
 
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input type="file" name="template_file" accept=".html,.htm,.css" form="hp-template-form"
+            <input type="file" name="template_file" accept=".html,.htm,.css,.php,.ts,.tsx,.vue,.js,.jsx" form="hp-template-form"
                    style="font-size:13px;border:1px solid var(--border);padding:4px 8px;border-radius:6px;background:var(--bg2);">
             <button type="submit" form="hp-template-form" class="btn btn-secondary btn-sm">
               {% if client.hp_template_path %}再アップロード・解析{% else %}解析・保存{% endif %}

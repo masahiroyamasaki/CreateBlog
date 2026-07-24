@@ -351,11 +351,7 @@ def client_upload_hp_template(client_id: int):
     if not file or file.filename == "":
         flash("ファイルが選択されていません", "error")
         return redirect(url_for("designer.client_edit", client_id=client_id))
-    allowed_exts = {".html", ".htm", ".css"}
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in allowed_exts:
-        flash("HTML または CSS ファイルのみアップロードできます", "error")
-        return redirect(url_for("designer.client_edit", client_id=client_id))
     upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads", "hp_templates")
     os.makedirs(upload_dir, exist_ok=True)
     save_path = os.path.join(upload_dir, f"client_{client_id}_template{ext}")
