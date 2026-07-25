@@ -10,4 +10,7 @@ login_manager.login_message_category = "warning"
 
 @login_manager.user_loader
 def load_user(user_id: str):
-    return Designer.query.get(int(user_id))
+    try:
+        return Designer.query.get(int(user_id))
+    except Exception:
+        return None

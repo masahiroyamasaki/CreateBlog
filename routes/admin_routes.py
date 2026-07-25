@@ -381,3 +381,18 @@ def admin_subscription_edit(sub_id: int):
         flash("契約情報を更新しました", "success")
         return redirect(url_for("designer.admin_subscriptions"))
     return render_template("designer/admin/subscription_edit.html", sub=sub)
+
+
+@designer_bp.route("/admin/run-migrate", methods=["POST"])
+@login_required
+def admin_run_migrate():
+    """DBカラムを手動でマイグレーション（サーバー再起動なしで実行可能）"""
+    _admin_only()
+    try:
+        from flask import current_app
+        from db_migrate import auto_migrate
+        auto_migrate(current_app._get_current_object(), db)
+        flash("マイグレーションを実行しました。ページを再読み込みしてください。", "success")
+    except Exception as e:
+        flash(f"マイグレーションエラー: {e}", "error")
+    return redirect(url_for("designer.admin_designers"))

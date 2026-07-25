@@ -98,7 +98,17 @@ def my_invoice_pdf(invoice_id: int):
 @designer_bp.route("/clients")
 @login_required
 def clients():
-    client_list = _get_accessible_clients()
+    try:
+        client_list = _get_accessible_clients()
+    except Exception as e:
+        # DBカラム不足など: マイグレーションを自動実行して再試行
+        try:
+            from flask import current_app
+            from db_migrate import auto_migrate
+            auto_migrate(current_app._get_current_object(), db)
+            client_list = _get_accessible_clients()
+        except Exception:
+            client_list = []
     return render_template("designer/clients/list.html", clients=client_list)
 
 
