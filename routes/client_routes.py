@@ -169,6 +169,7 @@ def client_new():
             default_post_time=request.form.get("default_post_time") or None,
             image_gen_enabled=False,
             image_taste=request.form.get("image_taste", "business_clean"),
+            image_balance=request.form.get("image_balance", "balanced"),
             image_aspect_ratio=request.form.get("image_aspect_ratio", "1:1"),
         )
         db.session.add(client)
@@ -308,6 +309,7 @@ def client_edit(client_id: int):
         if not locked:
             client.image_gen_enabled = request.form.get("image_gen_enabled") == "1"
         client.image_taste = request.form.get("image_taste", "business_clean")
+        client.image_balance = request.form.get("image_balance", "balanced")
         client.image_aspect_ratio = request.form.get("image_aspect_ratio", "1:1")
         db.session.commit()
         if locked:

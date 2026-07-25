@@ -556,12 +556,19 @@
               <option value="minimal"          {% if cur_img_taste == 'minimal'          %}selected{% endif %}>ミニマル — 余白多め・シンプルモダン</option>
               <option value="japanese_calm"    {% if cur_img_taste == 'japanese_calm'    %}selected{% endif %}>和風・落ち着き — 日本的な落ち着いたデザイン</option>
               <option value="colorful_energy"  {% if cur_img_taste == 'colorful_energy'  %}selected{% endif %}>カラフル・元気 — 鮮やかで活気あるビジュアル</option>
-              <option value="text_image_set"   {% if cur_img_taste == 'text_image_set'   %}selected{% endif %}>文字と画像セット — テキスト余白ありのバランス型</option>
-              <option value="image_only"       {% if cur_img_taste == 'image_only'       %}selected{% endif %}>画像のみ — テキストなし・グラフィック中心</option>
-              <option value="text_heavy"       {% if cur_img_taste == 'text_heavy'       %}selected{% endif %}>文字多め — インフォグラフィック・タイポグラフィ風</option>
             </select>
             <div id="taste-preview" style="margin-top:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.6;"></div>
-            <p class="hint" style="margin-top:6px;">選択したテイストが Nanobanana2 への画像生成プロンプトに反映されます。</p>
+          </div>
+
+          <div class="form-group">
+            <label>テキスト・画像バランス</label>
+            {% set cur_balance = (client.image_balance if client and client.image_balance else 'balanced') %}
+            <select class="form-control" name="image_balance">
+              <option value="balanced"     {% if cur_balance == 'balanced'     %}selected{% endif %}>バランス型 — テキスト余白を確保した構図</option>
+              <option value="image_focus"  {% if cur_balance == 'image_focus'  %}selected{% endif %}>画像重視 — グラフィックをフル使用・テキストなし</option>
+              <option value="text_focus"   {% if cur_balance == 'text_focus'   %}selected{% endif %}>テキスト重視 — 文字を配置しやすい背景構図</option>
+            </select>
+            <p class="hint">選択したテイストとバランスを組み合わせて Nanobanana2 のプロンプトを生成します。</p>
           </div>
           <div class="form-group">
             <label>画像サイズ（アスペクト比）</label>
@@ -696,9 +703,6 @@ const TASTE_PREVIEWS = {
   'minimal':          '余白を活かしたミニマルデザイン。シンプルな構図とモノトーン〜アクセントカラーの組み合わせ。',
   'japanese_calm':    '和の落ち着きある色調（抹茶・藍・和紙風）。日本的なデザイン要素を取り入れた上品なスタイル。',
   'colorful_energy':  '鮮やかな原色系カラーで活気あるビジュアル。エネルギッシュで視線を集めるデザイン。',
-  'text_image_set':   '画像にテキスト余白を確保したバランス型。タイトル文字を後から重ねやすいレイアウト。',
-  'image_only':       'テキストなしのグラフィック中心。イメージを全面に出した写真・アートスタイル。',
-  'text_heavy':       'インフォグラフィック・タイポグラフィ重視。文字情報を主役にしたデザイン。',
 };
 function updateTastePreview(val) {
   const el = document.getElementById('taste-preview');

@@ -206,7 +206,8 @@ def topic_generate(client_id: int, topic_id: int):
     business_description = client.business_description or ""
     threads_limit        = 400 if (client.threads_user_id or "").strip() else 0
     image_gen_enabled_val   = bool(getattr(client, "image_gen_enabled", False))
-    image_taste_val         = getattr(client, "image_taste", "text_image_set") or "text_image_set"
+    image_taste_val         = getattr(client, "image_taste", "business_clean") or "business_clean"
+    image_balance_val       = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_val  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
     def _run():
@@ -331,6 +332,7 @@ def topic_generate(client_id: int, topic_id: int):
                                 taste=image_taste_val,
                                 aspect_ratio=image_aspect_ratio_val,
                                 client_id=client_id_val,
+                                balance=image_balance_val,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()
@@ -444,6 +446,7 @@ def topic_generate(client_id: int, topic_id: int):
                                 taste=image_taste_val,
                                 aspect_ratio=image_aspect_ratio_val,
                                 client_id=client_id_val,
+                                balance=image_balance_val,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()
@@ -543,7 +546,8 @@ def topic_bulk_generate(client_id: int):
     business_description_bulk = client.business_description or ""
     threads_limit_bulk        = 400 if (client.threads_user_id or "").strip() else 0
     image_gen_enabled_bulk    = bool(getattr(client, "image_gen_enabled", False))
-    image_taste_bulk          = getattr(client, "image_taste", "text_image_set") or "text_image_set"
+    image_taste_bulk          = getattr(client, "image_taste", "business_clean") or "business_clean"
+    image_balance_bulk        = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_bulk   = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
     run_ids = []
@@ -581,6 +585,7 @@ def topic_bulk_generate(client_id: int):
                  threads_limit=threads_limit_bulk,
                  image_gen_enabled=image_gen_enabled_bulk,
                  image_taste=image_taste_bulk,
+                 image_balance=image_balance_bulk,
                  image_aspect_ratio=image_aspect_ratio_bulk):
             run = _generation_runs[run_id]
 
@@ -672,6 +677,7 @@ def topic_bulk_generate(client_id: int):
                                 taste=image_taste,
                                 aspect_ratio=image_aspect_ratio,
                                 client_id=client_id_val,
+                                balance=image_balance,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()

@@ -37,17 +37,20 @@ _TASTE_HINTS = {
         "vibrant colorful design, bold primary colors, energetic dynamic composition, "
         "eye-catching gradient, high saturation, striking visual impact"
     ),
-    "text_image_set": (
-        "professional blog thumbnail, clear visual composition, "
-        "leave blank space for text overlay at top or bottom, balanced layout"
+}
+
+_BALANCE_HINTS = {
+    "balanced": (
+        "balanced composition with blank space reserved for text overlay, "
+        "image and text area coexist harmoniously"
     ),
-    "image_only": (
-        "pure graphic visual, no text, no typography, "
-        "full bleed artistic image, photography or illustration style"
+    "image_focus": (
+        "full bleed image, no text area, pure visual composition, "
+        "graphic or photographic art filling the entire frame"
     ),
-    "text_heavy": (
-        "infographic style, bold typography elements, text-centric design, "
-        "clean white or light background, data visualization aesthetic"
+    "text_focus": (
+        "infographic style, prominent area for text content, "
+        "clean background suitable for displaying information, data visualization layout"
     ),
 }
 
@@ -64,7 +67,8 @@ _ASPECT_SIZES = {
 }
 
 
-def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int) -> str:
+def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
+                   balance: str = "balanced") -> str:
     """getimg.ai Nanobanana2 で画像を生成して
     /static/uploads/companies/{client_id}/images/ に保存する。
 
@@ -77,13 +81,15 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int) ->
     if not api_key:
         raise ValueError("GETIMG_API_KEY が設定されていません")
 
-    taste_hint = _TASTE_HINTS.get(taste, _TASTE_HINTS["text_image_set"])
+    taste_hint = _TASTE_HINTS.get(taste, _TASTE_HINTS["business_clean"])
+    balance_hint = _BALANCE_HINTS.get(balance, _BALANCE_HINTS["balanced"])
     width, height = _ASPECT_SIZES.get(aspect_ratio, (512, 512))
 
     prompt = (
         f"professional blog article thumbnail, topic: {title}, "
         f"{taste_hint}, "
-        f"modern clean high quality, business blog header image, "
+        f"{balance_hint}, "
+        f"modern high quality, business blog header image, "
         f"no japanese text"
     )
 
