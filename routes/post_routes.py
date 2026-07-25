@@ -203,6 +203,43 @@ def post_image_reorder(client_id: int, post_id: int):
     return jsonify({"success": True})
 
 
+# ──────────────────────────── AI画像生成 ────────────────────────────────────
+
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/generate-ai-image", methods=["POST"])
+@login_required
+def post_generate_ai_image(client_id: int, post_id: int):
+    """投稿詳細ページからAI画像を手動生成してPostImageに保存する"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    post = Post.query.get_or_404(post_id)
+    if post.client_id != client_id:
+        abort(403)
+
+    taste         = getattr(client, "image_taste", "business_clean") or "business_clean"
+    balance       = getattr(client, "image_balance", "balanced") or "balanced"
+    aspect_ratio  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
+
+    try:
+        from ai_image_gen import generate_image
+        img_path = generate_image(
+            title=post.title or "ブログ記事",
+            taste=taste,
+            aspect_ratio=aspect_ratio,
+            client_id=client_id,
+            balance=balance,
+        )
+        last = post.images.order_by(PostImage.sort_order.desc()).first()
+        sort_order = (last.sort_order + 1) if last else 1
+        img = PostImage(post_id=post_id, image_url=img_path, sort_order=sort_order)
+        db.session.add(img)
+        db.session.commit()
+        return jsonify({"success": True, "id": img.id, "image_url": img_path, "sort_order": sort_order})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "reason": str(e)})
+
+
 # ──────────────────────────── 投稿タイミング設定 ────────────────────────────
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/schedule", methods=["POST"])

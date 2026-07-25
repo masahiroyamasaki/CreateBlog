@@ -192,6 +192,18 @@
       </div>
       <div class="card-body">
 
+        <!-- AI画像生成ボタン -->
+        {% set img_gen_on = client.image_gen_enabled if client.image_gen_enabled is not none else false %}
+        {% if img_gen_on %}
+        <div style="margin-bottom:14px;padding:12px 14px;background:#1e2a3a;border:1px solid #2f5d8a;border-radius:8px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;font-size:13px;color:#93c5fd;">
+            <strong>AI画像生成オン</strong> — テイスト: <span style="color:#fff;">{{ {'business_clean':'ビジネス','photo_real':'写真','illustration_pop':'イラスト','minimal':'ミニマル','japanese_calm':'和風','colorful_energy':'カラフル'}.get(client.image_taste or 'business_clean', client.image_taste) }}</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="ai-img-btn" onclick="generateAiImage()">AI画像を生成する</button>
+        </div>
+        <div id="ai-img-result" style="display:none;margin-bottom:12px;font-size:13px;"></div>
+        {% endif %}
+
         <!-- アップロードゾーン -->
         <div id="upload-zone"
              onclick="document.getElementById('file-input').click()"
@@ -488,6 +500,54 @@ document.getElementById('schedule-form').addEventListener('submit', function(e) 
     input.value = input.value + 'T' + defaultPostTime;
   }
 });
+
+// ─── AI画像生成 ──────────────────────────────────────────────────────────────
+async function generateAiImage() {
+  const btn = document.getElementById('ai-img-btn');
+  const resultEl = document.getElementById('ai-img-result');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '生成中...（30秒〜1分）';
+  resultEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      // 画像カードをリストに追加
+      const noMsg = document.getElementById('no-image-msg');
+      if (noMsg) noMsg.remove();
+      const list = document.getElementById('image-list');
+      const card = document.createElement('div');
+      card.className = 'img-card';
+      card.dataset.id = data.id;
+      card.id = 'img-' + data.id;
+      card.innerHTML = `
+        <span style="color:var(--muted);cursor:grab;">⠿</span>
+        <img src="${data.image_url}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${data.image_url}</div>
+          <div style="font-size:11px;color:var(--success);">AI生成画像 • ${data.sort_order}枚目</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteImage(${data.id})">削除</button>
+      `;
+      list.appendChild(card);
+      resultEl.style.display = '';
+      resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>';
+      showToast('AI画像を生成しました', 'success');
+    } else {
+      resultEl.style.display = '';
+      resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`;
+      showToast('生成エラー: ' + data.reason, 'error');
+    }
+  } catch (err) {
+    resultEl.style.display = '';
+    resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI画像を生成する';
+  }
+}
 
 // ─── 画像アップロード ────────────────────────────────────────────────────────
 function handleDrop(e) {
