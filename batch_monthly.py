@@ -188,10 +188,17 @@ def _generate_ideas(client, ai, count: int, db) -> list:
 
     theme_list = [t.strip() for t in themes.splitlines() if t.strip()]
     theme_count = len(theme_list)
-    theme_note = (
-        f"テーマは {theme_count} 種類あります。{count}件の中でできるだけ均等に各テーマを使ってください。"
-        if theme_count > 1 else ""
-    )
+
+    # テーマ回転: 前回の続きから割り当て
+    if theme_count > 1:
+        start_idx = (client.last_idea_theme_idx or 0) % theme_count
+        assigned = [theme_list[(start_idx + i) % theme_count] for i in range(count)]
+        client.last_idea_theme_idx = (start_idx + count) % theme_count
+        db.session.flush()
+        theme_assignment = "\n".join(f"- ネタ{i+1}: テーマ「{t}」" for i, t in enumerate(assigned))
+        theme_note = f"各ネタのテーマ割り当て（必ず従うこと）:\n{theme_assignment}"
+    else:
+        theme_note = "テーマは1種類です。切り口・対象読者・難易度・形式を毎回変えて多様なネタを生成してください。"
 
     business_description = (client.business_description or "").strip()
     business_note = f"\n事業内容: {business_description}" if business_description else ""
@@ -203,12 +210,12 @@ def _generate_ideas(client, ai, count: int, db) -> list:
 以下のテーマをもとに、投稿ネタを{count}件考えてください。
 
 企業名: {client.name}{business_note}
-テーマ:
+登録テーマ一覧:
 {themes}{audience_note}
 {avoid}
 
 【重要な条件】
-1. テーマの分散: {theme_note}1つのテーマに偏らないこと。
+1. テーマ割り当て: {theme_note}
 2. タイトル表現の多様化: 同じ書き出し・言い回しを2件以上使わないこと。
    以下の形式をバランスよく混在させること:
    - How-to型    : 「〇〇する3つの方法」「〇〇のコツ」

@@ -313,8 +313,23 @@
 
         <!-- Threads 連携 -->
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Threads 連携（オプション）</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0;">Threads 連携（オプション）</p>
+            {% set th_enabled = (client.threads_enabled if client and client.threads_enabled is not none else true) %}
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;font-size:13px;">
+              <input type="hidden" name="threads_enabled" value="0">
+              <input type="checkbox" name="threads_enabled" value="1"
+                     {% if th_enabled %}checked{% endif %}
+                     id="threads-enabled-cb"
+                     onchange="toggleThreadsSection(this.checked)"
+                     style="width:16px;height:16px;accent-color:var(--primary);">
+              <span id="threads-enabled-label" style="color:{% if th_enabled %}var(--success){% else %}var(--muted){% endif %};">
+                {% if th_enabled %}オン{% else %}オフ{% endif %}
+              </span>
+            </label>
+          </div>
           <p class="hint" style="margin-bottom:12px;">アクセストークンを設定すると、Instagram 投稿と同時に Threads にもテキスト投稿されます（最大400文字）。</p>
+          <div id="threads-settings-block" {% if not th_enabled %}style="opacity:.4;pointer-events:none;"{% endif %}>
           <div class="form-group">
             <label>Threads ユーザー ID</label>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -364,7 +379,8 @@
             </button>
           </div>
           {% endif %}
-        </div>
+        </div><!-- /threads-settings-block -->
+      </div>
       </div>
 
       <!-- 記事テーマ（共通） -->
@@ -608,6 +624,13 @@ document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
 updateSections();
 updateScheduleUI();
 autoCalcFee();
+
+function toggleThreadsSection(enabled) {
+  const block = document.getElementById('threads-settings-block');
+  const label = document.getElementById('threads-enabled-label');
+  if (block) { block.style.opacity = enabled ? '' : '.4'; block.style.pointerEvents = enabled ? '' : 'none'; }
+  if (label) { label.textContent = enabled ? 'オン' : 'オフ'; label.style.color = enabled ? 'var(--success)' : 'var(--muted)'; }
+}
 
 // Threads ユーザー ID をアクセストークンから自動取得
 function fetchThreadsUid(clientId) {

@@ -41,6 +41,14 @@
     .topbar { height: 56px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; background: var(--bg2); position: sticky; top: 0; z-index: 10; }
     .topbar h1 { font-size: 16px; font-weight: 700; }
     .topbar .spacer { flex: 1; }
+    .client-switcher { position: relative; }
+    .client-switcher-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; white-space: nowrap; max-width: 220px; }
+    .client-switcher-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-switcher-dropdown { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; min-width: 220px; max-height: 320px; overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px #0006; }
+    .client-switcher-dropdown a { display: block; padding: 9px 14px; font-size: 13px; color: var(--muted); text-decoration: none; }
+    .client-switcher-dropdown a:hover { background: var(--bg3); color: var(--text); }
+    .client-switcher-dropdown a.current { color: var(--primary); font-weight: 700; }
+    .client-switcher.open .client-switcher-dropdown { display: block; }
     .content { padding: 24px; }
 
     /* ── 汎用コンポーネント ── */
@@ -184,6 +192,22 @@
   <!-- メイン -->
   <div class="main">
     <div class="topbar">
+      {% if client is defined and client and accessible_clients | length > 1 %}
+      <div class="client-switcher" id="client-switcher">
+        <button class="client-switcher-btn" onclick="toggleClientSwitcher(event)" type="button">
+          <span>{{ client.name }}</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style="flex-shrink:0;opacity:.6;"><path d="M6 8L1 3h10z"/></svg>
+        </button>
+        <div class="client-switcher-dropdown">
+          {% for c in accessible_clients %}
+          <a href="{{ url_for('designer.client_detail', client_id=c.id) }}"
+             class="{% if c.id == client.id %}current{% endif %}">
+            {{ c.name }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
       <h1>{% block page_title %}{% endblock %}</h1>
       <div class="spacer"></div>
       {% block topbar_actions %}{% endblock %}
@@ -200,6 +224,12 @@
 
   <div class="toast-wrap" id="toast-wrap"></div>
   <script>
+  function toggleClientSwitcher(e) {
+    e.stopPropagation();
+    document.getElementById('client-switcher')?.classList.toggle('open');
+  }
+  document.addEventListener('click', () => document.getElementById('client-switcher')?.classList.remove('open'));
+
   function showToast(msg, type='success') {
     const w = document.getElementById('toast-wrap');
     const t = document.createElement('div');

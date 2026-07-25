@@ -65,6 +65,7 @@ class Client(db.Model):
     threads_user_id = db.Column(db.String(255), default="")   # Threads ユーザー ID
     threads_access_token = db.Column(db.Text)                 # 暗号化保存（DEFAULT NULL で TEXT 制約を回避）
     threads_fixed_url = db.Column(db.String(500), default="") # Threads 投稿末尾に付ける固定 URL
+    threads_enabled = db.Column(db.Boolean, default=True)     # Threads 投稿オン/オフ
     business_description = db.Column(db.Text)                  # 事業内容・サービス概要
     themes = db.Column(db.Text)                               # 記事テーマ（改行区切り）
     custom_url = db.Column(db.String(255), default="")        # 独自HP URL
@@ -88,6 +89,7 @@ class Client(db.Model):
     schedule_days_of_week = db.Column(db.String(255), default="0")   # カンマ区切り "0,2,4"
     schedule_days_of_month = db.Column(db.String(255), default="1") # カンマ区切り "1,8,15,22"
     default_post_time = db.Column(db.Time)
+    last_idea_theme_idx = db.Column(db.Integer, default=0)    # テーマ回転用インデックス
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     posts = db.relationship("Post", back_populates="client", lazy="dynamic")

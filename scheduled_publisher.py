@@ -159,6 +159,8 @@ def _do_threads(client, post, decrypt_field) -> dict:
     """Threads アクセストークンが設定されている場合のみテキスト投稿する。
     キャプションはハッシュタグなし・固定 URL 付き。
     """
+    if not client.threads_enabled:
+        return {"success": False, "reason": ""}  # オフはスキップ
     token = decrypt_field(client.threads_access_token or "")
     user_id = (client.threads_user_id or "").strip()
     if not token or not user_id:

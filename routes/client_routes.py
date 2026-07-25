@@ -292,6 +292,7 @@ def client_edit(client_id: int):
         if new_ig_token:
             client.ig_access_token = encrypt_field(new_ig_token)
         client.ig_hashtags = request.form.get("ig_hashtags", "")
+        client.threads_enabled = request.form.get("threads_enabled") == "1"
         client.threads_user_id = request.form.get("threads_user_id", "")
         new_threads_token = request.form.get("threads_access_token", "")
         if new_threads_token:

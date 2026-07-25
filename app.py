@@ -74,6 +74,23 @@ try:
             return {"pricing_plans": plans}
         except Exception:
             return {"pricing_plans": {}}
+
+    # アクセス可能な企業リストをすべてのテンプレートに自動注入（企業切り替え用）
+    @app.context_processor
+    def _inject_accessible_clients():
+        try:
+            from flask_login import current_user
+            if not current_user or not current_user.is_authenticated:
+                return {"accessible_clients": []}
+            from models import Client, DesignerClient
+            if current_user.role == "admin":
+                clients = Client.query.order_by(Client.name).all()
+            else:
+                ids = [a.client_id for a in current_user.assignments]
+                clients = Client.query.filter(Client.id.in_(ids)).order_by(Client.name).all()
+            return {"accessible_clients": clients}
+        except Exception:
+            return {"accessible_clients": []}
 except Exception as _mysql_err:
     import logging
     logging.warning(f"MySQL 接続スキップ（既存 SQLite 機能は継続）: {_mysql_err}")

@@ -497,6 +497,8 @@ def _publish_to_threads(client: Client, post: Post) -> dict:
     """Threads に投稿する（画像あり→画像/カルーセル、なし→テキスト）。
     キャプションはハッシュタグなし。URLは投稿個別 → クライアント固定 の優先順。
     """
+    if not client.threads_enabled:
+        return {"success": False, "reason": ""}  # オフはスキップ
     from config import decrypt_field
     token = decrypt_field(client.threads_access_token or "")
     user_id = (client.threads_user_id or "").strip()
