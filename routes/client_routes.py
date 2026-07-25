@@ -168,7 +168,7 @@ def client_new():
             schedule_days_of_month=",".join(request.form.getlist("schedule_days_of_month")) or "1",
             default_post_time=request.form.get("default_post_time") or None,
             image_gen_enabled=False,
-            image_taste=request.form.get("image_taste", "text_image_set"),
+            image_taste=request.form.get("image_taste", "business_clean"),
             image_aspect_ratio=request.form.get("image_aspect_ratio", "1:1"),
         )
         db.session.add(client)
@@ -307,7 +307,7 @@ def client_edit(client_id: int):
         # AI画像生成オプション（ON/OFFはプランロック対象）
         if not locked:
             client.image_gen_enabled = request.form.get("image_gen_enabled") == "1"
-        client.image_taste = request.form.get("image_taste", "text_image_set")
+        client.image_taste = request.form.get("image_taste", "business_clean")
         client.image_aspect_ratio = request.form.get("image_aspect_ratio", "1:1")
         db.session.commit()
         if locked:

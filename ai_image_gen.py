@@ -13,17 +13,41 @@ _GETIMG_BASE = "https://api.getimg.ai/v1"
 _GETIMG_MODEL = "nanobanana-2"
 
 _TASTE_HINTS = {
+    "business_clean": (
+        "clean professional business style, white and light gray tones, "
+        "corporate minimalist design, high contrast, sharp modern aesthetic"
+    ),
+    "photo_real": (
+        "realistic photographic style, high quality photography, "
+        "natural lighting, vivid sharp details, professional camera shot"
+    ),
+    "illustration_pop": (
+        "bright colorful illustration style, vector art, cheerful and friendly design, "
+        "vibrant colors, flat design with playful elements"
+    ),
+    "minimal": (
+        "minimalist design, generous white space, simple geometric shapes, "
+        "monochrome with one accent color, clean and elegant layout"
+    ),
+    "japanese_calm": (
+        "Japanese aesthetic, calm and serene design, natural earthy tones, "
+        "matcha green, indigo blue, washi paper texture, zen-inspired composition"
+    ),
+    "colorful_energy": (
+        "vibrant colorful design, bold primary colors, energetic dynamic composition, "
+        "eye-catching gradient, high saturation, striking visual impact"
+    ),
     "text_image_set": (
-        "professional blog thumbnail with clear visual composition, "
-        "leave space for text overlay, high-quality clean design"
+        "professional blog thumbnail, clear visual composition, "
+        "leave blank space for text overlay at top or bottom, balanced layout"
     ),
     "image_only": (
-        "pure photographic style, no text or typography, "
-        "beautiful professional photography, no words"
+        "pure graphic visual, no text, no typography, "
+        "full bleed artistic image, photography or illustration style"
     ),
     "text_heavy": (
-        "infographic style with bold typography and text elements, "
-        "clean white or light background, graphic design aesthetic"
+        "infographic style, bold typography elements, text-centric design, "
+        "clean white or light background, data visualization aesthetic"
     ),
 }
 

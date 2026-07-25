@@ -547,13 +547,21 @@
         <div id="image-gen-settings" {% if not img_enabled %}style="opacity:.4;pointer-events:none;"{% endif %}>
           <div class="form-group">
             <label>画像テイスト</label>
-            {% set cur_img_taste = (client.image_taste if client and client.image_taste else 'text_image_set') %}
-            <select class="form-control" name="image_taste">
-              <option value="text_image_set" {% if cur_img_taste == 'text_image_set' %}selected{% endif %}>文字と画像セット — テキスト余白ありのバランス型</option>
-              <option value="image_only"     {% if cur_img_taste == 'image_only'     %}selected{% endif %}>画像のみ — テキストなし・写真スタイル</option>
-              <option value="text_heavy"     {% if cur_img_taste == 'text_heavy'     %}selected{% endif %}>文字多め — インフォグラフィック・タイポグラフィ風</option>
+            {% set cur_img_taste = (client.image_taste if client and client.image_taste else 'business_clean') %}
+            <select class="form-control" name="image_taste" id="image_taste_select"
+                    onchange="updateTastePreview(this.value)">
+              <option value="business_clean"   {% if cur_img_taste == 'business_clean'   %}selected{% endif %}>ビジネス・清潔感 — プロフェッショナルでシンプル</option>
+              <option value="photo_real"       {% if cur_img_taste == 'photo_real'       %}selected{% endif %}>写真・リアル — 本格的な写真スタイル</option>
+              <option value="illustration_pop" {% if cur_img_taste == 'illustration_pop' %}selected{% endif %}>イラスト・ポップ — 明るくカラフルなイラスト風</option>
+              <option value="minimal"          {% if cur_img_taste == 'minimal'          %}selected{% endif %}>ミニマル — 余白多め・シンプルモダン</option>
+              <option value="japanese_calm"    {% if cur_img_taste == 'japanese_calm'    %}selected{% endif %}>和風・落ち着き — 日本的な落ち着いたデザイン</option>
+              <option value="colorful_energy"  {% if cur_img_taste == 'colorful_energy'  %}selected{% endif %}>カラフル・元気 — 鮮やかで活気あるビジュアル</option>
+              <option value="text_image_set"   {% if cur_img_taste == 'text_image_set'   %}selected{% endif %}>文字と画像セット — テキスト余白ありのバランス型</option>
+              <option value="image_only"       {% if cur_img_taste == 'image_only'       %}selected{% endif %}>画像のみ — テキストなし・グラフィック中心</option>
+              <option value="text_heavy"       {% if cur_img_taste == 'text_heavy'       %}selected{% endif %}>文字多め — インフォグラフィック・タイポグラフィ風</option>
             </select>
-            <p class="hint">DALL-E 3 に渡す画像スタイルの指示です。</p>
+            <div id="taste-preview" style="margin-top:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.6;"></div>
+            <p class="hint" style="margin-top:6px;">選択したテイストが Nanobanana2 への画像生成プロンプトに反映されます。</p>
           </div>
           <div class="form-group">
             <label>画像サイズ（アスペクト比）</label>
@@ -680,6 +688,27 @@ document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
 updateSections();
 updateScheduleUI();
 autoCalcFee();
+
+const TASTE_PREVIEWS = {
+  'business_clean':   'プロフェッショナルで清潔感のある構図。白・グレー系の落ち着いた配色。ビジネスブログのサムネイルに最適。',
+  'photo_real':       'リアルな写真スタイル。人物・オフィス・自然などの実写風ビジュアル。本格的な質感。',
+  'illustration_pop': '明るくカラフルなイラスト・ベクターアート風。親しみやすく目を引くデザイン。',
+  'minimal':          '余白を活かしたミニマルデザイン。シンプルな構図とモノトーン〜アクセントカラーの組み合わせ。',
+  'japanese_calm':    '和の落ち着きある色調（抹茶・藍・和紙風）。日本的なデザイン要素を取り入れた上品なスタイル。',
+  'colorful_energy':  '鮮やかな原色系カラーで活気あるビジュアル。エネルギッシュで視線を集めるデザイン。',
+  'text_image_set':   '画像にテキスト余白を確保したバランス型。タイトル文字を後から重ねやすいレイアウト。',
+  'image_only':       'テキストなしのグラフィック中心。イメージを全面に出した写真・アートスタイル。',
+  'text_heavy':       'インフォグラフィック・タイポグラフィ重視。文字情報を主役にしたデザイン。',
+};
+function updateTastePreview(val) {
+  const el = document.getElementById('taste-preview');
+  if (el) el.textContent = TASTE_PREVIEWS[val] || '';
+}
+// 初期表示
+(function() {
+  const sel = document.getElementById('image_taste_select');
+  if (sel) updateTastePreview(sel.value);
+})();
 
 function toggleImageGenSection(enabled) {
   const block = document.getElementById('image-gen-settings');
