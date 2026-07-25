@@ -141,7 +141,9 @@ def topic_generate_ui(client_id: int, topic_id: int):
     if topic.status == "generated":
         flash("このネタはすでに生成済みです", "warning")
         return redirect(url_for("designer.topic_list", client_id=client_id))
-    return render_template("designer/topics/generate.html", client=client, topic=topic)
+    image_gen_enabled = bool(getattr(client, "image_gen_enabled", False))
+    return render_template("designer/topics/generate.html", client=client, topic=topic,
+                           image_gen_enabled=image_gen_enabled)
 
 
 @designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/generate", methods=["POST"])
@@ -325,6 +327,7 @@ def topic_generate(client_id: int, topic_id: int):
                     run["post_id"] = post_id
                     # AI 画像生成
                     if image_gen_enabled_val and post:
+                        run.update(step="ai_image", step_num=7)
                         try:
                             from ai_image_gen import generate_image as _gen_img
                             img_path = _gen_img(
@@ -340,7 +343,7 @@ def topic_generate(client_id: int, topic_id: int):
                             import traceback
                             print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
-                run.update(status="done", step="done", step_num=6)
+                run.update(status="done", step="done", step_num=7)
                 _topic_to_run.pop(topic_id_val, None)
 
             # ── WordPress / その他: 4エージェント + IGフォーマッター ──────────
@@ -439,6 +442,7 @@ def topic_generate(client_id: int, topic_id: int):
                     run["post_id"] = post_id
                     # AI 画像生成
                     if image_gen_enabled_val and post:
+                        run.update(step="ai_image", step_num=7)
                         try:
                             from ai_image_gen import generate_image as _gen_img
                             img_path = _gen_img(
@@ -454,7 +458,7 @@ def topic_generate(client_id: int, topic_id: int):
                             import traceback
                             print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
-                run.update(status="done", step="done", step_num=6)
+                run.update(status="done", step="done", step_num=7)
                 _topic_to_run.pop(topic_id_val, None)
 
         except Exception as e:
@@ -670,6 +674,7 @@ def topic_bulk_generate(client_id: int):
                     run["post_id"] = post_id
                     # AI 画像生成
                     if image_gen_enabled and post:
+                        run.update(step="ai_image", step_num=7)
                         try:
                             from ai_image_gen import generate_image as _gen_img
                             img_path = _gen_img(
@@ -685,7 +690,7 @@ def topic_bulk_generate(client_id: int):
                             import traceback
                             print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
-                run.update(status="done", step="done", step_num=6)
+                run.update(status="done", step="done", step_num=7)
                 _topic_to_run.pop(topic_id_val, None)
             except Exception as e:
                 run.update(status="error", error=str(e))

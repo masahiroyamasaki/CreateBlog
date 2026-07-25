@@ -78,7 +78,8 @@ def post_detail(client_id: int, post_id: int):
     post = Post.query.get_or_404(post_id)
     if post.client_id != client_id:
         abort(403)
-    return render_template("designer/posts/detail.html", client=client, post=post)
+    now_str = _now_jst().strftime("%Y-%m-%dT%H:%M")
+    return render_template("designer/posts/detail.html", client=client, post=post, now_str=now_str)
 
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/save", methods=["POST"])

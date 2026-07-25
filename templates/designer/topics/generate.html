@@ -97,6 +97,15 @@
         <div class="pipe-status" id="status-6">待機中</div>
       </div>
     </div>
+    {% if image_gen_enabled %}
+    <div class="pipe-step" id="step-7">
+      <div class="pipe-icon">7</div>
+      <div class="pipe-info">
+        <div class="pipe-name">AI画像生成</div>
+        <div class="pipe-status" id="status-7">待機中</div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- 停止ボタン -->
@@ -143,6 +152,9 @@
 const CLIENT_ID = {{ client.id }};
 const TOPIC_ID  = {{ topic.id }};
 
+const IMAGE_GEN_ENABLED = {{ 'true' if image_gen_enabled else 'false' }};
+const TOTAL_STEPS = IMAGE_GEN_ENABLED ? 7 : 6;
+
 const STEP_MAP = {
   blog_creator:    1,
   content_checker: 2,
@@ -151,7 +163,8 @@ const STEP_MAP = {
   ig_caption:      5,
   ig_formatter:    5,
   saving:          6,
-  done:            6,
+  ai_image:        7,
+  done:            TOTAL_STEPS,
 };
 const STEP_LABELS = {
   blog_creator:    '生成中（1〜2分）...',
@@ -161,6 +174,7 @@ const STEP_LABELS = {
   ig_caption:      '生成中...',
   ig_formatter:    '生成中...',
   saving:          '保存中...',
+  ai_image:        '画像生成中（30秒〜1分）...',
 };
 
 let runId = null;
@@ -228,7 +242,7 @@ async function cancelGeneration() {
 }
 
 function updatePipeline(step, activeNum) {
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
     const el = document.getElementById('step-' + i);
     const st = document.getElementById('status-' + i);
     const spinner = el.querySelector('.pipe-spinner');
@@ -254,7 +268,7 @@ function setStepActive(num) {
 }
 
 function finishAll() {
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
     const el = document.getElementById('step-' + i);
     const st = document.getElementById('status-' + i);
     const spinner = el.querySelector('.pipe-spinner');
