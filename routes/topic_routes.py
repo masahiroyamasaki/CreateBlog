@@ -205,6 +205,9 @@ def topic_generate(client_id: int, topic_id: int):
     character_prompt     = client.character_prompt or ""
     business_description = client.business_description or ""
     threads_limit        = 400 if (client.threads_user_id or "").strip() else 0
+    image_gen_enabled_val   = bool(getattr(client, "image_gen_enabled", False))
+    image_taste_val         = getattr(client, "image_taste", "text_image_set") or "text_image_set"
+    image_aspect_ratio_val  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
     def _run():
         run = _generation_runs[run_id]
@@ -298,7 +301,7 @@ def topic_generate(client_id: int, topic_id: int):
                 run.update(step="saving", step_num=6)
                 with app.app_context():
                     from schedule_utils import next_scheduled_at
-                    from models import Post as _Post, Client as _Client
+                    from models import Post as _Post, Client as _Client, PostImage as _PI, db as _db
                     post = _Post.query.get(post_id)
                     client_obj = _Client.query.get(client_id_val)
                     if post:
@@ -317,8 +320,23 @@ def topic_generate(client_id: int, topic_id: int):
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"
-                    db.session.commit()
+                    _db.session.commit()
                     run["post_id"] = post_id
+                    # AI 画像生成
+                    if image_gen_enabled_val and post:
+                        try:
+                            from ai_image_gen import generate_image as _gen_img
+                            img_path = _gen_img(
+                                title=topic_title,
+                                taste=image_taste_val,
+                                aspect_ratio=image_aspect_ratio_val,
+                                client_id=client_id_val,
+                            )
+                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                            _db.session.commit()
+                        except Exception as _img_err:
+                            import traceback
+                            print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
                 run.update(status="done", step="done", step_num=6)
                 _topic_to_run.pop(topic_id_val, None)
@@ -396,7 +414,7 @@ def topic_generate(client_id: int, topic_id: int):
 
                 with app.app_context():
                     from schedule_utils import next_scheduled_at
-                    from models import Post as _Post, Client as _Client
+                    from models import Post as _Post, Client as _Client, PostImage as _PI, db as _db
                     post = _Post.query.get(post_id)
                     client_obj = _Client.query.get(client_id_val)
                     if post:
@@ -415,8 +433,23 @@ def topic_generate(client_id: int, topic_id: int):
                     topic_obj = TopicQueue.query.get(topic_id_val)
                     if topic_obj:
                         topic_obj.status = "generated"
-                    db.session.commit()
+                    _db.session.commit()
                     run["post_id"] = post_id
+                    # AI 画像生成
+                    if image_gen_enabled_val and post:
+                        try:
+                            from ai_image_gen import generate_image as _gen_img
+                            img_path = _gen_img(
+                                title=topic_title,
+                                taste=image_taste_val,
+                                aspect_ratio=image_aspect_ratio_val,
+                                client_id=client_id_val,
+                            )
+                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                            _db.session.commit()
+                        except Exception as _img_err:
+                            import traceback
+                            print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
                 run.update(status="done", step="done", step_num=6)
                 _topic_to_run.pop(topic_id_val, None)
@@ -509,6 +542,9 @@ def topic_bulk_generate(client_id: int):
     character_prompt_bulk     = client.character_prompt or ""
     business_description_bulk = client.business_description or ""
     threads_limit_bulk        = 400 if (client.threads_user_id or "").strip() else 0
+    image_gen_enabled_bulk    = bool(getattr(client, "image_gen_enabled", False))
+    image_taste_bulk          = getattr(client, "image_taste", "text_image_set") or "text_image_set"
+    image_aspect_ratio_bulk   = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
     run_ids = []
 
@@ -542,7 +578,10 @@ def topic_bulk_generate(client_id: int):
                  article_taste=article_taste_bulk, target_word_count=target_word_count_bulk,
                  target_audience=target_audience_bulk, character_prompt=character_prompt_bulk,
                  business_description=business_description_bulk,
-                 threads_limit=threads_limit_bulk):
+                 threads_limit=threads_limit_bulk,
+                 image_gen_enabled=image_gen_enabled_bulk,
+                 image_taste=image_taste_bulk,
+                 image_aspect_ratio=image_aspect_ratio_bulk):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -609,7 +648,7 @@ def topic_bulk_generate(client_id: int):
 
                 with app.app_context():
                     from schedule_utils import next_scheduled_at
-                    from models import Post as _Post, Client as _Client, TopicQueue as _TQ
+                    from models import Post as _Post, Client as _Client, TopicQueue as _TQ, PostImage as _PI, db as _db
                     post = _Post.query.get(post_id)
                     client_obj = _Client.query.get(client_id_val)
                     if post:
@@ -622,9 +661,23 @@ def topic_bulk_generate(client_id: int):
                     tq = _TQ.query.get(topic_id_val)
                     if tq:
                         tq.status = "generated"
-                    from models import db as _db
                     _db.session.commit()
                     run["post_id"] = post_id
+                    # AI 画像生成
+                    if image_gen_enabled and post:
+                        try:
+                            from ai_image_gen import generate_image as _gen_img
+                            img_path = _gen_img(
+                                title=topic_title,
+                                taste=image_taste,
+                                aspect_ratio=image_aspect_ratio,
+                                client_id=client_id_val,
+                            )
+                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                            _db.session.commit()
+                        except Exception as _img_err:
+                            import traceback
+                            print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
                 run.update(status="done", step="done", step_num=6)
                 _topic_to_run.pop(topic_id_val, None)

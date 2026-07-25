@@ -1,0 +1,136 @@
+"""ai_image_gen.py — getimg.ai Nanobanana2 による記事アイキャッチ画像生成"""
+import base64
+import io
+import os
+import uuid
+import logging
+
+import requests as _requests
+
+logger = logging.getLogger(__name__)
+
+_GETIMG_BASE = "https://api.getimg.ai/v1"
+_GETIMG_MODEL = "nanobanana-2"
+
+_TASTE_HINTS = {
+    "text_image_set": (
+        "professional blog thumbnail with clear visual composition, "
+        "leave space for text overlay, high-quality clean design"
+    ),
+    "image_only": (
+        "pure photographic style, no text or typography, "
+        "beautiful professional photography, no words"
+    ),
+    "text_heavy": (
+        "infographic style with bold typography and text elements, "
+        "clean white or light background, graphic design aesthetic"
+    ),
+}
+
+_NEGATIVE_PROMPT = (
+    "nsfw, blurry, low quality, watermark, signature, text, logo, "
+    "deformed, distorted, ugly, bad anatomy"
+)
+
+# getimg.ai (SD1.5ベース) — 8の倍数で指定
+_ASPECT_SIZES = {
+    "1:1":  (512, 512),
+    "4:5":  (512, 640),
+    "16:9": (768, 432),
+}
+
+
+def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int) -> str:
+    """getimg.ai Nanobanana2 で画像を生成して
+    /static/uploads/companies/{client_id}/images/ に保存する。
+
+    Returns:
+        保存された画像の web 相対パス（例: /static/uploads/companies/1/images/abc.jpg）
+    """
+    from config import Config
+
+    api_key = Config.GETIMG_API_KEY
+    if not api_key:
+        raise ValueError("GETIMG_API_KEY が設定されていません")
+
+    taste_hint = _TASTE_HINTS.get(taste, _TASTE_HINTS["text_image_set"])
+    width, height = _ASPECT_SIZES.get(aspect_ratio, (512, 512))
+
+    prompt = (
+        f"professional blog article thumbnail, topic: {title}, "
+        f"{taste_hint}, "
+        f"modern clean high quality, business blog header image, "
+        f"no japanese text"
+    )
+
+    resp = _requests.post(
+        f"{_GETIMG_BASE}/stable-diffusion/text-to-image",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        json={
+            "model": _GETIMG_MODEL,
+            "prompt": prompt,
+            "negative_prompt": _NEGATIVE_PROMPT,
+            "width": width,
+            "height": height,
+            "steps": 30,
+            "guidance": 7.0,
+            "output_format": "jpeg",
+        },
+        timeout=120,
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"getimg.ai API エラー (HTTP {resp.status_code}): {resp.text[:300]}"
+        )
+
+    data = resp.json()
+    b64 = data.get("image")
+    if not b64:
+        raise RuntimeError(f"getimg.ai レスポンスに image フィールドがありません: {data}")
+
+    img_bytes = base64.b64decode(b64)
+    compressed = _compress_to_5mb(img_bytes)
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(
+        base_dir, "static", "uploads", "companies", str(client_id), "images"
+    )
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}.jpg"
+    save_path = os.path.join(save_dir, filename)
+    with open(save_path, "wb") as f:
+        f.write(compressed)
+
+    logger.info(f"AI画像生成完了: {save_path}")
+    return f"/static/uploads/companies/{client_id}/images/{filename}"
+
+
+def _compress_to_5mb(data: bytes, max_bytes: int = 5 * 1024 * 1024) -> bytes:
+    """画像を 5MB 以下に圧縮して返す。"""
+    if len(data) <= max_bytes:
+        return data
+
+    from PIL import Image
+    img = Image.open(io.BytesIO(data))
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+
+    quality = 85
+    while quality >= 30:
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality)
+        if buf.tell() <= max_bytes:
+            return buf.getvalue()
+        quality -= 10
+
+    w, h = img.size
+    img = img.resize((w // 2, h // 2), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=70)
+    return buf.getvalue()

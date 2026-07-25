@@ -120,8 +120,14 @@ def run_monthly_billing_batch(app, db) -> dict:
                     logger.info(f"[billing] Designer {designer_id}: {year}/{month} 請求書作成済み、スキップ")
                     continue
 
-                # テスト企業(amount=0)を含む合計
+                # 基本プラン合計 + AI画像生成オプション料金
                 total = sum(s.amount for s in sub_list)
+                for sub in sub_list:
+                    c = Client.query.get(sub.client_id)
+                    if c and getattr(c, "image_gen_enabled", False) and c.client_status in ("active", "test"):
+                        count = c.monthly_post_count or 4
+                        total += (count // 4) * 2000
+
                 invoice = Invoice(
                     designer_id=designer_id,
                     year=year, month=month,
@@ -140,6 +146,18 @@ def run_monthly_billing_batch(app, db) -> dict:
                         description=sub.plan_name,
                         amount=sub.amount,
                     ))
+                    # AI画像生成オプション明細（個別行）
+                    if client and getattr(client, "image_gen_enabled", False):
+                        count = client.monthly_post_count or 4
+                        img_fee = (count // 4) * 2000
+                        if img_fee > 0:
+                            db.session.add(InvoiceItem(
+                                invoice_id=invoice.id,
+                                client_id=client.id,
+                                client_name=client.name,
+                                description=f"AI画像生成オプション {count}件/月",
+                                amount=img_fee,
+                            ))
                 db.session.commit()
 
                 # PDF生成

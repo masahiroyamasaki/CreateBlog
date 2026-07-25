@@ -31,6 +31,12 @@ class Config:
     # Anthropic
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
+    # OpenAI (予備)
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+    # getimg.ai (Nanobanana2 画像生成)
+    GETIMG_API_KEY = os.getenv("GETIMG_API_KEY", "")
+
     # Instagram Graph API
     IG_API_VERSION = os.getenv("IG_API_VERSION", "v20.0")
     IG_API_BASE = f"https://graph.facebook.com/{os.getenv('IG_API_VERSION', 'v20.0')}"

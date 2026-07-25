@@ -167,6 +167,9 @@ def client_new():
             schedule_days_of_week=",".join(request.form.getlist("schedule_days_of_week")) or "0",
             schedule_days_of_month=",".join(request.form.getlist("schedule_days_of_month")) or "1",
             default_post_time=request.form.get("default_post_time") or None,
+            image_gen_enabled=False,
+            image_taste=request.form.get("image_taste", "text_image_set"),
+            image_aspect_ratio=request.form.get("image_aspect_ratio", "1:1"),
         )
         db.session.add(client)
         db.session.flush()
@@ -301,6 +304,11 @@ def client_edit(client_id: int):
         client.themes = request.form.get("themes", "")
         client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None
+        # AI画像生成オプション（ON/OFFはプランロック対象）
+        if not locked:
+            client.image_gen_enabled = request.form.get("image_gen_enabled") == "1"
+        client.image_taste = request.form.get("image_taste", "text_image_set")
+        client.image_aspect_ratio = request.form.get("image_aspect_ratio", "1:1")
         db.session.commit()
         if locked:
             flash("変更を保存しました（投稿タイプ・月間投稿数は25日〜末日のみ変更可）", "success")

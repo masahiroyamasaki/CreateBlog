@@ -511,6 +511,62 @@
         <p class="hint">投稿予約を自動設定するときのデフォルトスケジュールです。</p>
       </div>
 
+      <!-- AI 画像生成オプション -->
+      <div class="section-block">
+        <p class="section-title">AI 画像生成オプション</p>
+
+        {% if client and plan_locked %}
+        <div style="margin-bottom:14px;padding:10px 14px;background:#f59e0b15;border:1px solid #f59e0b;border-radius:8px;font-size:12px;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+          <span>🔒</span>
+          <span>AI画像生成のON/OFFは <strong>毎月25日〜末日</strong> のみ変更できます。現在はロック中です。</span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          {% set img_enabled = (client.image_gen_enabled if client and client.image_gen_enabled else false) %}
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+            <input type="hidden" name="image_gen_enabled" value="0">
+            <label style="display:flex;align-items:center;gap:8px;cursor:{% if client and plan_locked %}default{% else %}pointer{% endif %};font-weight:400;">
+              <input type="checkbox" name="image_gen_enabled" value="1"
+                     {% if img_enabled %}checked{% endif %}
+                     id="image-gen-enabled-cb"
+                     onchange="toggleImageGenSection(this.checked)"
+                     style="width:18px;height:18px;accent-color:var(--primary);"
+                     {% if client and plan_locked %}disabled{% endif %}>
+              <span id="image-gen-enabled-label" style="font-size:14px;font-weight:600;color:{% if img_enabled %}var(--success){% else %}var(--muted){% endif %};">
+                {% if img_enabled %}オン{% else %}オフ{% endif %}
+              </span>
+            </label>
+          </div>
+          {% if client and plan_locked %}
+          <input type="hidden" name="image_gen_enabled" value="{{ '1' if img_enabled else '0' }}">
+          {% endif %}
+          <p class="hint" style="margin-top:8px;">記事生成後にDALL-E 3で自動生成。月額に加算（4件=¥2,000、8件=¥4,000…）。</p>
+        </div>
+
+        <div id="image-gen-settings" {% if not img_enabled %}style="opacity:.4;pointer-events:none;"{% endif %}>
+          <div class="form-group">
+            <label>画像テイスト</label>
+            {% set cur_img_taste = (client.image_taste if client and client.image_taste else 'text_image_set') %}
+            <select class="form-control" name="image_taste">
+              <option value="text_image_set" {% if cur_img_taste == 'text_image_set' %}selected{% endif %}>文字と画像セット — テキスト余白ありのバランス型</option>
+              <option value="image_only"     {% if cur_img_taste == 'image_only'     %}selected{% endif %}>画像のみ — テキストなし・写真スタイル</option>
+              <option value="text_heavy"     {% if cur_img_taste == 'text_heavy'     %}selected{% endif %}>文字多め — インフォグラフィック・タイポグラフィ風</option>
+            </select>
+            <p class="hint">DALL-E 3 に渡す画像スタイルの指示です。</p>
+          </div>
+          <div class="form-group">
+            <label>画像サイズ（アスペクト比）</label>
+            {% set cur_ratio = (client.image_aspect_ratio if client and client.image_aspect_ratio else '1:1') %}
+            <select class="form-control" name="image_aspect_ratio">
+              <option value="1:1"  {% if cur_ratio == '1:1'  %}selected{% endif %}>1:1 — 正方形（Instagram フィード・ブログサムネイル）</option>
+              <option value="4:5"  {% if cur_ratio == '4:5'  %}selected{% endif %}>4:5 — 縦長（Instagram ポートレート）</option>
+              <option value="16:9" {% if cur_ratio == '16:9' %}selected{% endif %}>16:9 — 横長（WordPress ヘッダー・OGP画像）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px;margin-top:28px;">
         <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
         <button type="submit" class="btn btn-primary">保存する</button>
@@ -624,6 +680,13 @@ document.querySelectorAll('input[name="schedule_days_of_month"]').forEach(cb =>
 updateSections();
 updateScheduleUI();
 autoCalcFee();
+
+function toggleImageGenSection(enabled) {
+  const block = document.getElementById('image-gen-settings');
+  const label = document.getElementById('image-gen-enabled-label');
+  if (block) { block.style.opacity = enabled ? '' : '.4'; block.style.pointerEvents = enabled ? '' : 'none'; }
+  if (label) { label.textContent = enabled ? 'オン' : 'オフ'; label.style.color = enabled ? 'var(--success)' : 'var(--muted)'; }
+}
 
 function toggleThreadsSection(enabled) {
   const block = document.getElementById('threads-settings-block');

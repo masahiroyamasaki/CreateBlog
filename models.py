@@ -90,6 +90,9 @@ class Client(db.Model):
     schedule_days_of_month = db.Column(db.String(255), default="1") # カンマ区切り "1,8,15,22"
     default_post_time = db.Column(db.Time)
     last_idea_theme_idx = db.Column(db.Integer, default=0)    # テーマ回転用インデックス
+    image_gen_enabled = db.Column(db.Boolean, default=False)           # AI画像生成オプション ON/OFF
+    image_taste = db.Column(db.String(30), default="text_image_set")   # text_image_set / image_only / text_heavy
+    image_aspect_ratio = db.Column(db.String(10), default="1:1")       # 1:1 / 4:5 / 16:9
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     posts = db.relationship("Post", back_populates="client", lazy="dynamic")
