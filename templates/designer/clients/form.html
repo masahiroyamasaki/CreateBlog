@@ -525,7 +525,6 @@
         <div class="form-group">
           {% set img_enabled = (client.image_gen_enabled if client and client.image_gen_enabled else false) %}
           <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
-            <input type="hidden" name="image_gen_enabled" value="0">
             <label style="display:flex;align-items:center;gap:8px;cursor:{% if client and plan_locked %}default{% else %}pointer{% endif %};font-weight:400;">
               <input type="checkbox" name="image_gen_enabled" value="1"
                      {% if img_enabled %}checked{% endif %}
@@ -538,10 +537,7 @@
               </span>
             </label>
           </div>
-          {% if client and plan_locked %}
-          <input type="hidden" name="image_gen_enabled" value="{{ '1' if img_enabled else '0' }}">
-          {% endif %}
-          <p class="hint" style="margin-top:8px;">記事生成後にDALL-E 3で自動生成。月額に加算（4件=¥2,000、8件=¥4,000…）。</p>
+          <p class="hint" style="margin-top:8px;">記事生成後にNanobanana2（getimg.ai）で自動生成。月額に加算（4件=¥2,000、8件=¥4,000…）。</p>
         </div>
 
         <div id="image-gen-settings" {% if not img_enabled %}style="opacity:.4;pointer-events:none;"{% endif %}>
