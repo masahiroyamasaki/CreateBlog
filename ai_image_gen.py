@@ -1,4 +1,4 @@
-"""ai_image_gen.py — getimg.ai Nanobanana2 による記事アイキャッチ画像生成"""
+"""ai_image_gen.py — Google Gemini Imagen 3 による記事アイキャッチ画像生成"""
 import base64
 import io
 import os
@@ -9,8 +9,8 @@ import requests as _requests
 
 logger = logging.getLogger(__name__)
 
-_GETIMG_BASE = "https://api.getimg.ai/v1"
-_GETIMG_MODEL = "nanobanana-2"
+_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+_IMAGEN_MODEL = "imagen-3.0-generate-002"
 
 _TASTE_HINTS = {
     "business_clean": (
@@ -54,22 +54,17 @@ _BALANCE_HINTS = {
     ),
 }
 
-_NEGATIVE_PROMPT = (
-    "nsfw, blurry, low quality, watermark, signature, text, logo, "
-    "deformed, distorted, ugly, bad anatomy"
-)
-
-# getimg.ai (SD1.5ベース) — 8の倍数で指定
-_ASPECT_SIZES = {
-    "1:1":  (512, 512),
-    "4:5":  (512, 640),
-    "16:9": (768, 432),
+# Imagen 3 がサポートするアスペクト比: 1:1, 3:4, 4:3, 9:16, 16:9
+_ASPECT_RATIOS = {
+    "1:1":  "1:1",
+    "4:5":  "3:4",   # 最も近いサイズに変換
+    "16:9": "16:9",
 }
 
 
 def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                    balance: str = "balanced") -> str:
-    """getimg.ai Nanobanana2 で画像を生成して
+    """Google Gemini Imagen 3 で画像を生成して
     /static/uploads/companies/{client_id}/images/ に保存する。
 
     Returns:
@@ -77,54 +72,55 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     """
     from config import Config
 
-    api_key = Config.GETIMG_API_KEY
+    api_key = Config.GEMINI_API_KEY
     if not api_key:
-        raise ValueError("GETIMG_API_KEY が設定されていません")
+        raise ValueError("GEMINI_API_KEY が設定されていません")
 
     taste_hint = _TASTE_HINTS.get(taste, _TASTE_HINTS["business_clean"])
     balance_hint = _BALANCE_HINTS.get(balance, _BALANCE_HINTS["balanced"])
-    width, height = _ASPECT_SIZES.get(aspect_ratio, (512, 512))
+    img_aspect = _ASPECT_RATIOS.get(aspect_ratio, "1:1")
 
     prompt = (
         f"professional blog article thumbnail, topic: {title}, "
         f"{taste_hint}, "
         f"{balance_hint}, "
         f"modern high quality, business blog header image, "
-        f"no japanese text"
+        f"no text, no letters, no japanese characters"
     )
 
     resp = _requests.post(
-        f"{_GETIMG_BASE}/stable-diffusion/text-to-image",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
+        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:predict",
+        params={"key": api_key},
+        headers={"Content-Type": "application/json"},
         json={
-            "model": _GETIMG_MODEL,
-            "prompt": prompt,
-            "negative_prompt": _NEGATIVE_PROMPT,
-            "width": width,
-            "height": height,
-            "steps": 30,
-            "guidance": 7.0,
-            "output_format": "jpeg",
+            "instances": [{"prompt": prompt}],
+            "parameters": {
+                "sampleCount": 1,
+                "aspectRatio": img_aspect,
+            },
         },
         timeout=120,
     )
 
     if resp.status_code != 200:
         raise RuntimeError(
-            f"getimg.ai API エラー (HTTP {resp.status_code}): {resp.text[:300]}"
+            f"Gemini Imagen API エラー (HTTP {resp.status_code}): {resp.text[:300]}"
         )
 
     data = resp.json()
-    b64 = data.get("image")
+    predictions = data.get("predictions", [])
+    if not predictions:
+        raise RuntimeError(f"Imagen API レスポンスに予測結果がありません: {data}")
+
+    b64 = predictions[0].get("bytesBase64Encoded")
     if not b64:
-        raise RuntimeError(f"getimg.ai レスポンスに image フィールドがありません: {data}")
+        raise RuntimeError(f"Imagen API レスポンスに画像データがありません: {predictions[0]}")
 
     img_bytes = base64.b64decode(b64)
-    compressed = _compress_to_5mb(img_bytes)
+    mime = predictions[0].get("mimeType", "image/png")
+    ext = "jpg" if "jpeg" in mime else "png"
+
+    compressed = _compress_to_5mb(img_bytes, ext)
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     save_dir = os.path.join(
@@ -132,7 +128,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     )
     os.makedirs(save_dir, exist_ok=True)
 
-    filename = f"{uuid.uuid4().hex}.jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
     save_path = os.path.join(save_dir, filename)
     with open(save_path, "wb") as f:
         f.write(compressed)
@@ -141,7 +137,8 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     return f"/static/uploads/companies/{client_id}/images/{filename}"
 
 
-def _compress_to_5mb(data: bytes, max_bytes: int = 5 * 1024 * 1024) -> bytes:
+def _compress_to_5mb(data: bytes, ext: str = "png",
+                     max_bytes: int = 5 * 1024 * 1024) -> bytes:
     """画像を 5MB 以下に圧縮して返す。"""
     if len(data) <= max_bytes:
         return data
@@ -151,10 +148,11 @@ def _compress_to_5mb(data: bytes, max_bytes: int = 5 * 1024 * 1024) -> bytes:
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
+    fmt = "JPEG"
     quality = 85
     while quality >= 30:
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=quality)
+        img.save(buf, format=fmt, quality=quality)
         if buf.tell() <= max_bytes:
             return buf.getvalue()
         quality -= 10
@@ -162,5 +160,5 @@ def _compress_to_5mb(data: bytes, max_bytes: int = 5 * 1024 * 1024) -> bytes:
     w, h = img.size
     img = img.resize((w // 2, h // 2), Image.LANCZOS)
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=70)
+    img.save(buf, format=fmt, quality=70)
     return buf.getvalue()

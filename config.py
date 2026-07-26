@@ -34,8 +34,8 @@ class Config:
     # OpenAI (予備)
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-    # getimg.ai (Nanobanana2 画像生成)
-    GETIMG_API_KEY = os.getenv("GETIMG_API_KEY", "")
+    # Google Gemini (Imagen 3 画像生成)
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
     # Instagram Graph API
     IG_API_VERSION = os.getenv("IG_API_VERSION", "v20.0")

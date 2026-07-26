@@ -537,7 +537,7 @@
               </span>
             </label>
           </div>
-          <p class="hint" style="margin-top:8px;">記事生成後にNanobanana2（getimg.ai）で自動生成。月額に加算（4件=¥2,000、8件=¥4,000…）。</p>
+          <p class="hint" style="margin-top:8px;">記事生成後に Gemini Imagen 3（Google AI）で自動生成。月額に加算（4件=¥2,000、8件=¥4,000…）。</p>
         </div>
 
         <div id="image-gen-settings" {% if not img_enabled %}style="opacity:.4;pointer-events:none;"{% endif %}>
@@ -564,7 +564,7 @@
               <option value="image_focus"  {% if cur_balance == 'image_focus'  %}selected{% endif %}>画像重視 — グラフィックをフル使用・テキストなし</option>
               <option value="text_focus"   {% if cur_balance == 'text_focus'   %}selected{% endif %}>テキスト重視 — 文字を配置しやすい背景構図</option>
             </select>
-            <p class="hint">選択したテイストとバランスを組み合わせて Nanobanana2 のプロンプトを生成します。</p>
+            <p class="hint">選択したテイストとバランスを組み合わせて Imagen 3 のプロンプトを生成します。</p>
           </div>
           <div class="form-group">
             <label>画像サイズ（アスペクト比）</label>
