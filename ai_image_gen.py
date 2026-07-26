@@ -10,7 +10,7 @@ import requests as _requests
 logger = logging.getLogger(__name__)
 
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
-_IMAGEN_MODEL = "gemini-2.0-flash-preview-image-generation"
+_IMAGEN_MODEL = "imagen-4.0-generate-001"
 
 _TASTE_HINTS = {
     "business_clean": (
@@ -89,13 +89,14 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     )
 
     resp = _requests.post(
-        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:generateContent",
+        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:predict",
         params={"key": api_key},
         headers={"Content-Type": "application/json"},
         json={
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "responseModalities": ["IMAGE"],
+            "instances": [{"prompt": prompt}],
+            "parameters": {
+                "sampleCount": 1,
+                "aspectRatio": img_aspect,
             },
         },
         timeout=120,
@@ -107,15 +108,16 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         )
 
     data = resp.json()
-    try:
-        parts = data["candidates"][0]["content"]["parts"]
-        inline = next(p["inlineData"] for p in parts if "inlineData" in p)
-        b64 = inline["data"]
-        mime = inline.get("mimeType", "image/png")
-    except (KeyError, IndexError, StopIteration) as e:
-        raise RuntimeError(f"Gemini API レスポンス解析エラー: {e} / {data}")
+    predictions = data.get("predictions", [])
+    if not predictions:
+        raise RuntimeError(f"Imagen API レスポンスに予測結果がありません: {data}")
+
+    b64 = predictions[0].get("bytesBase64Encoded")
+    if not b64:
+        raise RuntimeError(f"Imagen API レスポンスに画像データがありません: {predictions[0]}")
 
     img_bytes = base64.b64decode(b64)
+    mime = predictions[0].get("mimeType", "image/png")
     ext = "jpg" if "jpeg" in mime else "png"
 
     compressed = _compress_to_5mb(img_bytes, ext)
