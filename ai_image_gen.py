@@ -55,9 +55,21 @@ _ASPECT_LABELS = {
 
 # ─── Claude によるプロンプト生成 ──────────────────────────────────────────────
 
+_DEFAULT_BASE_PROMPT = (
+    "flat vector illustration style, warm pastel palette, "
+    "consistent character design of a young professional woman with short black hair"
+)
+
+_NEGATIVE_PROMPT = (
+    "text, watermark, extra limbs, inconsistent character design, "
+    "photorealistic, low quality"
+)
+
+
 def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                                   balance: str, aspect_ratio: str,
-                                  client_name: str = "") -> str:
+                                  client_name: str = "",
+                                  base_prompt: str = "") -> str:
     """Claude API（Haiku）で記事内容と企業設定から詳細な英語画像プロンプトを生成する。"""
     import anthropic
     from config import Config
@@ -67,9 +79,14 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         raise ValueError("ANTHROPIC_API_KEY が設定されていません")
 
     body_text = _strip_html(body_html or "")[:1500]
+    effective_base = (base_prompt.strip() if base_prompt and base_prompt.strip()
+                      else _DEFAULT_BASE_PROMPT)
 
     user_msg = f"""あなたはAI画像生成の専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
+
+## ベースプロンプト（必ず先頭に付加すること・変更禁止）
+{effective_base}
 
 ## 記事情報
 企業名: {client_name or "（未設定）"}
@@ -82,23 +99,39 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - レイアウト: {_BALANCE_LABELS.get(balance, balance)}
 - アスペクト比: {_ASPECT_LABELS.get(aspect_ratio, aspect_ratio)}
 
+## 埋めるべき項目
+- 主題: 記事の内容を象徴する被写体・情景。ベースキャラクター（若い女性）の配置も含めること
+- 構図: アングル・俯瞰/クローズアップ・配置
+- スタイル補足: ベースのflat vector illustrationを踏襲しつつ追加補足があれば
+- 照明: 自然光/逆光/スタジオライティングなど
+- 色調補足: ベースのwarm pastel paletteを踏襲しつつセクション固有の差分があれば
+- 雰囲気: 明るい/落ち着いた/活力あるなど
+
+## 出力フォーマット（必ずこの形式で出力）
+"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], high quality, 4k, no text, no letters, no words, no japanese characters"
+
+## 禁止事項（Negative prompt に相当）
+{_NEGATIVE_PROMPT}
+※上記の要素が出力プロンプトに含まれないよう注意すること
+
 ## 出力ルール
 - 英語のみで出力すること
-- 必ず "no text, no letters, no words, no japanese characters" を含めること
-- 記事の主題を象徴する具体的な被写体・情景・素材を含めること
-- 色・ライティング・構図・質感を明示すること
-- プロのデザイナーが制作した高品質なブログサムネイルを目指すこと
-- 80〜120語の英語プロンプトのみを出力すること（説明文・日本語不要）"""
+- ベースプロンプトを必ず先頭に含めること（変更・省略禁止）
+- ダブルクォーテーションで囲んだプロンプト文のみを出力すること（説明文・日本語不要）
+- キャラクターデザイン・配色・スタイルの一貫性を保つこと"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=300,
+        max_tokens=400,
         messages=[{"role": "user", "content": user_msg}],
     )
-    prompt = message.content[0].text.strip()
-    logger.info(f"[Claude] 生成プロンプト: {prompt[:120]}...")
-    return prompt
+    raw = message.content[0].text.strip()
+    # ダブルクォーテーションがあれば中身だけ取り出す
+    if raw.startswith('"') and raw.endswith('"'):
+        raw = raw[1:-1]
+    logger.info(f"[Claude] 生成プロンプト: {raw[:120]}...")
+    return raw
 
 
 def _enhance_refinement_with_claude(instruction: str, title: str = "",
@@ -148,7 +181,7 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 
 def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                    balance: str = "balanced", body_html: str = "",
-                   client_name: str = "") -> str:
+                   client_name: str = "", base_prompt: str = "") -> str:
     """Claude でプロンプトを生成し、Gemini で画像を生成して保存する。
 
     Returns:
@@ -169,6 +202,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             balance=balance,
             aspect_ratio=aspect_ratio,
             client_name=client_name,
+            base_prompt=base_prompt,
         )
     except Exception as e:
         logger.warning(f"[Claude] プロンプト生成失敗、フォールバック使用: {e}")

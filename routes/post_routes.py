@@ -233,6 +233,7 @@ def post_generate_ai_image(client_id: int, post_id: int):
             balance=balance,
             body_html=post.body_html or "",
             client_name=client.name or "",
+            base_prompt=getattr(client, "image_base_prompt", "") or "",
         )
         last = post.images.order_by(PostImage.sort_order.desc()).first()
         sort_order = (last.sort_order + 1) if last else 1
