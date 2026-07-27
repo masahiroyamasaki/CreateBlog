@@ -225,13 +225,15 @@ def post_generate_ai_image(client_id: int, post_id: int):
 
     try:
         from ai_image_gen import generate_image
+        # body_html が空（Instagram投稿など）の場合は ig_caption を記事内容として使用
+        body_context = post.body_html or post.ig_caption or ""
         img_path = generate_image(
             title=post.title or "ブログ記事",
             taste=taste,
             aspect_ratio=aspect_ratio,
             client_id=client_id,
             balance=balance,
-            body_html=post.body_html or "",
+            body_html=body_context,
             client_name=client.name or "",
             base_prompt=getattr(client, "image_base_prompt", "") or "",
         )
