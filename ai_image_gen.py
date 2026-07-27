@@ -10,7 +10,7 @@ import requests as _requests
 logger = logging.getLogger(__name__)
 
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
-_IMAGEN_MODEL = "imagen-4.0-generate-001"
+_IMAGEN_MODEL = "imagen-4.0-fast-generate-001"
 
 _TASTE_HINTS = {
     "business_clean": (
