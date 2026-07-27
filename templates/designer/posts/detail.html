@@ -557,6 +557,8 @@ async function generateAiImage() {
     const data = await res.json();
     if (data.success) {
       appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
+      editCount = data.edit_count;
+      updateEditCountUI();
       resultEl.style.display = '';
       resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>';
       showToast('AI画像を生成しました', 'success');
@@ -633,6 +635,8 @@ function updateEditCountUI() {
   const el = document.getElementById('edit-count-display');
   if (el) el.textContent = editCount;
   if (editCount >= 10) {
+    const genBtn = document.getElementById('ai-img-btn');
+    if (genBtn) genBtn.disabled = true;
     document.querySelectorAll('.refine-btn').forEach(b => b.disabled = true);
     document.querySelectorAll('.img-card-row .btn-secondary').forEach(b => {
       if (b.textContent.trim() === '修正') b.disabled = true;

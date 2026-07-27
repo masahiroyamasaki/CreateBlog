@@ -219,6 +219,10 @@ def post_generate_ai_image(client_id: int, post_id: int):
     balance       = getattr(client, "image_balance", "balanced") or "balanced"
     aspect_ratio  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
+    edit_count = post.image_edit_count or 0
+    if edit_count >= 10:
+        return jsonify({"success": False, "reason": "生成・修正回数の上限（10回）に達しています"})
+
     try:
         from ai_image_gen import generate_image
         img_path = generate_image(
@@ -232,8 +236,15 @@ def post_generate_ai_image(client_id: int, post_id: int):
         sort_order = (last.sort_order + 1) if last else 1
         img = PostImage(post_id=post_id, image_url=img_path, sort_order=sort_order)
         db.session.add(img)
+        post.image_edit_count = edit_count + 1
         db.session.commit()
-        return jsonify({"success": True, "id": img.id, "image_url": img_path, "sort_order": sort_order})
+        return jsonify({
+            "success": True,
+            "id": img.id,
+            "image_url": img_path,
+            "sort_order": sort_order,
+            "edit_count": post.image_edit_count,
+        })
     except Exception as e:
         import traceback
         traceback.print_exc()
