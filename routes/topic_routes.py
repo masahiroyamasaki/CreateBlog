@@ -336,6 +336,8 @@ def topic_generate(client_id: int, topic_id: int):
                                 aspect_ratio=image_aspect_ratio_val,
                                 client_id=client_id_val,
                                 balance=image_balance_val,
+                                body_html=getattr(post, "body_html", "") or "",
+                                client_name=client_name,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()
@@ -451,6 +453,8 @@ def topic_generate(client_id: int, topic_id: int):
                                 aspect_ratio=image_aspect_ratio_val,
                                 client_id=client_id_val,
                                 balance=image_balance_val,
+                                body_html=getattr(post, "body_html", "") or "",
+                                client_name=client_name,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()
@@ -683,6 +687,8 @@ def topic_bulk_generate(client_id: int):
                                 aspect_ratio=image_aspect_ratio,
                                 client_id=client_id_val,
                                 balance=image_balance,
+                                body_html=getattr(post, "body_html", "") or "",
+                                client_name=client_name,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()
