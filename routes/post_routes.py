@@ -280,12 +280,12 @@ def post_refine_ai_image(client_id: int, post_id: int):
 
     try:
         from ai_image_gen import refine_image
-        taste = getattr(client, "image_taste", "business_clean") or "business_clean"
         new_url = refine_image(
             original_url=orig_img.image_url,
             instruction=instruction,
             client_id=client_id,
-            taste=taste,
+            title=post.title or "",
+            body_html=post.body_html or "",
         )
         last = post.images.order_by(PostImage.sort_order.desc()).first()
         sort_order = (last.sort_order + 1) if last else 1

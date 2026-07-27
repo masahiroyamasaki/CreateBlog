@@ -648,6 +648,7 @@ function appendImageCard(imgId, imageUrl, sortOrder, label) {
   const noMsg = document.getElementById('no-image-msg');
   if (noMsg) noMsg.remove();
   const list = document.getElementById('image-list');
+  const displayIndex = list.querySelectorAll('.img-card').length + 1;
   const card = document.createElement('div');
   card.className = 'img-card';
   card.draggable = true;
@@ -669,7 +670,7 @@ function appendImageCard(imgId, imageUrl, sortOrder, label) {
            onclick="openLightbox('${imageUrl}')">
       <div style="flex:1;min-width:0;">
         <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${imageUrl}</div>
-        <div style="font-size:11px;color:var(--success);">${label} • ${sortOrder}枚目</div>
+        <div style="font-size:11px;color:var(--success);">${label} • ${displayIndex}枚目</div>
       </div>
       ${refineBtn}
       <button class="btn btn-danger btn-sm" onclick="deleteImage(${imgId})">削除</button>

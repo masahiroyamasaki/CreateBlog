@@ -101,8 +101,9 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     return prompt
 
 
-def _enhance_refinement_with_claude(instruction: str, taste: str) -> str:
-    """ユーザーの修正指示（日本語可）を詳細な英語画像編集プロンプトに変換する。"""
+def _enhance_refinement_with_claude(instruction: str, title: str = "",
+                                     body_html: str = "") -> str:
+    """ユーザーの修正指示＋ブログ記事情報を詳細な英語画像編集プロンプトに変換する。"""
     import anthropic
     from config import Config
 
@@ -110,26 +111,32 @@ def _enhance_refinement_with_claude(instruction: str, taste: str) -> str:
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY が設定されていません")
 
-    user_msg = f"""ユーザーから画像の修正指示が届きました。
-この指示を、AI画像生成モデルへの詳細な英語プロンプトに変換してください。
+    body_text = _strip_html(body_html or "")[:1000]
 
-## 修正指示
+    user_msg = f"""あなたはAI画像生成の専門家です。
+以下のブログ記事と元画像に対して、ユーザーの修正指示を反映した新しい画像を生成するためのプロンプトを作成してください。
+
+## ブログ記事情報
+タイトル: {title or "（未設定）"}
+本文抜粋:
+{body_text or "（本文なし）"}
+
+## ユーザーの修正指示
 {instruction}
-
-## 維持すべきスタイル
-{_TASTE_LABELS.get(taste, taste)}
 
 ## 出力ルール
 - 英語のみで出力すること
 - 必ず "no text, no letters, no words, no japanese characters" を含めること
-- 指示内容の変更点を具体的に記述すること（色・構図・被写体・雰囲気など）
-- プロのブログサムネイルとして高品質であること
+  （「タイトルを表現して」などの指示は、文字を入れるのではなく、タイトルの概念を視覚的に表現すること）
+- 修正指示の変更点を具体的に記述すること（色・構図・被写体・雰囲気など）
+- ブログ記事の内容と一貫性を保つこと
+- 元の画像の良い部分を活かしながら指示を正確に反映すること
 - 60〜100語の英語プロンプトのみを出力すること（説明文・日本語不要）"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=200,
+        max_tokens=250,
         messages=[{"role": "user", "content": user_msg}],
     )
     prompt = message.content[0].text.strip()
@@ -179,8 +186,10 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
 
 
 def refine_image(original_url: str, instruction: str, client_id: int,
-                 taste: str = "business_clean") -> str:
+                 title: str = "", body_html: str = "") -> str:
     """Claude で修正プロンプトを生成し、元画像を参照して Gemini で再生成する。
+
+    テイスト等の企業スタイル設定は使わず、修正指示とブログ記事内容のみを使用する。
 
     Returns:
         保存された新しい画像の絶対 URL
@@ -191,13 +200,18 @@ def refine_image(original_url: str, instruction: str, client_id: int,
     if not gemini_key:
         raise ValueError("GEMINI_API_KEY が設定されていません")
 
-    # Step 1: Claude で修正プロンプトを強化
+    # Step 1: Claude で修正プロンプトを強化（ブログ内容を参照）
     try:
-        enhanced_prompt = _enhance_refinement_with_claude(instruction, taste)
+        enhanced_prompt = _enhance_refinement_with_claude(
+            instruction=instruction,
+            title=title,
+            body_html=body_html,
+        )
     except Exception as e:
         logger.warning(f"[Claude] 修正プロンプト強化失敗、フォールバック: {e}")
         enhanced_prompt = (
             f"Edit this image: {instruction}. "
+            f"Blog article title: {title}. "
             f"Maintain professional blog thumbnail style. "
             f"No text, no letters, no words, no japanese characters."
         )
