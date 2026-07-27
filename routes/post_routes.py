@@ -240,6 +240,57 @@ def post_generate_ai_image(client_id: int, post_id: int):
         return jsonify({"success": False, "reason": str(e)})
 
 
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/refine-ai-image", methods=["POST"])
+@login_required
+def post_refine_ai_image(client_id: int, post_id: int):
+    """既存のAI画像に修正指示を与えて新しい画像を生成する（最大10回/投稿）"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    post = Post.query.get_or_404(post_id)
+    if post.client_id != client_id:
+        abort(403)
+
+    data = request.get_json(silent=True) or {}
+    original_image_id = data.get("original_image_id")
+    instruction = (data.get("instruction") or "").strip()
+
+    if not instruction:
+        return jsonify({"success": False, "reason": "修正指示が入力されていません"})
+
+    edit_count = post.image_edit_count or 0
+    if edit_count >= 10:
+        return jsonify({"success": False, "reason": "修正回数の上限（10回）に達しています"})
+
+    orig_img = PostImage.query.get(original_image_id)
+    if not orig_img or orig_img.post_id != post_id:
+        return jsonify({"success": False, "reason": "元画像が見つかりません"})
+
+    try:
+        from ai_image_gen import refine_image
+        new_url = refine_image(
+            original_url=orig_img.image_url,
+            instruction=instruction,
+            client_id=client_id,
+        )
+        last = post.images.order_by(PostImage.sort_order.desc()).first()
+        sort_order = (last.sort_order + 1) if last else 1
+        new_img = PostImage(post_id=post_id, image_url=new_url, sort_order=sort_order)
+        db.session.add(new_img)
+        post.image_edit_count = edit_count + 1
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "id": new_img.id,
+            "image_url": new_url,
+            "sort_order": sort_order,
+            "edit_count": post.image_edit_count,
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "reason": str(e)})
+
+
 # ──────────────────────────── 投稿タイミング設定 ────────────────────────────
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/schedule", methods=["POST"])

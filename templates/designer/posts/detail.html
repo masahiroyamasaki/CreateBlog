@@ -9,8 +9,16 @@
 {% block head %}
 <style>
 .panel { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
-.img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; cursor: grab; }
-.img-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
+.img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 0; cursor: grab; }
+.img-card-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+.img-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; cursor: zoom-in; flex-shrink: 0; }
+.refine-panel { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: none; }
+.refine-panel textarea { width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; background: var(--bg2); color: var(--text); resize: vertical; min-height: 56px; box-sizing: border-box; }
+/* ── ライトボックス ── */
+#img-lightbox { display: none; position: fixed; inset: 0; z-index: 6000; background: rgba(0,0,0,.92); cursor: pointer; }
+#img-lightbox img { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 92vw; max-height: 88vh; border-radius: 8px; box-shadow: 0 24px 80px rgba(0,0,0,.6); cursor: default; }
+#img-lightbox-close { position: absolute; top: 18px; right: 18px; background: rgba(255,255,255,.15); color: #fff; border: none; border-radius: 8px; padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+#img-lightbox-close:hover { background: rgba(255,255,255,.28); }
 .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
 .char-count.over { color: var(--danger); }
 .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
@@ -194,12 +202,19 @@
 
         <!-- AI画像生成ボタン -->
         {% set img_gen_on = client.image_gen_enabled if client.image_gen_enabled is not none else false %}
+        {% set edit_count = post.image_edit_count or 0 %}
         {% if img_gen_on %}
-        <div style="margin-bottom:14px;padding:12px 14px;background:#1e2a3a;border:1px solid #2f5d8a;border-radius:8px;display:flex;align-items:center;gap:12px;">
-          <div style="flex:1;font-size:13px;color:#93c5fd;">
-            <strong>AI画像生成オン</strong> — テイスト: <span style="color:#fff;">{{ {'business_clean':'ビジネス','photo_real':'写真','illustration_pop':'イラスト','minimal':'ミニマル','japanese_calm':'和風','colorful_energy':'カラフル'}.get(client.image_taste or 'business_clean', client.image_taste) }}</span>
+        <div style="margin-bottom:14px;padding:12px 14px;background:#1e2a3a;border:1px solid #2f5d8a;border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;font-size:13px;color:#93c5fd;">
+              <strong>AI画像生成オン</strong> — テイスト: <span style="color:#fff;">{{ {'business_clean':'ビジネス','photo_real':'写真','illustration_pop':'イラスト','minimal':'ミニマル','japanese_calm':'和風','colorful_energy':'カラフル'}.get(client.image_taste or 'business_clean', client.image_taste) }}</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="ai-img-btn" onclick="generateAiImage()">AI画像を生成する</button>
           </div>
-          <button class="btn btn-secondary btn-sm" id="ai-img-btn" onclick="generateAiImage()">AI画像を生成する</button>
+          <div style="margin-top:8px;font-size:12px;color:{% if edit_count >= 10 %}var(--danger){% else %}#60a5fa{% endif %};">
+            画像修正: <strong id="edit-count-display">{{ edit_count }}</strong> / 10 回使用
+            {% if edit_count >= 10 %}<span> — 上限に達しました</span>{% endif %}
+          </div>
         </div>
         <div id="ai-img-result" style="display:none;margin-bottom:12px;font-size:13px;"></div>
         {% endif %}
@@ -231,13 +246,32 @@
         <div id="image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
           {% for img in post.image_list %}
           <div class="img-card" draggable="true" data-id="{{ img.id }}" id="img-{{ img.id }}">
-            <span style="color:var(--muted);cursor:grab;">⠿</span>
-            <img src="{{ img.image_url }}" alt="" onerror="this.style.display='none'">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.image_url }}</div>
-              <div style="font-size:11px;color:var(--muted);">{{ loop.index }}枚目</div>
+            <div class="img-card-row">
+              <span style="color:var(--muted);cursor:grab;">⠿</span>
+              <img src="{{ img.image_url }}" alt="" onerror="this.style.display='none'"
+                   onclick="openLightbox('{{ img.image_url }}')">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.image_url }}</div>
+                <div style="font-size:11px;color:var(--muted);">{{ loop.index }}枚目</div>
+              </div>
+              {% if img_gen_on %}
+              <button class="btn btn-secondary btn-sm"
+                      onclick="toggleRefine({{ img.id }})"
+                      {% if edit_count >= 10 %}disabled title="修正回数上限"{% endif %}>修正</button>
+              {% endif %}
+              <button class="btn btn-danger btn-sm" onclick="deleteImage({{ img.id }})">削除</button>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="deleteImage({{ img.id }})">削除</button>
+            {% if img_gen_on %}
+            <div class="refine-panel" id="refine-panel-{{ img.id }}">
+              <textarea class="refine-input" id="refine-input-{{ img.id }}"
+                        placeholder="修正指示を入力（例：背景を青空にして、もっと明るい雰囲気に）"></textarea>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                <button class="btn btn-primary btn-sm refine-btn" id="refine-btn-{{ img.id }}"
+                        onclick="refineImage({{ img.id }})"
+                        {% if edit_count >= 10 %}disabled{% endif %}>再生成</button>
+              </div>
+            </div>
+            {% endif %}
           </div>
           {% else %}
           <div id="no-image-msg" style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">画像がありません</div>
@@ -359,6 +393,12 @@
   </div>
 </div>
 
+<!-- 画像ライトボックス -->
+<div id="img-lightbox" onclick="closeLightbox()">
+  <button id="img-lightbox-close" onclick="closeLightbox()">✕ 閉じる</button>
+  <img id="img-lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
 <!-- プレビュー拡大モーダル -->
 <div id="preview-modal" onclick="if(event.target===this)closePreviewModal()">
   <div class="preview-modal-inner">
@@ -374,6 +414,8 @@ const clientId = {{ client.id }};
 const postId = {{ post.id }};
 const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
 const hasThreads = {{ 'true' if client.threads_user_id else 'false' }};
+const imgGenOn = {{ 'true' if img_gen_on else 'false' }};
+let editCount = {{ edit_count }};
 
 // タブ切り替え
 function switchTab(tab) {
@@ -514,24 +556,7 @@ async function generateAiImage() {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      // 画像カードをリストに追加
-      const noMsg = document.getElementById('no-image-msg');
-      if (noMsg) noMsg.remove();
-      const list = document.getElementById('image-list');
-      const card = document.createElement('div');
-      card.className = 'img-card';
-      card.dataset.id = data.id;
-      card.id = 'img-' + data.id;
-      card.innerHTML = `
-        <span style="color:var(--muted);cursor:grab;">⠿</span>
-        <img src="${data.image_url}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${data.image_url}</div>
-          <div style="font-size:11px;color:var(--success);">AI生成画像 • ${data.sort_order}枚目</div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteImage(${data.id})">削除</button>
-      `;
-      list.appendChild(card);
+      appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
       resultEl.style.display = '';
       resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>';
       showToast('AI画像を生成しました', 'success');
@@ -547,6 +572,119 @@ async function generateAiImage() {
     btn.disabled = false;
     btn.textContent = 'AI画像を生成する';
   }
+}
+
+// ─── ライトボックス ──────────────────────────────────────────────────────────
+function openLightbox(url) {
+  document.getElementById('img-lightbox-img').src = url;
+  document.getElementById('img-lightbox').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('img-lightbox').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// ─── 修正パネル ───────────────────────────────────────────────────────────────
+function toggleRefine(imgId) {
+  const panel = document.getElementById('refine-panel-' + imgId);
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) document.getElementById('refine-input-' + imgId)?.focus();
+}
+
+async function refineImage(origImgId) {
+  const input = document.getElementById('refine-input-' + origImgId);
+  const btn   = document.getElementById('refine-btn-' + origImgId);
+  const instruction = input?.value.trim();
+  if (!instruction) { showToast('修正指示を入力してください', 'error'); return; }
+  if (editCount >= 10) { showToast('修正回数の上限（10回）に達しています', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/refine-ai-image`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ original_image_id: origImgId, instruction }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
+      editCount = data.edit_count;
+      updateEditCountUI();
+      document.getElementById('refine-panel-' + origImgId).style.display = 'none';
+      input.value = '';
+      showToast('修正画像を生成しました', 'success');
+    } else {
+      showToast('✗ ' + data.reason, 'error');
+    }
+  } catch (err) {
+    showToast('通信エラー: ' + err.message, 'error');
+  } finally {
+    btn.disabled = editCount >= 10;
+    btn.textContent = '再生成';
+  }
+}
+
+function updateEditCountUI() {
+  const el = document.getElementById('edit-count-display');
+  if (el) el.textContent = editCount;
+  if (editCount >= 10) {
+    document.querySelectorAll('.refine-btn').forEach(b => b.disabled = true);
+    document.querySelectorAll('.img-card-row .btn-secondary').forEach(b => {
+      if (b.textContent.trim() === '修正') b.disabled = true;
+    });
+  }
+}
+
+function appendImageCard(imgId, imageUrl, sortOrder, label) {
+  const noMsg = document.getElementById('no-image-msg');
+  if (noMsg) noMsg.remove();
+  const list = document.getElementById('image-list');
+  const card = document.createElement('div');
+  card.className = 'img-card';
+  card.draggable = true;
+  card.dataset.id = imgId;
+  card.id = 'img-' + imgId;
+  const refineHtml = imgGenOn ? `
+    <div class="refine-panel" id="refine-panel-${imgId}">
+      <textarea class="refine-input" id="refine-input-${imgId}" placeholder="修正指示を入力（例：背景を青空にして、もっと明るい雰囲気に）"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+        <button class="btn btn-primary btn-sm refine-btn" id="refine-btn-${imgId}"
+                onclick="refineImage(${imgId})" ${editCount >= 10 ? 'disabled' : ''}>再生成</button>
+      </div>
+    </div>` : '';
+  const refineBtn = imgGenOn ? `<button class="btn btn-secondary btn-sm" onclick="toggleRefine(${imgId})" ${editCount >= 10 ? 'disabled' : ''}>修正</button>` : '';
+  card.innerHTML = `
+    <div class="img-card-row">
+      <span style="color:var(--muted);cursor:grab;">⠿</span>
+      <img src="${imageUrl}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:zoom-in;"
+           onclick="openLightbox('${imageUrl}')">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${imageUrl}</div>
+        <div style="font-size:11px;color:var(--success);">${label} • ${sortOrder}枚目</div>
+      </div>
+      ${refineBtn}
+      <button class="btn btn-danger btn-sm" onclick="deleteImage(${imgId})">削除</button>
+    </div>
+    ${refineHtml}
+  `;
+  list.appendChild(card);
+  // ドラッグ＆ドロップ登録
+  card.addEventListener('dragstart', () => { imgDragSrc = card; card.style.opacity = '.4'; });
+  card.addEventListener('dragend', () => { card.style.opacity = ''; saveImageOrder(); });
+  card.addEventListener('dragover', e => e.preventDefault());
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    if (card !== imgDragSrc) {
+      const items = [...list.children];
+      if (items.indexOf(imgDragSrc) < items.indexOf(card)) list.insertBefore(imgDragSrc, card.nextSibling);
+      else list.insertBefore(imgDragSrc, card);
+    }
+  });
 }
 
 // ─── 画像アップロード ────────────────────────────────────────────────────────
@@ -666,6 +804,6 @@ function closePreviewModal() {
   document.body.style.overflow = '';
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreviewModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePreviewModal(); closeLightbox(); } });
 </script>
 {% endblock %}

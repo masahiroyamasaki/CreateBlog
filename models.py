@@ -151,6 +151,7 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     posted_at = db.Column(db.DateTime)
+    image_edit_count = db.Column(db.Integer, default=0)
 
     client = db.relationship("Client", back_populates="posts")
     designer = db.relationship("Designer", foreign_keys=[created_by_designer_id])

@@ -136,6 +136,104 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     return f"{base_url}/static/uploads/companies/{client_id}/images/{filename}"
 
 
+def refine_image(original_url: str, instruction: str, client_id: int) -> str:
+    """元画像を参照して修正指示に基づいた新しい画像を生成する。
+
+    Returns:
+        保存された画像の絶対 URL
+    """
+    from config import Config
+
+    api_key = Config.GEMINI_API_KEY
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY が設定されていません")
+
+    img_bytes = _load_image_from_url(original_url)
+    b64_original = base64.b64encode(img_bytes).decode()
+
+    prompt = (
+        f"Edit this image according to the following instructions: {instruction}. "
+        f"Maintain the professional blog thumbnail style. "
+        f"No text, no letters, no japanese characters in the image."
+    )
+
+    resp = _requests.post(
+        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:generateContent",
+        params={"key": api_key},
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inlineData": {"mimeType": "image/png", "data": b64_original}},
+                ]
+            }],
+            "generationConfig": {
+                "responseModalities": ["IMAGE"],
+            },
+        },
+        timeout=120,
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Gemini Imagen API エラー (HTTP {resp.status_code}): {resp.text[:300]}"
+        )
+
+    data = resp.json()
+    try:
+        parts = data["candidates"][0]["content"]["parts"]
+        inline = next(p["inlineData"] for p in parts if "inlineData" in p)
+        b64 = inline["data"]
+        mime = inline.get("mimeType", "image/png")
+    except (KeyError, IndexError, StopIteration) as e:
+        raise RuntimeError(f"Gemini API レスポンス解析エラー: {e} / {str(data)[:300]}")
+
+    new_bytes = base64.b64decode(b64)
+    ext = "jpg" if "jpeg" in mime else "png"
+    compressed = _compress_to_5mb(new_bytes, ext)
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(
+        base_dir, "static", "uploads", "companies", str(client_id), "images"
+    )
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(save_dir, filename)
+    with open(save_path, "wb") as f:
+        f.write(compressed)
+
+    logger.info(f"AI画像修正完了: {save_path}")
+    base_url = os.getenv("BASE_URL", "").rstrip("/")
+    return f"{base_url}/static/uploads/companies/{client_id}/images/{filename}"
+
+
+def _load_image_from_url(image_url: str) -> bytes:
+    """image_url からバイト列を取得する（ローカルパスを優先）。"""
+    base_url = os.getenv("BASE_URL", "").rstrip("/")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 絶対 URL の場合は BASE_URL プレフィックスを除去してローカルファイルとして読む
+    if base_url and image_url.startswith(base_url):
+        relative = image_url[len(base_url):]
+    elif image_url.startswith("/"):
+        relative = image_url
+    else:
+        relative = None
+
+    if relative:
+        fs_path = os.path.join(base_dir, relative.lstrip("/").replace("/", os.sep))
+        if os.path.exists(fs_path):
+            with open(fs_path, "rb") as f:
+                return f.read()
+
+    # ローカルに見つからなければ HTTP ダウンロード
+    r = _requests.get(image_url, timeout=30)
+    r.raise_for_status()
+    return r.content
+
+
 def _compress_to_5mb(data: bytes, ext: str = "png",
                      max_bytes: int = 5 * 1024 * 1024) -> bytes:
     """画像を 5MB 以下に圧縮して返す。"""
