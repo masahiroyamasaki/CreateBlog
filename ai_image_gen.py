@@ -134,6 +134,18 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     return raw
 
 
+_TEXT_REQUEST_KEYWORDS = [
+    "タイトル", "文字", "テキスト", "title", "text", "letter", "words",
+    "書いて", "入れて", "追加して", "載せて", "表示して",
+]
+
+
+def _wants_text_in_image(instruction: str) -> bool:
+    """修正指示がテキスト描画を要求しているか判定する。"""
+    low = instruction.lower()
+    return any(kw in low for kw in _TEXT_REQUEST_KEYWORDS)
+
+
 def _enhance_refinement_with_claude(instruction: str, title: str = "",
                                      body_html: str = "") -> str:
     """ユーザーの修正指示＋ブログ記事情報を詳細な英語画像編集プロンプトに変換する。"""
@@ -145,6 +157,20 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
         raise ValueError("ANTHROPIC_API_KEY が設定されていません")
 
     body_text = _strip_html(body_html or "")[:1000]
+    wants_text = _wants_text_in_image(instruction)
+
+    if wants_text:
+        text_rule = (
+            "- ユーザーがタイトルや文字を画像に入れるよう指示している場合は、"
+            "その文字列を正確に英語で画像に含めること\n"
+            f"- ブログタイトルは「{title}」。英語で画像内に描写すること\n"
+            "- 「no text」「no letters」は絶対に含めないこと"
+        )
+    else:
+        text_rule = (
+            '- 必ず "no text, no letters, no words, no japanese characters" を含めること\n'
+            "- 文字・ロゴ・記号は一切含めないこと"
+        )
 
     user_msg = f"""あなたはAI画像生成の専門家です。
 以下のブログ記事と元画像に対して、ユーザーの修正指示を反映した新しい画像を生成するためのプロンプトを作成してください。
@@ -159,21 +185,20 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 
 ## 出力ルール
 - 英語のみで出力すること
-- 必ず "no text, no letters, no words, no japanese characters" を含めること
-  （「タイトルを表現して」などの指示は、文字を入れるのではなく、タイトルの概念を視覚的に表現すること）
+{text_rule}
 - 修正指示の変更点を具体的に記述すること（色・構図・被写体・雰囲気など）
 - ブログ記事の内容と一貫性を保つこと
 - 元の画像の良い部分を活かしながら指示を正確に反映すること
-- 60〜100語の英語プロンプトのみを出力すること（説明文・日本語不要）"""
+- 60〜120語の英語プロンプトのみを出力すること（説明文・日本語不要）"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=250,
+        max_tokens=300,
         messages=[{"role": "user", "content": user_msg}],
     )
     prompt = message.content[0].text.strip()
-    logger.info(f"[Claude] 修正プロンプト: {prompt[:100]}...")
+    logger.info(f"[Claude] 修正プロンプト (text_request={wants_text}): {prompt[:120]}...")
     return prompt
 
 
