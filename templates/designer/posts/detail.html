@@ -414,8 +414,8 @@ const clientId = {{ client.id }};
 const postId = {{ post.id }};
 const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
 const hasThreads = {{ 'true' if client.threads_user_id else 'false' }};
-const imgGenOn = {{ 'true' if img_gen_on else 'false' }};
-let editCount = {{ edit_count }};
+const imgGenOn = {{ 'true' if client.image_gen_enabled else 'false' }};
+let editCount = {{ post.image_edit_count or 0 }};
 
 // タブ切り替え
 function switchTab(tab) {
