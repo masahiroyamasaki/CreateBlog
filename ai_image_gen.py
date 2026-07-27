@@ -10,7 +10,7 @@ import requests as _requests
 logger = logging.getLogger(__name__)
 
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
-_IMAGEN_MODEL = "imagen-4.0-ultra-generate-001"
+_IMAGEN_MODEL = "gemini-2.5-flash-image"
 
 _TASTE_HINTS = {
     "business_clean": (
@@ -54,11 +54,10 @@ _BALANCE_HINTS = {
     ),
 }
 
-# Imagen 3 がサポートするアスペクト比: 1:1, 3:4, 4:3, 9:16, 16:9
-_ASPECT_RATIOS = {
-    "1:1":  "1:1",
-    "4:5":  "3:4",   # 最も近いサイズに変換
-    "16:9": "16:9",
+_ASPECT_HINTS = {
+    "1:1":  "square format 1:1 aspect ratio",
+    "4:5":  "portrait format 4:5 aspect ratio",
+    "16:9": "widescreen landscape format 16:9 aspect ratio",
 }
 
 
@@ -78,25 +77,25 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
 
     taste_hint = _TASTE_HINTS.get(taste, _TASTE_HINTS["business_clean"])
     balance_hint = _BALANCE_HINTS.get(balance, _BALANCE_HINTS["balanced"])
-    img_aspect = _ASPECT_RATIOS.get(aspect_ratio, "1:1")
+    aspect_hint = _ASPECT_HINTS.get(aspect_ratio, _ASPECT_HINTS["1:1"])
 
     prompt = (
         f"professional blog article thumbnail, topic: {title}, "
         f"{taste_hint}, "
         f"{balance_hint}, "
+        f"{aspect_hint}, "
         f"modern high quality, business blog header image, "
         f"no text, no letters, no japanese characters"
     )
 
     resp = _requests.post(
-        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:predict",
+        f"{_GEMINI_BASE}/models/{_IMAGEN_MODEL}:generateContent",
         params={"key": api_key},
         headers={"Content-Type": "application/json"},
         json={
-            "instances": [{"prompt": prompt}],
-            "parameters": {
-                "sampleCount": 1,
-                "aspectRatio": img_aspect,
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseModalities": ["IMAGE"],
             },
         },
         timeout=120,
@@ -108,16 +107,15 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         )
 
     data = resp.json()
-    predictions = data.get("predictions", [])
-    if not predictions:
-        raise RuntimeError(f"Imagen API レスポンスに予測結果がありません: {data}")
-
-    b64 = predictions[0].get("bytesBase64Encoded")
-    if not b64:
-        raise RuntimeError(f"Imagen API レスポンスに画像データがありません: {predictions[0]}")
+    try:
+        parts = data["candidates"][0]["content"]["parts"]
+        inline = next(p["inlineData"] for p in parts if "inlineData" in p)
+        b64 = inline["data"]
+        mime = inline.get("mimeType", "image/png")
+    except (KeyError, IndexError, StopIteration) as e:
+        raise RuntimeError(f"Gemini API レスポンス解析エラー: {e} / {str(data)[:300]}")
 
     img_bytes = base64.b64decode(b64)
-    mime = predictions[0].get("mimeType", "image/png")
     ext = "jpg" if "jpeg" in mime else "png"
 
     compressed = _compress_to_5mb(img_bytes, ext)
