@@ -132,7 +132,8 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         f.write(compressed)
 
     logger.info(f"AI画像生成完了: {save_path}")
-    return f"/static/uploads/companies/{client_id}/images/{filename}"
+    base_url = os.getenv("BASE_URL", "").rstrip("/")
+    return f"{base_url}/static/uploads/companies/{client_id}/images/{filename}"
 
 
 def _compress_to_5mb(data: bytes, ext: str = "png",
