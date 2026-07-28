@@ -399,6 +399,16 @@
       </div>
     </div>
     {% endif %}
+
+    <!-- 削除 -->
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('designer.post_delete', client_id=client.id, post_id=post.id) }}"
+              onsubmit="return confirm('この投稿を削除しますか？この操作は取り消せません。')">
+          <button type="submit" class="btn btn-danger" style="width:100%;">この投稿を削除する</button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -59,8 +59,12 @@
       <tbody>
         {% for p in posts %}
         <tr>
-          <td>
+          <td style="white-space:nowrap;">
             <a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">編集・投稿</a>
+            <form method="POST" action="{{ url_for('designer.post_delete', client_id=client.id, post_id=p.id) }}"
+                  style="display:inline;" onsubmit="return confirm('「{{ p.title or '投稿' }}」を削除しますか？この操作は取り消せません。')">
+              <button type="submit" class="btn btn-danger btn-sm">削除</button>
+            </form>
           </td>
           <td>
             <div style="font-weight:600;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">

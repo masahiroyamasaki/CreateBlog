@@ -637,6 +637,20 @@ def post_status_change(client_id: int, post_id: int):
     ))
 
 
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/delete", methods=["POST"])
+@login_required
+def post_delete(client_id: int, post_id: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    post = Post.query.get_or_404(post_id)
+    if post.client_id != client_id:
+        abort(403)
+    db.session.delete(post)
+    db.session.commit()
+    flash("投稿を削除しました", "success")
+    return redirect(url_for("designer.post_list", client_id=client_id))
+
+
 def _strip_account_prefix(caption: str, client_name: str) -> str:
     from caption_utils import strip_account_prefix
     return strip_account_prefix(caption, client_name)
