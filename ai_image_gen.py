@@ -10,11 +10,11 @@ import requests as _requests
 
 logger = logging.getLogger(__name__)
 
-# アスペクト比 → DALL-E 3 サイズマッピング
+# アスペクト比 → gpt-image-1 サイズマッピング
 _ASPECT_TO_SIZE = {
     "1:1":  "1024x1024",
-    "4:5":  "1024x1792",
-    "16:9": "1792x1024",
+    "4:5":  "1024x1536",
+    "16:9": "1536x1024",
 }
 
 # Claude 失敗時フォールバック用
@@ -273,37 +273,31 @@ def refine_image(original_url: str, instruction: str, client_id: int,
 
 
 def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
-    """DALL-E 3 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
+    """gpt-image-1 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
     if len(prompt) > 4000:
         prompt = prompt[:4000]
 
     resp = _requests.post(
-        "https://api.openai.com/v1/images/generations",
+        "https://api.openai.com/v1/images/generate",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         json={
-            "model": "dall-e-3",
+            "model": "gpt-image-1",
             "prompt": prompt,
             "n": 1,
             "size": size,
-            "quality": "hd",
+            "quality": "high",
         },
-        timeout=120,
+        timeout=180,
     )
     if resp.status_code != 200:
-        raise RuntimeError(f"DALL-E 3 API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
+        raise RuntimeError(f"gpt-image-1 API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
 
     data = resp.json()
-    revised = data["data"][0].get("revised_prompt", "")
-    if revised:
-        logger.info(f"[DALL-E 3] revised_prompt: {revised[:120]}...")
-
-    image_url = data["data"][0]["url"]
-    img_resp = _requests.get(image_url, timeout=60)
-    img_resp.raise_for_status()
-    return _save_image(img_resp.content, "png", client_id)
+    b64 = data["data"][0]["b64_json"]
+    return _save_image(base64.b64decode(b64), "png", client_id)
 
 
 def _save_image(img_bytes: bytes, ext: str, client_id: int) -> str:
