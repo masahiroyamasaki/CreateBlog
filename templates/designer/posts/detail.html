@@ -680,7 +680,10 @@ function _pollImageJob(jobId, onDone, onError) {
 function _onGenerateDone(data) {
   _removeGeneratingPlaceholder();
   _setGeneratingUI(false);
-  appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
+  // リロード後にJinja2が既にレンダリングしている場合は重複追加しない
+  if (data.id && !document.getElementById('img-' + data.id)) {
+    appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
+  }
   editCount = data.edit_count;
   updateEditCountUI();
   const resultEl = document.getElementById('ai-img-result');
@@ -691,7 +694,10 @@ function _onGenerateDone(data) {
 function _onRefineDone(data, origImgId) {
   _removeRefineOverlay(origImgId);
   isGenerating = false;
-  appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
+  // リロード後にJinja2が既にレンダリングしている場合は重複追加しない
+  if (data.id && !document.getElementById('img-' + data.id)) {
+    appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
+  }
   editCount = data.edit_count;
   updateEditCountUI();
   const panel = document.getElementById('refine-panel-' + origImgId);
