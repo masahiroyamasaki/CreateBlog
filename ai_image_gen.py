@@ -88,11 +88,20 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 
     if balance == "text_focus":
         text_section = f"""
-## テキスト描写指示（重要）
-記事タイトル「{title}」を画像内の見やすい位置に美しく配置すること。
-タイトル文字はデザインの重要な要素として、読みやすいフォントスタイルで自然に描写すること。
-日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい。"""
-        output_suffix = f'with the article title "{title}" beautifully and clearly rendered as part of the design, high quality'
+## テキスト描写指示（最重要）
+記事タイトル「{title}」を画像内に美しく配置すること。
+【必須制約】
+- テキストは画像の全四辺から必ず10%以上内側に収めること（絶対に端で切れないこと）
+- フォントサイズは全文字が画像内に完全に収まる大きさに調整すること
+- タイトルが長い場合は2〜3行に折り返してよい（行ごとに収まるサイズで）
+- テキストが1文字でもはみ出たり途切れたりしてはならない
+- 日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい"""
+        output_suffix = (
+            f'title text "{title}" fully contained within image boundaries with generous safe margins from all edges, '
+            f'complete text fully visible without any cropping or cutoff, '
+            f'font size adjusted small enough so entire title fits within the frame, '
+            f'text placed in center or lower third area, high quality'
+        )
         no_text_rule = f'- タイトル「{title}」を画像内に描写するため「no text」「no letters」は含めないこと'
     else:
         text_section = ""
@@ -270,7 +279,9 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             prompt = (
                 f"Professional blog article thumbnail about: {title}. "
                 f"{taste_hint}, {balance_hint}, {aspect_hint}, "
-                f'with the article title "{title}" clearly rendered in the image, high quality.'
+                f'title text "{title}" fully contained within image boundaries with generous safe margins, '
+                f"complete text fully visible without any cropping or cutoff, "
+                f"font size adjusted so entire title fits within frame, high quality."
             )
         else:
             prompt = (
