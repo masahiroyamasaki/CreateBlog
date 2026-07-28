@@ -278,7 +278,7 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
         prompt = prompt[:4000]
 
     resp = _requests.post(
-        "https://api.openai.com/v1/images/generate",
+        "https://api.openai.com/v1/images/generations",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
