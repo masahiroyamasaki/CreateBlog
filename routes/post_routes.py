@@ -87,8 +87,8 @@ def post_list(client_id: int):
 
     # 並び替え: 予約中→承認済み→下書き→作成中→失敗→投稿済み
     # 予約中は現在日時に近い順、その他は作成日の新しい順
-    _STATUS_ORDER = {"scheduled": 0, "approved": 1, "draft": 2,
-                     "creating": 3, "failed": 4, "posted": 5}
+    _STATUS_ORDER = {"failed": 0, "scheduled": 1, "approved": 2,
+                     "draft": 3, "creating": 4, "posted": 5}
     now = _now_jst()
 
     def _sort_key(p):
