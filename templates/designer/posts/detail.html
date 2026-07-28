@@ -259,6 +259,7 @@
                       onclick="toggleRefine({{ img.id }})"
                       {% if edit_count >= 10 %}disabled title="修正回数上限"{% endif %}>修正</button>
               {% endif %}
+              <button class="btn btn-secondary btn-sm" onclick="downloadImage('{{ img.image_url }}')">DL</button>
               <button class="btn btn-danger btn-sm" onclick="deleteImage({{ img.id }})">削除</button>
             </div>
             {% if img_gen_on %}
@@ -673,6 +674,7 @@ function appendImageCard(imgId, imageUrl, sortOrder, label) {
         <div style="font-size:11px;color:var(--success);">${label} • ${displayIndex}枚目</div>
       </div>
       ${refineBtn}
+      <button class="btn btn-secondary btn-sm" onclick="downloadImage('${imageUrl}')">DL</button>
       <button class="btn btn-danger btn-sm" onclick="deleteImage(${imgId})">削除</button>
     </div>
     ${refineHtml}
@@ -750,6 +752,22 @@ async function addImage() {
   const data = await res.json();
   if (data.success) { showToast('画像を追加しました'); location.reload(); }
   else showToast(data.reason, 'error');
+}
+
+async function downloadImage(imageUrl) {
+  try {
+    const res = await fetch(imageUrl);
+    const blob = await res.blob();
+    const ext = blob.type.includes('png') ? 'png' : 'jpg';
+    const filename = imageUrl.split('/').pop() || `image.${ext}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    showToast('ダウンロードに失敗しました: ' + e.message, 'error');
+  }
 }
 
 async function deleteImage(imgId) {
