@@ -9,10 +9,16 @@
 {% block head %}
 <style>
 .panel { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
-.img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 0; cursor: grab; }
+.img-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 0; cursor: grab; position: relative; }
 .img-card-row { display: flex; align-items: center; gap: 10px; width: 100%; }
 .img-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; cursor: zoom-in; flex-shrink: 0; }
 .refine-panel { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: none; }
+/* ── 生成中スピナー ── */
+@keyframes img-spin { to { transform: rotate(360deg); } }
+.img-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: img-spin .7s linear infinite; flex-shrink: 0; }
+.img-spinner-blue { width: 24px; height: 24px; border: 2.5px solid rgba(96,165,250,.25); border-top-color: #60a5fa; border-radius: 50%; animation: img-spin .7s linear infinite; }
+.img-gen-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.6); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #fff; font-size: 12px; font-weight: 700; pointer-events: none; z-index: 10; }
+.img-card.is-generating { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); }
 .refine-panel textarea { width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; background: var(--bg2); color: var(--text); resize: vertical; min-height: 56px; box-sizing: border-box; }
 /* ── ライトボックス ── */
 #img-lightbox { display: none; position: fixed; inset: 0; z-index: 6000; background: rgba(0,0,0,.92); cursor: pointer; }
@@ -550,6 +556,54 @@ document.getElementById('schedule-form').addEventListener('submit', function(e) 
 
 // ─── AI画像生成（バックグラウンド＋ポーリング） ──────────────────────────────
 const IMG_JOB_KEY = `imgJob_${postId}`;
+const PLACEHOLDER_ID = 'img-gen-placeholder';
+
+// ── 生成中プレースホルダーカード（新規生成用） ──
+function _addGeneratingPlaceholder() {
+  if (document.getElementById(PLACEHOLDER_ID)) return;
+  const noMsg = document.getElementById('no-image-msg');
+  if (noMsg) noMsg.remove();
+  const list = document.getElementById('image-list');
+  const card = document.createElement('div');
+  card.className = 'img-card is-generating';
+  card.id = PLACEHOLDER_ID;
+  card.style.cssText = 'pointer-events:none;';
+  card.innerHTML = `
+    <div class="img-card-row">
+      <div style="width:56px;height:56px;background:var(--bg2);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div class="img-spinner-blue"></div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;color:var(--primary);font-weight:700;">AI画像を生成中...</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">30秒〜1分かかります</div>
+      </div>
+    </div>`;
+  list.appendChild(card);
+}
+
+function _removeGeneratingPlaceholder() {
+  const el = document.getElementById(PLACEHOLDER_ID);
+  if (el) el.remove();
+}
+
+// ── 修正中オーバーレイ（修正対象カード上） ──
+function _addRefineOverlay(imgId) {
+  const card = document.getElementById('img-' + imgId);
+  if (!card || document.getElementById('overlay-' + imgId)) return;
+  card.classList.add('is-generating');
+  const overlay = document.createElement('div');
+  overlay.className = 'img-gen-overlay';
+  overlay.id = 'overlay-' + imgId;
+  overlay.innerHTML = '<div class="img-spinner"></div><span>修正中...</span>';
+  card.appendChild(overlay);
+}
+
+function _removeRefineOverlay(imgId) {
+  const card = document.getElementById('img-' + imgId);
+  if (card) card.classList.remove('is-generating');
+  const el = document.getElementById('overlay-' + imgId);
+  if (el) el.remove();
+}
 
 // ページ読み込み時：保留中のジョブを再開
 (function resumePendingJob() {
@@ -559,11 +613,13 @@ const IMG_JOB_KEY = `imgJob_${postId}`;
     const job = JSON.parse(stored);
     if (job.type === 'generate') {
       _setGeneratingUI(true);
+      _addGeneratingPlaceholder();
       _pollImageJob(job.job_id, _onGenerateDone, _onJobError);
     } else if (job.type === 'refine') {
       const btn = document.getElementById('refine-btn-' + job.origImgId);
       if (btn) { btn.disabled = true; btn.textContent = '修正中...'; }
       isGenerating = true;
+      _addRefineOverlay(job.origImgId);
       _pollImageJob(job.job_id, (data) => _onRefineDone(data, job.origImgId), _onJobError);
     }
   } catch(e) { sessionStorage.removeItem(IMG_JOB_KEY); }
@@ -612,6 +668,7 @@ function _pollImageJob(jobId, onDone, onError) {
 }
 
 function _onGenerateDone(data) {
+  _removeGeneratingPlaceholder();
   _setGeneratingUI(false);
   appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
   editCount = data.edit_count;
@@ -622,6 +679,7 @@ function _onGenerateDone(data) {
 }
 
 function _onRefineDone(data, origImgId) {
+  _removeRefineOverlay(origImgId);
   isGenerating = false;
   appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
   editCount = data.edit_count;
@@ -636,9 +694,15 @@ function _onRefineDone(data, origImgId) {
 }
 
 function _onJobError(errMsg) {
+  _removeGeneratingPlaceholder();
+  // 全修正オーバーレイも除去
+  document.querySelectorAll('.img-gen-overlay').forEach(el => {
+    el.closest('.img-card')?.classList.remove('is-generating');
+    el.remove();
+  });
   isGenerating = false;
   _setGeneratingUI(false);
-  document.querySelectorAll('.refine-btn').forEach(b => { if (!b.disabled || editCount < 10) { b.disabled = false; b.textContent = '再生成'; } });
+  document.querySelectorAll('.refine-btn').forEach(b => { b.disabled = editCount >= 10; b.textContent = '再生成'; });
   if (errMsg) showToast('エラー: ' + errMsg, 'error');
 }
 
@@ -646,6 +710,7 @@ async function generateAiImage() {
   const resultEl = document.getElementById('ai-img-result');
   if (isGenerating) return;
   _setGeneratingUI(true);
+  _addGeneratingPlaceholder();
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
@@ -654,11 +719,13 @@ async function generateAiImage() {
       sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'generate' }));
       _pollImageJob(data.job_id, _onGenerateDone, _onJobError);
     } else {
+      _removeGeneratingPlaceholder();
       _setGeneratingUI(false);
       if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`; }
       showToast('生成エラー: ' + data.reason, 'error');
     }
   } catch (err) {
+    _removeGeneratingPlaceholder();
     _setGeneratingUI(false);
     if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`; }
   }
@@ -693,8 +760,9 @@ async function refineImage(origImgId) {
   if (isGenerating) return;
 
   btn.disabled = true;
-  btn.textContent = '修正中...（30秒〜1分）';
+  btn.textContent = '修正中...';
   isGenerating = true;
+  _addRefineOverlay(origImgId);
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/refine-ai-image`, {
@@ -707,12 +775,14 @@ async function refineImage(origImgId) {
       sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'refine', origImgId }));
       _pollImageJob(data.job_id, (d) => _onRefineDone(d, origImgId), _onJobError);
     } else {
+      _removeRefineOverlay(origImgId);
       isGenerating = false;
       btn.disabled = editCount >= 10;
       btn.textContent = '再生成';
       showToast('✗ ' + data.reason, 'error');
     }
   } catch (err) {
+    _removeRefineOverlay(origImgId);
     isGenerating = false;
     btn.disabled = editCount >= 10;
     btn.textContent = '再生成';
