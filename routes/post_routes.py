@@ -83,8 +83,24 @@ def post_list(client_id: int):
     q = Post.query.filter_by(client_id=client_id)
     if status_filter:
         q = q.filter_by(status=status_filter)
-    posts = q.order_by(Post.created_at.desc()).all()
-    creating_count = Post.query.filter_by(client_id=client_id, status="creating").count()
+    posts = q.all()
+
+    # 並び替え: 予約中→承認済み→下書き→作成中→失敗→投稿済み
+    # 予約中は現在日時に近い順、その他は作成日の新しい順
+    _STATUS_ORDER = {"scheduled": 0, "approved": 1, "draft": 2,
+                     "creating": 3, "failed": 4, "posted": 5}
+    now = _now_jst()
+
+    def _sort_key(p):
+        order = _STATUS_ORDER.get(p.status, 99)
+        if p.status == "scheduled" and p.scheduled_at:
+            secondary = abs((p.scheduled_at - now).total_seconds())
+        else:
+            secondary = -(p.created_at.timestamp() if p.created_at else 0)
+        return (order, secondary)
+
+    posts = sorted(posts, key=_sort_key)
+    creating_count = sum(1 for p in posts if p.status == "creating")
     return render_template(
         "designer/posts/list.html",
         client=client,

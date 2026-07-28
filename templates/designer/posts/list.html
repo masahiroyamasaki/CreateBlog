@@ -103,7 +103,7 @@
           </td>
           <td style="color:var(--muted);font-size:12px;">{{ p.images.count() }}枚</td>
           <td style="font-size:12px;">
-            {% if p.scheduled_at %}
+            {% if p.status == 'scheduled' and p.scheduled_at %}
               {% if p.is_overdue %}
               <span style="color:#dc2626;font-weight:600;" title="予定日時を過ぎても未投稿です">⚠ {{ p.scheduled_at.strftime('%m/%d %H:%M') }}</span>
               {% else %}
