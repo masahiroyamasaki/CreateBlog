@@ -1,11 +1,33 @@
 """routes/post_routes.py — 投稿コンテンツの管理・公開"""
 import os
+import json as _json
+import tempfile as _tempfile
 import uuid as _uuid_mod
 import threading as _threading
 from datetime import datetime, timezone, timedelta
 
-# バックグラウンド画像生成ジョブ管理（in-memory）
-_image_gen_jobs: dict = {}  # job_id → {status, image_url, error, id, edit_count, sort_order}
+# ─── ジョブ状態をファイルで管理（複数 gunicorn worker 間で共有できる） ───────
+_JOB_DIR = os.path.join(_tempfile.gettempdir(), "blogapp_imggen")
+os.makedirs(_JOB_DIR, exist_ok=True)
+
+
+def _job_path(job_id: str) -> str:
+    return os.path.join(_JOB_DIR, f"{job_id}.json")
+
+
+def _write_job(job_id: str, data: dict) -> None:
+    with open(_job_path(job_id), "w", encoding="utf-8") as f:
+        _json.dump(data, f)
+
+
+def _read_job(job_id: str) -> dict:
+    try:
+        with open(_job_path(job_id), encoding="utf-8") as f:
+            return _json.load(f)
+    except FileNotFoundError:
+        return {"status": "not_found"}
+    except Exception:
+        return {"status": "error", "error": "ジョブ読み込みエラー"}
 
 _JST = timezone(timedelta(hours=9))
 
@@ -225,8 +247,8 @@ def post_generate_ai_image(client_id: int, post_id: int):
 
     app = current_app._get_current_object()
     job_id = str(_uuid_mod.uuid4())
-    _image_gen_jobs[job_id] = {"status": "running", "image_url": None, "error": None,
-                                "id": None, "edit_count": None, "sort_order": None}
+    _write_job(job_id, {"status": "running", "image_url": None, "error": None,
+                        "id": None, "edit_count": None, "sort_order": None})
 
     taste        = getattr(client, "image_taste", "business_clean") or "business_clean"
     balance      = getattr(client, "image_balance", "balanced") or "balanced"
@@ -254,16 +276,16 @@ def post_generate_ai_image(client_id: int, post_id: int):
                     _db.session.add(img)
                     p.image_edit_count = (p.image_edit_count or 0) + 1
                     _db.session.commit()
-                    _image_gen_jobs[job_id] = {
+                    _write_job(job_id, {
                         "status": "done", "image_url": img_path,
                         "id": img.id, "edit_count": p.image_edit_count,
                         "sort_order": sort_order, "error": None,
-                    }
+                    })
                 else:
-                    _image_gen_jobs[job_id] = {"status": "error", "error": "投稿が見つかりません"}
+                    _write_job(job_id, {"status": "error", "error": "投稿が見つかりません"})
         except Exception as e:
             import traceback; traceback.print_exc()
-            _image_gen_jobs[job_id] = {"status": "error", "error": str(e)}
+            _write_job(job_id, {"status": "error", "error": str(e)})
 
     _threading.Thread(target=_run, daemon=True).start()
     return jsonify({"success": True, "job_id": job_id})
@@ -273,8 +295,7 @@ def post_generate_ai_image(client_id: int, post_id: int):
 @login_required
 def post_generate_ai_image_status(client_id: int, post_id: int, job_id: str):
     """画像生成ジョブのステータスを返す"""
-    job = _image_gen_jobs.get(job_id, {"status": "not_found"})
-    return jsonify(job)
+    return jsonify(_read_job(job_id))
 
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/refine-ai-image", methods=["POST"])
@@ -304,8 +325,8 @@ def post_refine_ai_image(client_id: int, post_id: int):
 
     app = current_app._get_current_object()
     job_id = str(_uuid_mod.uuid4())
-    _image_gen_jobs[job_id] = {"status": "running", "image_url": None, "error": None,
-                                "id": None, "edit_count": None, "sort_order": None}
+    _write_job(job_id, {"status": "running", "image_url": None, "error": None,
+                        "id": None, "edit_count": None, "sort_order": None})
 
     original_url = orig_img.image_url
     title        = post.title or ""
@@ -331,16 +352,16 @@ def post_refine_ai_image(client_id: int, post_id: int):
                     _db.session.add(new_img)
                     p.image_edit_count = (p.image_edit_count or 0) + 1
                     _db.session.commit()
-                    _image_gen_jobs[job_id] = {
+                    _write_job(job_id, {
                         "status": "done", "image_url": new_url,
                         "id": new_img.id, "edit_count": p.image_edit_count,
                         "sort_order": sort_order, "error": None,
-                    }
+                    })
                 else:
-                    _image_gen_jobs[job_id] = {"status": "error", "error": "投稿が見つかりません"}
+                    _write_job(job_id, {"status": "error", "error": "投稿が見つかりません"})
         except Exception as e:
             import traceback; traceback.print_exc()
-            _image_gen_jobs[job_id] = {"status": "error", "error": str(e)}
+            _write_job(job_id, {"status": "error", "error": str(e)})
 
     _threading.Thread(target=_run, daemon=True).start()
     return jsonify({"success": True, "job_id": job_id})
@@ -350,8 +371,7 @@ def post_refine_ai_image(client_id: int, post_id: int):
 @login_required
 def post_refine_ai_image_status(client_id: int, post_id: int, job_id: str):
     """画像修正ジョブのステータスを返す"""
-    job = _image_gen_jobs.get(job_id, {"status": "not_found"})
-    return jsonify(job)
+    return jsonify(_read_job(job_id))
 
 
 # ──────────────────────────── 投稿タイミング設定 ────────────────────────────
