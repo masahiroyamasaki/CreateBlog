@@ -1,7 +1,11 @@
 """routes/post_routes.py — 投稿コンテンツの管理・公開"""
 import os
 import uuid as _uuid_mod
+import threading as _threading
 from datetime import datetime, timezone, timedelta
+
+# バックグラウンド画像生成ジョブ管理（in-memory）
+_image_gen_jobs: dict = {}  # job_id → {status, image_url, error, id, edit_count, sort_order}
 
 _JST = timezone(timedelta(hours=9))
 
@@ -208,58 +212,75 @@ def post_image_reorder(client_id: int, post_id: int):
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/generate-ai-image", methods=["POST"])
 @login_required
 def post_generate_ai_image(client_id: int, post_id: int):
-    """投稿詳細ページからAI画像を手動生成してPostImageに保存する"""
+    """AI画像生成をバックグラウンドで開始し job_id を返す（ページリロード耐性）"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     post = Post.query.get_or_404(post_id)
     if post.client_id != client_id:
         abort(403)
 
-    taste         = getattr(client, "image_taste", "business_clean") or "business_clean"
-    balance       = getattr(client, "image_balance", "balanced") or "balanced"
-    aspect_ratio  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
-
     edit_count = post.image_edit_count or 0
     if edit_count >= 10:
         return jsonify({"success": False, "reason": "生成・修正回数の上限（10回）に達しています"})
 
-    try:
-        from ai_image_gen import generate_image
-        # body_html が空（Instagram投稿など）の場合は ig_caption を記事内容として使用
-        body_context = post.body_html or post.ig_caption or ""
-        img_path = generate_image(
-            title=post.title or "ブログ記事",
-            taste=taste,
-            aspect_ratio=aspect_ratio,
-            client_id=client_id,
-            balance=balance,
-            body_html=body_context,
-            client_name=client.name or "",
-            base_prompt=getattr(client, "image_base_prompt", "") or "",
-        )
-        last = post.images.order_by(PostImage.sort_order.desc()).first()
-        sort_order = (last.sort_order + 1) if last else 1
-        img = PostImage(post_id=post_id, image_url=img_path, sort_order=sort_order)
-        db.session.add(img)
-        post.image_edit_count = edit_count + 1
-        db.session.commit()
-        return jsonify({
-            "success": True,
-            "id": img.id,
-            "image_url": img_path,
-            "sort_order": sort_order,
-            "edit_count": post.image_edit_count,
-        })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "reason": str(e)})
+    app = current_app._get_current_object()
+    job_id = str(_uuid_mod.uuid4())
+    _image_gen_jobs[job_id] = {"status": "running", "image_url": None, "error": None,
+                                "id": None, "edit_count": None, "sort_order": None}
+
+    taste        = getattr(client, "image_taste", "business_clean") or "business_clean"
+    balance      = getattr(client, "image_balance", "balanced") or "balanced"
+    aspect_ratio = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
+    title        = post.title or "ブログ記事"
+    body_context = post.body_html or post.ig_caption or ""
+    client_name  = client.name or ""
+    base_prompt  = getattr(client, "image_base_prompt", "") or ""
+
+    def _run():
+        try:
+            from ai_image_gen import generate_image
+            img_path = generate_image(
+                title=title, taste=taste, aspect_ratio=aspect_ratio,
+                client_id=client_id, balance=balance, body_html=body_context,
+                client_name=client_name, base_prompt=base_prompt,
+            )
+            with app.app_context():
+                from models import Post as _Post, PostImage as _PI, db as _db
+                p = _Post.query.get(post_id)
+                if p:
+                    last = p.images.order_by(_PI.sort_order.desc()).first()
+                    sort_order = (last.sort_order + 1) if last else 1
+                    img = _PI(post_id=post_id, image_url=img_path, sort_order=sort_order)
+                    _db.session.add(img)
+                    p.image_edit_count = (p.image_edit_count or 0) + 1
+                    _db.session.commit()
+                    _image_gen_jobs[job_id] = {
+                        "status": "done", "image_url": img_path,
+                        "id": img.id, "edit_count": p.image_edit_count,
+                        "sort_order": sort_order, "error": None,
+                    }
+                else:
+                    _image_gen_jobs[job_id] = {"status": "error", "error": "投稿が見つかりません"}
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            _image_gen_jobs[job_id] = {"status": "error", "error": str(e)}
+
+    _threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"success": True, "job_id": job_id})
+
+
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/generate-ai-image-status/<job_id>")
+@login_required
+def post_generate_ai_image_status(client_id: int, post_id: int, job_id: str):
+    """画像生成ジョブのステータスを返す"""
+    job = _image_gen_jobs.get(job_id, {"status": "not_found"})
+    return jsonify(job)
 
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/refine-ai-image", methods=["POST"])
 @login_required
 def post_refine_ai_image(client_id: int, post_id: int):
-    """既存のAI画像に修正指示を与えて新しい画像を生成する（最大10回/投稿）"""
+    """画像修正をバックグラウンドで開始し job_id を返す（ページリロード耐性）"""
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     post = Post.query.get_or_404(post_id)
@@ -281,32 +302,56 @@ def post_refine_ai_image(client_id: int, post_id: int):
     if not orig_img or orig_img.post_id != post_id:
         return jsonify({"success": False, "reason": "元画像が見つかりません"})
 
-    try:
-        from ai_image_gen import refine_image
-        new_url = refine_image(
-            original_url=orig_img.image_url,
-            instruction=instruction,
-            client_id=client_id,
-            title=post.title or "",
-            body_html=post.body_html or "",
-        )
-        last = post.images.order_by(PostImage.sort_order.desc()).first()
-        sort_order = (last.sort_order + 1) if last else 1
-        new_img = PostImage(post_id=post_id, image_url=new_url, sort_order=sort_order)
-        db.session.add(new_img)
-        post.image_edit_count = edit_count + 1
-        db.session.commit()
-        return jsonify({
-            "success": True,
-            "id": new_img.id,
-            "image_url": new_url,
-            "sort_order": sort_order,
-            "edit_count": post.image_edit_count,
-        })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "reason": str(e)})
+    app = current_app._get_current_object()
+    job_id = str(_uuid_mod.uuid4())
+    _image_gen_jobs[job_id] = {"status": "running", "image_url": None, "error": None,
+                                "id": None, "edit_count": None, "sort_order": None}
+
+    original_url = orig_img.image_url
+    title        = post.title or ""
+    body_html    = post.body_html or ""
+
+    def _run():
+        try:
+            from ai_image_gen import refine_image
+            new_url = refine_image(
+                original_url=original_url,
+                instruction=instruction,
+                client_id=client_id,
+                title=title,
+                body_html=body_html,
+            )
+            with app.app_context():
+                from models import Post as _Post, PostImage as _PI, db as _db
+                p = _Post.query.get(post_id)
+                if p:
+                    last = p.images.order_by(_PI.sort_order.desc()).first()
+                    sort_order = (last.sort_order + 1) if last else 1
+                    new_img = _PI(post_id=post_id, image_url=new_url, sort_order=sort_order)
+                    _db.session.add(new_img)
+                    p.image_edit_count = (p.image_edit_count or 0) + 1
+                    _db.session.commit()
+                    _image_gen_jobs[job_id] = {
+                        "status": "done", "image_url": new_url,
+                        "id": new_img.id, "edit_count": p.image_edit_count,
+                        "sort_order": sort_order, "error": None,
+                    }
+                else:
+                    _image_gen_jobs[job_id] = {"status": "error", "error": "投稿が見つかりません"}
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            _image_gen_jobs[job_id] = {"status": "error", "error": str(e)}
+
+    _threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"success": True, "job_id": job_id})
+
+
+@designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/refine-ai-image-status/<job_id>")
+@login_required
+def post_refine_ai_image_status(client_id: int, post_id: int, job_id: str):
+    """画像修正ジョブのステータスを返す"""
+    job = _image_gen_jobs.get(job_id, {"status": "not_found"})
+    return jsonify(job)
 
 
 # ──────────────────────────── 投稿タイミング設定 ────────────────────────────

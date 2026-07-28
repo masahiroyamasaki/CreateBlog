@@ -548,38 +548,119 @@ document.getElementById('schedule-form').addEventListener('submit', function(e) 
   }
 });
 
-// ─── AI画像生成 ──────────────────────────────────────────────────────────────
-async function generateAiImage() {
+// ─── AI画像生成（バックグラウンド＋ポーリング） ──────────────────────────────
+const IMG_JOB_KEY = `imgJob_${postId}`;
+
+// ページ読み込み時：保留中のジョブを再開
+(function resumePendingJob() {
+  try {
+    const stored = sessionStorage.getItem(IMG_JOB_KEY);
+    if (!stored) return;
+    const job = JSON.parse(stored);
+    if (job.type === 'generate') {
+      _setGeneratingUI(true);
+      _pollImageJob(job.job_id, _onGenerateDone, _onJobError);
+    } else if (job.type === 'refine') {
+      const btn = document.getElementById('refine-btn-' + job.origImgId);
+      if (btn) { btn.disabled = true; btn.textContent = '修正中...'; }
+      isGenerating = true;
+      _pollImageJob(job.job_id, (data) => _onRefineDone(data, job.origImgId), _onJobError);
+    }
+  } catch(e) { sessionStorage.removeItem(IMG_JOB_KEY); }
+})();
+
+function _setGeneratingUI(on) {
   const btn = document.getElementById('ai-img-btn');
   const resultEl = document.getElementById('ai-img-result');
+  isGenerating = on;
   if (!btn) return;
-  btn.disabled = true;
-  btn.textContent = '生成中...（30秒〜1分）';
-  resultEl.style.display = 'none';
-  isGenerating = true;
+  if (on) {
+    btn.disabled = true;
+    btn.textContent = '生成中...（30秒〜1分）';
+    if (resultEl) resultEl.style.display = 'none';
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'AI画像を生成する';
+  }
+}
+
+function _pollImageJob(jobId, onDone, onError) {
+  const base = `/designer/clients/${clientId}/posts/${postId}`;
+  // ジョブが generate か refine かで異なるエンドポイントへ
+  const stored = sessionStorage.getItem(IMG_JOB_KEY);
+  const type = stored ? (JSON.parse(stored).type || 'generate') : 'generate';
+  const statusUrl = type === 'refine'
+    ? `${base}/refine-ai-image-status/${jobId}`
+    : `${base}/generate-ai-image-status/${jobId}`;
+
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(statusUrl);
+      const data = await res.json();
+      if (data.status === 'done') {
+        clearInterval(interval);
+        sessionStorage.removeItem(IMG_JOB_KEY);
+        onDone(data);
+      } else if (data.status === 'error' || data.status === 'not_found') {
+        clearInterval(interval);
+        sessionStorage.removeItem(IMG_JOB_KEY);
+        onError(data.error || '不明なエラー');
+      }
+      // 'running' → 継続
+    } catch(e) { /* ネットワーク一時エラーは無視して継続 */ }
+  }, 3000);
+}
+
+function _onGenerateDone(data) {
+  _setGeneratingUI(false);
+  appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
+  editCount = data.edit_count;
+  updateEditCountUI();
+  const resultEl = document.getElementById('ai-img-result');
+  if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>'; }
+  showToast('AI画像を生成しました', 'success');
+}
+
+function _onRefineDone(data, origImgId) {
+  isGenerating = false;
+  appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
+  editCount = data.edit_count;
+  updateEditCountUI();
+  const panel = document.getElementById('refine-panel-' + origImgId);
+  if (panel) panel.style.display = 'none';
+  const input = document.getElementById('refine-input-' + origImgId);
+  if (input) input.value = '';
+  const btn = document.getElementById('refine-btn-' + origImgId);
+  if (btn) { btn.disabled = editCount >= 10; btn.textContent = '再生成'; }
+  showToast('修正画像を生成しました', 'success');
+}
+
+function _onJobError(errMsg) {
+  isGenerating = false;
+  _setGeneratingUI(false);
+  document.querySelectorAll('.refine-btn').forEach(b => { if (!b.disabled || editCount < 10) { b.disabled = false; b.textContent = '再生成'; } });
+  if (errMsg) showToast('エラー: ' + errMsg, 'error');
+}
+
+async function generateAiImage() {
+  const resultEl = document.getElementById('ai-img-result');
+  if (isGenerating) return;
+  _setGeneratingUI(true);
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
-      editCount = data.edit_count;
-      updateEditCountUI();
-      resultEl.style.display = '';
-      resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>';
-      showToast('AI画像を生成しました', 'success');
+      sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'generate' }));
+      _pollImageJob(data.job_id, _onGenerateDone, _onJobError);
     } else {
-      resultEl.style.display = '';
-      resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`;
+      _setGeneratingUI(false);
+      if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`; }
       showToast('生成エラー: ' + data.reason, 'error');
     }
   } catch (err) {
-    resultEl.style.display = '';
-    resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`;
-  } finally {
-    isGenerating = false;
-    btn.disabled = false;
-    btn.textContent = 'AI画像を生成する';
+    _setGeneratingUI(false);
+    if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`; }
   }
 }
 
@@ -609,6 +690,7 @@ async function refineImage(origImgId) {
   const instruction = input?.value.trim();
   if (!instruction) { showToast('修正指示を入力してください', 'error'); return; }
   if (editCount >= 10) { showToast('修正回数の上限（10回）に達しています', 'error'); return; }
+  if (isGenerating) return;
 
   btn.disabled = true;
   btn.textContent = '修正中...（30秒〜1分）';
@@ -622,21 +704,19 @@ async function refineImage(origImgId) {
     });
     const data = await res.json();
     if (data.success) {
-      appendImageCard(data.id, data.image_url, data.sort_order, '修正画像');
-      editCount = data.edit_count;
-      updateEditCountUI();
-      document.getElementById('refine-panel-' + origImgId).style.display = 'none';
-      input.value = '';
-      showToast('修正画像を生成しました', 'success');
+      sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'refine', origImgId }));
+      _pollImageJob(data.job_id, (d) => _onRefineDone(d, origImgId), _onJobError);
     } else {
+      isGenerating = false;
+      btn.disabled = editCount >= 10;
+      btn.textContent = '再生成';
       showToast('✗ ' + data.reason, 'error');
     }
   } catch (err) {
-    showToast('通信エラー: ' + err.message, 'error');
-  } finally {
     isGenerating = false;
     btn.disabled = editCount >= 10;
     btn.textContent = '再生成';
+    showToast('通信エラー: ' + err.message, 'error');
   }
 }
 
