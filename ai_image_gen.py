@@ -86,6 +86,19 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     effective_base = (base_prompt.strip() if base_prompt and base_prompt.strip()
                       else _DEFAULT_BASE_PROMPT)
 
+    if balance == "text_focus":
+        text_section = f"""
+## テキスト描写指示（重要）
+記事タイトル「{title}」を画像内の見やすい位置に美しく配置すること。
+タイトル文字はデザインの重要な要素として、読みやすいフォントスタイルで自然に描写すること。
+日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい。"""
+        output_suffix = f'with the article title "{title}" beautifully and clearly rendered as part of the design, high quality'
+        no_text_rule = f'- タイトル「{title}」を画像内に描写するため「no text」「no letters」は含めないこと'
+    else:
+        text_section = ""
+        output_suffix = "high quality, no text, no letters, no words, no japanese characters"
+        no_text_rule = '- 必ず "no text, no letters, no words, no japanese characters" を含めること'
+
     user_msg = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
 
@@ -102,7 +115,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - テイスト: {_TASTE_LABELS.get(taste, taste)}
 - レイアウト: {_BALANCE_LABELS.get(balance, balance)}
 - アスペクト比: {_ASPECT_LABELS.get(aspect_ratio, aspect_ratio)}
-
+{text_section}
 ## 埋めるべき項目
 - 主題: 記事の内容を象徴する被写体・情景。ベースキャラクター（若い女性）の配置も含めること
 - 構図: アングル・俯瞰/クローズアップ・配置
@@ -112,7 +125,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - 雰囲気: 明るい/落ち着いた/活力あるなど
 
 ## 出力フォーマット（必ずこの形式で出力）
-"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], high quality, no text, no letters, no words, no japanese characters"
+"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"
 
 ## 注意事項
 {_NEGATIVE_GUIDANCE}
@@ -122,7 +135,8 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - ベースプロンプトを必ず先頭に含めること（変更・省略禁止）
 - ダブルクォーテーションで囲んだプロンプト文のみを出力すること（説明文・日本語不要）
 - キャラクターデザイン・配色・スタイルの一貫性を保つこと
-- DALL-E 3 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）"""
+- DALL-E 3 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）
+{no_text_rule}"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
@@ -142,10 +156,22 @@ _TEXT_REQUEST_KEYWORDS = [
     "書いて", "入れて", "追加して", "載せて", "表示して",
 ]
 
+_TEXT_REMOVE_KEYWORDS = [
+    "テキストはいらない", "文字はいらない", "テキストいらない", "文字いらない",
+    "テキストを消して", "文字を消して", "テキスト消して", "文字消して",
+    "テキストを外して", "文字を外して", "テキストを削除", "文字を削除",
+    "テキスト不要", "文字不要", "テキストなし", "文字なし",
+    "remove text", "without text", "no text",
+]
+
 
 def _wants_text_in_image(instruction: str) -> bool:
     low = instruction.lower()
     return any(kw in low for kw in _TEXT_REQUEST_KEYWORDS)
+
+
+def _wants_remove_text(instruction: str) -> bool:
+    return any(kw in instruction for kw in _TEXT_REMOVE_KEYWORDS)
 
 
 def _enhance_refinement_with_claude(instruction: str, title: str = "",
@@ -160,12 +186,19 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 
     body_text = _strip_html(body_html or "")[:1000]
     wants_text = _wants_text_in_image(instruction)
+    wants_remove = _wants_remove_text(instruction)
 
-    if wants_text:
+    if wants_text and not wants_remove:
         text_rule = (
             f"- ユーザーが文字・タイトルを画像に入れるよう指示している。"
             f"ブログタイトル「{title}」を英語で画像内に自然に描写すること\n"
             "- 「no text」「no letters」は含めないこと"
+        )
+    elif wants_remove:
+        text_rule = (
+            "- ユーザーが画像からテキスト・文字をすべて取り除くよう指示している\n"
+            '- 必ず "no text, no letters, no words, no japanese characters" を含めること\n'
+            "- テキストのない純粋なビジュアルのみの画像にすること"
         )
     else:
         text_rule = (
@@ -229,11 +262,18 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         taste_hint   = _TASTE_HINTS.get(taste, _TASTE_HINTS["business_clean"])
         balance_hint = _BALANCE_HINTS.get(balance, _BALANCE_HINTS["balanced"])
         aspect_hint  = _ASPECT_HINTS.get(aspect_ratio, _ASPECT_HINTS["1:1"])
-        prompt = (
-            f"Professional blog article thumbnail about: {title}. "
-            f"{taste_hint}, {balance_hint}, {aspect_hint}, "
-            f"high quality, no text, no letters, no japanese characters."
-        )
+        if balance == "text_focus":
+            prompt = (
+                f"Professional blog article thumbnail about: {title}. "
+                f"{taste_hint}, {balance_hint}, {aspect_hint}, "
+                f'with the article title "{title}" clearly rendered in the image, high quality.'
+            )
+        else:
+            prompt = (
+                f"Professional blog article thumbnail about: {title}. "
+                f"{taste_hint}, {balance_hint}, {aspect_hint}, "
+                f"high quality, no text, no letters, no japanese characters."
+            )
 
     size = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
     return _call_dalle(prompt, size, client_id, api_key)
