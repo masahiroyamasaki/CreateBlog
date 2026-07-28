@@ -420,6 +420,7 @@ const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
 const hasThreads = {{ 'true' if client.threads_user_id else 'false' }};
 const imgGenOn = {{ 'true' if client.image_gen_enabled else 'false' }};
 let editCount = {{ post.image_edit_count or 0 }};
+let isGenerating = false;  // 生成中フラグ（削除時のリロード防止）
 
 // タブ切り替え
 function switchTab(tab) {
@@ -555,6 +556,7 @@ async function generateAiImage() {
   btn.disabled = true;
   btn.textContent = '生成中...（30秒〜1分）';
   resultEl.style.display = 'none';
+  isGenerating = true;
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
@@ -575,6 +577,7 @@ async function generateAiImage() {
     resultEl.style.display = '';
     resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`;
   } finally {
+    isGenerating = false;
     btn.disabled = false;
     btn.textContent = 'AI画像を生成する';
   }
@@ -608,7 +611,8 @@ async function refineImage(origImgId) {
   if (editCount >= 10) { showToast('修正回数の上限（10回）に達しています', 'error'); return; }
 
   btn.disabled = true;
-  btn.textContent = '生成中...';
+  btn.textContent = '修正中...（30秒〜1分）';
+  isGenerating = true;
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/refine-ai-image`, {
@@ -630,6 +634,7 @@ async function refineImage(origImgId) {
   } catch (err) {
     showToast('通信エラー: ' + err.message, 'error');
   } finally {
+    isGenerating = false;
     btn.disabled = editCount >= 10;
     btn.textContent = '再生成';
   }
@@ -776,7 +781,20 @@ async function downloadImage(imageUrl) {
 async function deleteImage(imgId) {
   if (!confirm('この画像を削除しますか？')) return;
   const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/images/${imgId}/delete`, { method: 'POST' });
-  if ((await res.json()).success) { showToast('削除しました'); location.reload(); }
+  if ((await res.json()).success) {
+    // 生成中はリロードせずDOMから削除（リロードするとリクエストが中断される）
+    const card = document.getElementById('img-' + imgId);
+    if (card) card.remove();
+    if (document.querySelectorAll('#image-list .img-card').length === 0) {
+      const list = document.getElementById('image-list');
+      const msg = document.createElement('div');
+      msg.id = 'no-image-msg';
+      msg.style.cssText = 'text-align:center;padding:20px;color:var(--muted);font-size:13px;';
+      msg.textContent = '画像がありません';
+      list.appendChild(msg);
+    }
+    showToast('削除しました');
+  }
 }
 
 // 画像カルーセル並び替え

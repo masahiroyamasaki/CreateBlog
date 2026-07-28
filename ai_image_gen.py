@@ -176,7 +176,7 @@ def _wants_remove_text(instruction: str) -> bool:
 
 def _enhance_refinement_with_claude(instruction: str, title: str = "",
                                      body_html: str = "") -> str:
-    """修正指示＋ブログ記事情報を DALL-E 3 向け英語プロンプトに変換する。"""
+    """修正指示＋ブログ記事情報を gpt-image-1 edit 向け英語プロンプトに変換する。"""
     import anthropic
     from config import Config
 
@@ -191,37 +191,41 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
     if wants_text and not wants_remove:
         text_rule = (
             f"- ユーザーが文字・タイトルを画像に入れるよう指示している。"
-            f"ブログタイトル「{title}」を英語で画像内に自然に描写すること\n"
+            f"ブログタイトル「{title}」を画像内に自然に描写すること\n"
             "- 「no text」「no letters」は含めないこと"
         )
     elif wants_remove:
         text_rule = (
             "- ユーザーが画像からテキスト・文字をすべて取り除くよう指示している\n"
-            '- 必ず "no text, no letters, no words, no japanese characters" を含めること\n'
+            '- "no text, no letters, no words, no japanese characters" を含めること\n'
             "- テキストのない純粋なビジュアルのみの画像にすること"
         )
     else:
         text_rule = (
-            '- 必ず "no text, no letters, no words, no japanese characters" を含めること'
+            '- "no text, no letters, no words, no japanese characters" を含めること'
         )
 
-    user_msg = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
-以下のブログ記事の内容をもとに、ユーザーの修正指示を反映した新しい画像を生成するためのプロンプトを作成してください。
+    user_msg = f"""あなたはAI画像編集（gpt-image-1）のプロンプト専門家です。
+元の画像に対してユーザーの指示を反映した修正プロンプトを英語で作成してください。
 
 ## ブログ記事情報
 タイトル: {title or "（未設定）"}
 本文抜粋:
 {body_text or "（本文なし）"}
 
-## ユーザーの修正指示
+## ユーザーの修正指示（日本語）
 {instruction}
+
+## 重要: 元の画像を最大限保持すること
+- 元の画像のスタイル・キャラクターデザイン・全体的な構図・配色・雰囲気を可能な限り保持すること
+- ユーザーが指示した箇所・要素のみを変更すること
+- 「そのまま」「変えないで」「画像はそのまま」などの指示は、現在の状態をほぼ維持した上で最小限の変更のみ加えること
 
 ## 出力ルール
 - 英語のみで出力すること
 {text_rule}
-- 修正指示の変更点を具体的に記述すること（色・構図・被写体・雰囲気など）
-- ブログ記事の内容と一貫性を保つこと
-- DALL-E 3 向けに自然な英語の描写文として書くこと
+- "Edit this image: [変更内容のみ]. Keep the original [保持する要素] unchanged." の形式で書くこと
+- 変更点と保持する要素を明確に分けて記述すること
 - 60〜120語の英語プロンプトのみを出力すること（説明文・日本語不要）"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)
@@ -281,17 +285,22 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
 
 def refine_image(original_url: str, instruction: str, client_id: int,
                  title: str = "", body_html: str = "") -> str:
-    """修正指示を Claude で強化し、DALL-E 3 で新規画像を生成する。
-
-    DALL-E 3 はネイティブな image-to-image 編集に非対応のため、
-    Claude が元画像のコンテキスト（タイトル・本文）を踏まえた
-    プロンプトを生成し、新規生成で代替する。
-    """
+    """元画像を gpt-image-1 edit API に渡してimage-to-image修正を行う。"""
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
     if not api_key:
         raise ValueError("OPENAI_API_KEY が設定されていません")
+
+    # 元画像をダウンロード
+    original_bytes = None
+    try:
+        img_resp = _requests.get(original_url, timeout=30)
+        if img_resp.status_code == 200:
+            original_bytes = img_resp.content
+            logger.info(f"元画像ダウンロード完了: {len(original_bytes)} bytes")
+    except Exception as e:
+        logger.warning(f"元画像ダウンロード失敗、新規生成にフォールバック: {e}")
 
     try:
         prompt = _enhance_refinement_with_claude(
@@ -301,14 +310,22 @@ def refine_image(original_url: str, instruction: str, client_id: int,
         )
     except Exception as e:
         logger.warning(f"[Claude] 修正プロンプト強化失敗、フォールバック: {e}")
+        wants_text = _wants_text_in_image(instruction)
+        wants_remove = _wants_remove_text(instruction)
+        no_text = "" if (wants_text and not wants_remove) else "no text, no letters, no words, no japanese characters."
         prompt = (
-            f"Blog thumbnail image. Modification: {instruction}. "
-            f"Article title: {title}. "
-            f"Professional style, high quality, no text, no letters, no japanese characters."
+            f"Edit this image. Change: {instruction}. "
+            f"Keep the overall style, character design, and composition. {no_text}"
         )
 
-    # アスペクト比は元画像から推定（1:1 をデフォルト）
     size = "1024x1024"
+
+    if original_bytes:
+        try:
+            return _call_dalle_edit(prompt, original_bytes, size, client_id, api_key)
+        except Exception as e:
+            logger.warning(f"画像編集API失敗、新規生成にフォールバック: {e}")
+
     return _call_dalle(prompt, size, client_id, api_key)
 
 
@@ -334,6 +351,43 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
     )
     if resp.status_code != 200:
         raise RuntimeError(f"gpt-image-1 API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
+
+    data = resp.json()
+    b64 = data["data"][0]["b64_json"]
+    return _save_image(base64.b64decode(b64), "png", client_id)
+
+
+def _call_dalle_edit(prompt: str, image_bytes: bytes, size: str, client_id: int, api_key: str) -> str:
+    """gpt-image-1 の画像編集 API で元画像ベースの修正を行い、絶対 URL を返す。"""
+    from PIL import Image
+
+    if len(prompt) > 4000:
+        prompt = prompt[:4000]
+
+    # edit API は PNG RGBA・1024x1024 を推奨
+    img = Image.open(io.BytesIO(image_bytes))
+    img = img.convert("RGBA")
+    if img.size != (1024, 1024):
+        img = img.resize((1024, 1024), Image.LANCZOS)
+    png_buf = io.BytesIO()
+    img.save(png_buf, format="PNG")
+    png_bytes = png_buf.getvalue()
+
+    resp = _requests.post(
+        "https://api.openai.com/v1/images/edits",
+        headers={"Authorization": f"Bearer {api_key}"},
+        files={"image": ("image.png", png_bytes, "image/png")},
+        data={
+            "model": "gpt-image-1",
+            "prompt": prompt,
+            "n": "1",
+            "size": size,
+            "quality": "high",
+        },
+        timeout=180,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"gpt-image-1 edit API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
 
     data = resp.json()
     b64 = data["data"][0]["b64_json"]
