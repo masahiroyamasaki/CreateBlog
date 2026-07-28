@@ -274,7 +274,6 @@ def refine_image(original_url: str, instruction: str, client_id: int,
 
 def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
     """DALL-E 3 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
-    # DALL-E 3 のプロンプト上限は 4000 文字
     if len(prompt) > 4000:
         prompt = prompt[:4000]
 
@@ -290,7 +289,6 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
             "n": 1,
             "size": size,
             "quality": "hd",
-            "response_format": "b64_json",
         },
         timeout=120,
     )
@@ -301,8 +299,11 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
     revised = data["data"][0].get("revised_prompt", "")
     if revised:
         logger.info(f"[DALL-E 3] revised_prompt: {revised[:120]}...")
-    b64 = data["data"][0]["b64_json"]
-    return _save_image(base64.b64decode(b64), "png", client_id)
+
+    image_url = data["data"][0]["url"]
+    img_resp = _requests.get(image_url, timeout=60)
+    img_resp.raise_for_status()
+    return _save_image(img_resp.content, "png", client_id)
 
 
 def _save_image(img_bytes: bytes, ext: str, client_id: int) -> str:
