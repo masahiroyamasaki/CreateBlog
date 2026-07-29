@@ -16,6 +16,17 @@
 .img-gen-btn:hover:not(:disabled) { background: #1d4ed8; }
 .img-gen-btn:disabled { opacity: .7; cursor: default; }
 .img-gen-done { color: var(--success); font-size: 13px; font-weight: 700; }
+.schedule-btn { background: #d97706; color: #fff; border: none; border-radius: 5px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.schedule-btn:hover { background: #b45309; }
+.schedule-row td { padding: 10px 16px; background: #fffbeb; border-top: none; }
+.schedule-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.schedule-form input[type=datetime-local] { font-size: 13px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 5px; }
+.schedule-form .btn-sched-set { background: #d97706; color: #fff; border: none; border-radius: 5px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.schedule-form .btn-sched-set:hover { background: #b45309; }
+.schedule-form .btn-sched-cancel { background: #dc2626; color: #fff; border: none; border-radius: 5px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.schedule-form .btn-sched-cancel:hover { background: #b91c1c; }
+.schedule-form .btn-sched-close { background: none; border: 1px solid #d1d5db; border-radius: 5px; padding: 5px 10px; font-size: 12px; color: #6b7280; cursor: pointer; }
+.schedule-form .btn-sched-close:hover { background: #f3f4f6; }
 </style>
 {% endblock %}
 
@@ -63,13 +74,18 @@
       </thead>
       <tbody>
         {% for p in posts %}
-        <tr>
+        <tr id="post-row-{{ p.id }}">
           <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;flex-wrap:nowrap;">
             <a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">編集・投稿</a>
             {% if client.image_gen_enabled %}
             <button class="img-gen-btn" id="imgbtn-{{ p.id }}"
                     onclick="generateImageForPost({{ p.id }}, this)">AI画像</button>
             <span class="img-gen-done" id="imgdone-{{ p.id }}" style="display:none;">✓</span>
+            {% endif %}
+            {% if p.status not in ('posted', 'creating') %}
+            <button class="schedule-btn" onclick="toggleScheduleRow({{ p.id }})">
+              {% if p.status == 'scheduled' %}予約変更{% else %}予約{% endif %}
+            </button>
             {% endif %}
             <form method="POST" action="{{ url_for('designer.post_delete', client_id=client.id, post_id=p.id) }}"
                   style="display:inline;" onsubmit="return confirm('「{{ p.title or '投稿' }}」を削除しますか？この操作は取り消せません。')">
@@ -128,6 +144,28 @@
           <td style="font-size:12px;color:var(--muted);">{{ p.posted_at.strftime('%m/%d %H:%M') if p.posted_at else '—' }}</td>
           <td style="font-size:12px;color:var(--muted);">{{ (p.created_at | to_jst).strftime('%m/%d %H:%M') }}</td>
         </tr>
+        {% if p.status not in ('posted', 'creating') %}
+        <tr id="schedule-row-{{ p.id }}" class="schedule-row" style="display:none;">
+          <td colspan="8">
+            <form class="schedule-form" method="POST"
+                  action="{{ url_for('designer.post_schedule', client_id=client.id, post_id=p.id) }}">
+              <input type="hidden" name="action" value="set">
+              <input type="hidden" name="next" value="list">
+              <input type="hidden" name="current_filter" value="{{ status_filter }}">
+              <span style="font-size:13px;font-weight:600;color:#92400e;">「{{ p.title or '（タイトルなし）' }}」の予約日時</span>
+              <input type="datetime-local" name="scheduled_at"
+                     value="{{ p.scheduled_at.strftime('%Y-%m-%dT%H:%M') if p.scheduled_at else '' }}"
+                     required>
+              <button type="submit" class="btn-sched-set">予約する</button>
+              {% if p.status == 'scheduled' %}
+              <button type="submit" name="action" value="cancel" class="btn-sched-cancel"
+                      onclick="return confirm('予約を取り消しますか？')">取消</button>
+              {% endif %}
+              <button type="button" class="btn-sched-close" onclick="toggleScheduleRow({{ p.id }})">閉じる</button>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>
@@ -215,6 +253,26 @@ function _resetImgBtn(postId, btn, errMsg) {
   btn.disabled = false;
   btn.textContent = 'AI画像';
   if (errMsg) alert(errMsg);
+}
+
+// ─── 一覧から予約設定 ──────────────────────────────────────────────────────
+function toggleScheduleRow(postId) {
+  const row = document.getElementById('schedule-row-' + postId);
+  if (!row) return;
+  const isHidden = row.style.display === 'none';
+  // 他の開いているフォームを閉じる
+  document.querySelectorAll('.schedule-row').forEach(r => { r.style.display = 'none'; });
+  if (isHidden) {
+    row.style.display = '';
+    // datetime-local に現在日時+1時間をデフォルト設定（空の場合のみ）
+    const dtInput = row.querySelector('input[type=datetime-local]');
+    if (dtInput && !dtInput.value) {
+      const now = new Date(Date.now() + 60 * 60 * 1000);
+      const pad = n => String(n).padStart(2, '0');
+      dtInput.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+    dtInput && dtInput.focus();
+  }
 }
 </script>
 {% endblock %}

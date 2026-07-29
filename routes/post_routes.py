@@ -403,9 +403,17 @@ def post_schedule(client_id: int, post_id: int):
         abort(403)
     from stripe_utils import is_client_operational
     action = request.form.get("action", "set")  # set or cancel
+    next_page = request.form.get("next", "detail")
+    status_filter = request.form.get("current_filter", "")
+
+    def _redir():
+        if next_page == "list":
+            return redirect(url_for("designer.post_list", client_id=client_id, status=status_filter))
+        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+
     if action != "cancel" and not is_client_operational(client, current_user):
         flash("企業が停止中のため予約投稿を設定できません。プランをご確認ください。", "error")
-        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+        return _redir()
     if action == "cancel":
         post.status = "draft"
         post.publish_mode = None
@@ -414,18 +422,18 @@ def post_schedule(client_id: int, post_id: int):
         post.wp_post_url = ""
         db.session.commit()
         flash("予約をキャンセルしました", "success")
-        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+        return _redir()
 
     # 日時を取得
     scheduled_at_str = request.form.get("scheduled_at", "").strip()
     if not scheduled_at_str:
         flash("投稿日時を入力してください", "error")
-        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+        return _redir()
     try:
         scheduled_at = datetime.fromisoformat(scheduled_at_str)
     except ValueError:
         flash("日時の形式が正しくありません", "error")
-        return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+        return _redir()
 
     pt = client.platform_type or "wordpress"
 
@@ -433,7 +441,7 @@ def post_schedule(client_id: int, post_id: int):
         threads_err = _check_threads_char_limit(client, post)
         if threads_err:
             flash(threads_err, "error")
-            return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+            return _redir()
 
     post.publish_mode = "scheduled"
     post.scheduled_at = scheduled_at
@@ -461,7 +469,7 @@ def post_schedule(client_id: int, post_id: int):
     else:
         flash(f"{scheduled_at.strftime('%Y/%m/%d %H:%M')} に予約しました", "success")
 
-    return redirect(url_for("designer.post_detail", client_id=client_id, post_id=post_id))
+    return _redir()
 
 
 # ──────────────────────────── 今すぐ投稿 ────────────────────────────────────
