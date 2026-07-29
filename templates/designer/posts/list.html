@@ -9,8 +9,13 @@
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid #7c3aed; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: 4px; }
+.spinner-img { display: inline-block; width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 3px; }
 .status-select { outline: none; }
 .status-select option { background: #fff; color: #1e293b; font-weight: 400; }
+.img-gen-btn { background: #2563eb; color: #fff; border: none; border-radius: 5px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.img-gen-btn:hover:not(:disabled) { background: #1d4ed8; }
+.img-gen-btn:disabled { opacity: .7; cursor: default; }
+.img-gen-done { color: var(--success); font-size: 13px; font-weight: 700; }
 </style>
 {% endblock %}
 
@@ -59,8 +64,13 @@
       <tbody>
         {% for p in posts %}
         <tr>
-          <td style="white-space:nowrap;">
+          <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;flex-wrap:nowrap;">
             <a href="{{ url_for('designer.post_detail', client_id=client.id, post_id=p.id) }}" class="btn btn-secondary btn-sm">編集・投稿</a>
+            {% if client.image_gen_enabled %}
+            <button class="img-gen-btn" id="imgbtn-{{ p.id }}"
+                    onclick="generateImageForPost({{ p.id }}, this)">AI画像</button>
+            <span class="img-gen-done" id="imgdone-{{ p.id }}" style="display:none;">✓</span>
+            {% endif %}
             <form method="POST" action="{{ url_for('designer.post_delete', client_id=client.id, post_id=p.id) }}"
                   style="display:inline;" onsubmit="return confirm('「{{ p.title or '投稿' }}」を削除しますか？この操作は取り消せません。')">
               <button type="submit" class="btn btn-danger btn-sm">削除</button>
@@ -133,6 +143,7 @@
 
 {% block scripts %}
 <script>
+const clientId = {{ client.id }};
 const creatingCount = {{ creating_count }};
 if (creatingCount > 0) {
   setTimeout(() => location.reload(), 10000);
@@ -154,5 +165,56 @@ function applyStatusColor(sel) {
 }
 
 document.querySelectorAll('.status-select').forEach(applyStatusColor);
+
+// ─── 一覧からAI画像生成 ────────────────────────────────────────────────────
+const _listGenJobs = {}; // postId → intervalId
+
+async function generateImageForPost(postId, btn) {
+  if (_listGenJobs[postId]) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-img"></span>生成中...';
+
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) {
+      _resetImgBtn(postId, btn, '✗ ' + data.reason);
+      return;
+    }
+
+    const jobId = data.job_id;
+    _listGenJobs[postId] = setInterval(async () => {
+      try {
+        const sr = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image-status/${jobId}`);
+        const sd = await sr.json();
+        if (sd.status === 'done') {
+          clearInterval(_listGenJobs[postId]);
+          delete _listGenJobs[postId];
+          btn.style.display = 'none';
+          const doneEl = document.getElementById('imgdone-' + postId);
+          if (doneEl) doneEl.style.display = '';
+        } else if (sd.status === 'error') {
+          clearInterval(_listGenJobs[postId]);
+          delete _listGenJobs[postId];
+          _resetImgBtn(postId, btn, null);
+          alert('画像生成エラー: ' + (sd.error || '不明なエラー'));
+        } else if (sd.status === 'not_found') {
+          clearInterval(_listGenJobs[postId]);
+          delete _listGenJobs[postId];
+          _resetImgBtn(postId, btn, null);
+        }
+      } catch(e) { /* 一時的なネットワークエラーは無視 */ }
+    }, 3000);
+
+  } catch(err) {
+    _resetImgBtn(postId, btn, null);
+  }
+}
+
+function _resetImgBtn(postId, btn, errMsg) {
+  btn.disabled = false;
+  btn.textContent = 'AI画像';
+  if (errMsg) alert(errMsg);
+}
 </script>
 {% endblock %}
