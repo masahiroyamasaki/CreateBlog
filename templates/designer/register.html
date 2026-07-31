@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>新規登録 — Artivo</title>
+  <title>情報入力 — Artivo パートナー登録</title>
   <link rel="icon" type="image/svg+xml" href="/static/images/logo.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,37 +13,63 @@
       --primary: #6366f1; --primary-h: #4f52c9;
       --danger: #ef4444; --success: #10b981;
     }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 480px; }
-    h1 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
-    .sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 16px; }
+    .header { text-align: center; margin-bottom: 28px; }
+    .header img { width: 44px; height: 44px; margin-bottom: 10px; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 560px; }
+
+    /* ステップ */
+    .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .step-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .step.done .step-num { background: var(--success); color: #fff; }
+    .step.active .step-num { background: var(--primary); color: #fff; }
+    .step.done { color: var(--success); }
+    .step.active { color: var(--text); }
+    .step-line { flex: 1; height: 1px; background: var(--success); margin: 0 8px; }
+
     label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
-    input[type=email], input[type=text], input[type=password] {
+    input[type=email], input[type=text], input[type=password], input[type=tel] {
       width: 100%; padding: 10px 14px; border: 1px solid var(--border);
       border-radius: 8px; background: var(--bg3); color: var(--text);
       font-size: 14px; outline: none; transition: border-color .15s;
     }
     input:focus { border-color: var(--primary); }
-    .group { margin-bottom: 18px; }
+    .group { margin-bottom: 16px; }
     .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s; }
-    .btn:hover { background: var(--primary-h); }
+    .required { color: var(--danger); margin-left: 2px; }
+    .btn { width: 100%; padding: 13px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s; margin-top: 8px; }
+    .btn:hover:not(:disabled) { background: var(--primary-h); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
     .alert { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
     .alert-error { background: #ef444420; border: 1px solid #ef4444; color: #fca5a5; }
-    .alert-success { background: #10b98120; border: 1px solid #10b981; color: #6ee7b7; }
-    .login-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
-    .login-link a { color: var(--primary); text-decoration: none; }
     .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 24px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .agreed-badge { display: flex; align-items: center; gap: 8px; background: #10b98115; border: 1px solid var(--success); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #34d399; margin-bottom: 20px; }
+    .login-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .login-link a { color: var(--primary); text-decoration: none; }
   </style>
 </head>
 <body>
+  <div class="header">
+    <img src="/static/images/logo.svg" alt="Artivo">
+    <h1>Artivo パートナー登録</h1>
+    <p>基本情報を入力して登録を完了してください</p>
+  </div>
+
   <div class="card">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px;">
-      <img src="/static/images/logo.svg" alt="Artivo" style="width:52px;height:52px;">
-      <div style="text-align:center;">
-        <h1 style="margin-bottom:6px;">Artivo</h1>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:2px;">あなたのセンスに、AIというエンジンを。</p>
-      </div>
+    <!-- ステップ -->
+    <div class="steps">
+      <div class="step done"><div class="step-num">✓</div> 契約書確認</div>
+      <div class="step-line"></div>
+      <div class="step active"><div class="step-num">2</div> 情報入力・登録</div>
+    </div>
+
+    <!-- 同意済みバッジ -->
+    <div class="agreed-badge">
+      ✅ 利用契約書に同意済みです
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -57,21 +83,44 @@
       <div class="section-label">基本情報</div>
 
       <div class="group">
-        <label>メールアドレス *</label>
+        <label>メールアドレス <span class="required">*</span></label>
         <input type="email" name="email" required placeholder="designer@example.com"
                value="{{ request.form.get('email', '') }}">
       </div>
       <div class="group">
-        <label>氏名 *</label>
+        <label>氏名（担当者名）<span class="required">*</span></label>
         <input type="text" name="name" required placeholder="山田 太郎"
                value="{{ request.form.get('name', '') }}">
       </div>
       <div class="group">
-        <label>屋号・法人名</label>
+        <label>会社名・屋号</label>
         <input type="text" name="business_name" placeholder="例: 山田デザイン事務所 / 株式会社サンプル"
                value="{{ request.form.get('business_name', '') }}">
         <p class="hint">個人の場合は屋号、法人の場合は法人名を入力してください</p>
       </div>
+
+      <div class="section-label">住所・連絡先</div>
+
+      <div class="row2">
+        <div class="group">
+          <label>郵便番号</label>
+          <input type="text" name="postal_code" placeholder="123-4567" maxlength="8"
+                 value="{{ request.form.get('postal_code', '') }}">
+        </div>
+        <div class="group">
+          <label>電話番号</label>
+          <input type="tel" name="phone" placeholder="090-0000-0000"
+                 value="{{ request.form.get('phone', '') }}">
+        </div>
+      </div>
+      <div class="group">
+        <label>住所</label>
+        <input type="text" name="address" placeholder="大阪府○○市○○○ 1-2-3"
+               value="{{ request.form.get('address', '') }}">
+      </div>
+
+      <div class="section-label">その他の情報</div>
+
       <div class="group">
         <label>活動地域</label>
         <input type="text" name="region" placeholder="例: 東京都・大阪府"
@@ -82,21 +131,42 @@
         <input type="text" name="job_type" placeholder="例: Webデザイナー・SNSマーケター"
                value="{{ request.form.get('job_type', '') }}">
       </div>
+      <div class="group">
+        <label>振込口座（請求書受領用）</label>
+        <input type="text" name="bank_account" placeholder="例: ○○銀行 △△支店 普通 1234567"
+               value="{{ request.form.get('bank_account', '') }}">
+        <p class="hint">報酬の受け取りに使用する銀行口座を入力してください（後から変更可能）</p>
+      </div>
+      <div class="group">
+        <label>インボイス登録番号</label>
+        <input type="text" name="invoice_number" placeholder="T1234567890123（13桁）" maxlength="14"
+               value="{{ request.form.get('invoice_number', '') }}">
+        <p class="hint">適格請求書発行事業者の場合のみご入力ください</p>
+      </div>
+
       <div class="section-label">パスワード設定</div>
 
       <div class="group">
-        <label>パスワード * （8文字以上）</label>
+        <label>パスワード <span class="required">*</span>（8文字以上）</label>
         <input type="password" name="password" required minlength="8" autocomplete="new-password">
       </div>
       <div class="group">
-        <label>パスワード（確認）*</label>
+        <label>パスワード（確認）<span class="required">*</span></label>
         <input type="password" name="password2" required minlength="8" autocomplete="new-password">
       </div>
 
-      <button type="submit" class="btn">登録する</button>
+      <button type="submit" class="btn" id="submitBtn">登録する（契約書PDFを生成）</button>
     </form>
 
     <p class="login-link">すでにアカウントをお持ちの方は <a href="{{ url_for('designer.login') }}">ログイン</a></p>
   </div>
+
+  <script>
+  document.querySelector('form').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '登録処理中...';
+  });
+  </script>
 </body>
 </html>

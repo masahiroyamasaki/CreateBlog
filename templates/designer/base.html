@@ -132,6 +132,9 @@
         <a href="{{ url_for('designer.my_profile') }}" class="nav-link {% if request.endpoint == 'designer.my_profile' %}active{% endif %}">
           👤 プロフィール
         </a>
+        <a href="{{ url_for('designer.my_contract') }}" class="nav-link {% if request.endpoint == 'designer.my_contract' %}active{% endif %}">
+          📄 利用契約書
+        </a>
         <a href="{{ url_for('designer.billing') }}" class="nav-link {% if request.endpoint == 'designer.billing' %}active{% endif %}" style="{% if current_user.subscription_status not in ('active', None, '') and not current_user.role == 'admin' %}color:var(--warning);{% endif %}">
           💳 プラン・お支払い
           {% if current_user.subscription_status == 'free' and current_user.role != 'admin' %}<span style="font-size:10px;background:var(--warning);color:#000;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700;">未契約</span>{% endif %}

@@ -30,6 +30,17 @@ def _to_jst(dt):
     from datetime import timedelta
     return dt + timedelta(hours=9)
 
+@app.template_filter("fromjson")
+def _fromjson(s):
+    import json
+    try:
+        return json.loads(s or "{}")
+    except Exception:
+        return {}
+
+from datetime import timedelta
+app.jinja_env.globals["timedelta"] = timedelta
+
 # ── MySQL + SQLAlchemy (新システム) ──────────────────────────────────────────
 try:
     from config import Config

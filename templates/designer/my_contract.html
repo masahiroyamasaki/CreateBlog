@@ -1,0 +1,85 @@
+{% extends "designer/base.html" %}
+{% block title %}利用契約書{% endblock %}
+{% block page_title %}利用契約書{% endblock %}
+
+{% block content %}
+{% if agreements %}
+  {% for agr in agreements %}
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <h2>📄 Artivo AIパートナー利用契約書</h2>
+      <a href="{{ url_for('designer.my_contract_download', agreement_id=agr.id) }}"
+         class="btn btn-primary btn-sm">⬇ PDFダウンロード</a>
+    </div>
+    <div class="card-body">
+      <table class="table" style="width:auto;">
+        <tbody>
+          <tr>
+            <td style="color:var(--muted);font-size:12px;white-space:nowrap;padding-right:24px;">契約書バージョン</td>
+            <td style="font-weight:600;">v{{ agr.contract_version }}</td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">同意日時</td>
+            <td>{{ (agr.agreed_at + timedelta(hours=9)).strftime('%Y年%m月%d日 %H:%M:%S') }} （JST）</td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">同意文言</td>
+            <td style="font-size:12px;">{{ agr.checkbox_text }}</td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">契約書識別ID</td>
+            <td style="font-family:monospace;font-size:12px;">AGR-{{ '%08d' % agr.id }}</td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">SHA-256</td>
+            <td style="font-family:monospace;font-size:10px;word-break:break-all;">{{ agr.contract_hash }}</td>
+          </tr>
+          {% if agr.pdf %}
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">PDF生成日時</td>
+            <td style="font-size:12px;">{{ (agr.pdf.generated_at + timedelta(hours=9)).strftime('%Y年%m月%d日 %H:%M') }} （JST）</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">📋 同意時の登録情報</p>
+        {% if agr.snapshot_json %}
+        {% set snap = agr.snapshot_json | fromjson %}
+        <div style="font-size:12px;line-height:1.8;color:var(--text);">
+          <span style="color:var(--muted);">会社名・屋号：</span>{{ snap.business_name or '—' }}<br>
+          <span style="color:var(--muted);">氏名：</span>{{ snap.name or '—' }}<br>
+          <span style="color:var(--muted);">住所：</span>{{ snap.postal_code or '' }} {{ snap.address or '—' }}<br>
+          <span style="color:var(--muted);">電話番号：</span>{{ snap.phone or '—' }}<br>
+          <span style="color:var(--muted);">メールアドレス：</span>{{ snap.email or '—' }}
+          {% if snap.invoice_number %}<br><span style="color:var(--muted);">インボイス番号：</span>{{ snap.invoice_number }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if not agr.pdf %}
+      <div class="alert" style="margin-top:14px;background:#f59e0b15;border:1px solid #f59e0b;color:#fbbf24;font-size:12px;">
+        PDFがまだ生成されていません。ダウンロードボタンを押すと自動生成されます。
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="card">
+    <div class="card-body">
+      <div class="empty">
+        契約書の同意記録がありません。<br>
+        <a href="{{ url_for('designer.register_contract') }}" style="color:var(--primary);">登録フローから同意記録が作成されます</a>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.7;">
+  ※ このページでは、登録時に同意した契約書の記録を確認できます。<br>
+  ※ 契約書に変更があった場合は、メールにてお知らせします。
+</div>
+{% endblock %}

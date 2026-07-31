@@ -26,6 +26,10 @@ class Designer(UserMixin, db.Model):
     stripe_customer_id = db.Column(db.String(255), default="")      # Stripe 顧客 ID
     stripe_subscription_id = db.Column(db.String(255), default="")  # Stripe サブスクリプション ID
     subscription_status = db.Column(db.String(20), default="free")  # free / active / past_due / cancelled
+    postal_code = db.Column(db.String(10), default="")   # 郵便番号
+    address = db.Column(db.Text, default="")             # 住所
+    phone = db.Column(db.String(20), default="")         # 電話番号
+    invoice_number = db.Column(db.String(20), default="") # インボイス登録番号（T始まり）
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime)
 
@@ -352,3 +356,48 @@ class ClientSubscription(db.Model):
 
     client = db.relationship("Client", backref=db.backref("subscription", uselist=False))
     designer = db.relationship("Designer", backref=db.backref("subscriptions", lazy="dynamic"))
+
+
+# ─── 契約書テンプレート ───────────────────────────────────────────────────────
+
+class ContractTemplate(db.Model):
+    __tablename__ = "contract_templates"
+
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(20), nullable=False, unique=True)
+    body_text = db.Column(db.Text, nullable=False)
+    effective_date = db.Column(db.Date, nullable=False)
+    is_current = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ─── デザイナー同意ログ（追記専用）──────────────────────────────────────────
+
+class DesignerAgreement(db.Model):
+    __tablename__ = "designer_agreements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    designer_id = db.Column(db.Integer, db.ForeignKey("designers.id"), nullable=False)
+    contract_version = db.Column(db.String(20), nullable=False)
+    contract_hash = db.Column(db.String(64), nullable=False)   # SHA-256
+    agreed_at = db.Column(db.DateTime, nullable=False)         # サーバー側タイムスタンプ
+    checkbox_text = db.Column(db.Text, nullable=False)         # 表示されていた同意文言
+    ip_address = db.Column(db.String(45), nullable=False)
+    user_agent = db.Column(db.Text, default="")
+    snapshot_json = db.Column(db.Text, default="")             # 入力情報スナップショット
+
+    designer = db.relationship("Designer", backref=db.backref("agreements", lazy="dynamic"))
+    pdf = db.relationship("AgreementPdf", back_populates="agreement", uselist=False)
+
+
+# ─── 契約書 PDF ─────────────────────────────────────────────────────────────
+
+class AgreementPdf(db.Model):
+    __tablename__ = "agreement_pdfs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    designer_agreement_id = db.Column(db.Integer, db.ForeignKey("designer_agreements.id"), nullable=False)
+    pdf_path = db.Column(db.String(500), nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    agreement = db.relationship("DesignerAgreement", back_populates="pdf")

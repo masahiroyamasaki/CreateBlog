@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>利用契約書の確認 — Artivo</title>
+  <link rel="icon" type="image/svg+xml" href="/static/images/logo.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --bg2: #1a1d23; --bg3: #252830;
+      --border: #2e323a; --text: #e2e8f0; --muted: #94a3b8;
+      --primary: #6366f1; --primary-h: #4f52c9;
+      --danger: #ef4444; --success: #10b981;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 16px; }
+    .header { text-align: center; margin-bottom: 28px; }
+    .header img { width: 44px; height: 44px; margin-bottom: 10px; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 740px; }
+
+    /* ステップインジケーター */
+    .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .step-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .step.active .step-num { background: var(--primary); color: #fff; }
+    .step.inactive .step-num { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+    .step.active { color: var(--text); }
+    .step.inactive { color: var(--muted); }
+    .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+
+    /* 契約書ボックス */
+    .contract-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      height: 440px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      color: var(--text);
+      margin-bottom: 16px;
+      scroll-behavior: smooth;
+    }
+    .contract-box::-webkit-scrollbar { width: 6px; }
+    .contract-box::-webkit-scrollbar-track { background: var(--bg3); }
+    .contract-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* スクロール通知 */
+    .scroll-notice {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 16px; padding: 10px 14px;
+      background: var(--bg3); border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: all .3s;
+    }
+    .scroll-notice.done { color: var(--success); border-color: var(--success); background: #10b98110; }
+    .scroll-notice .icon { font-size: 16px; }
+
+    /* チェックボックス */
+    .agree-wrap { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; padding: 16px; background: var(--bg3); border-radius: 10px; border: 1px solid var(--border); transition: border-color .3s; }
+    .agree-wrap.enabled { border-color: var(--primary); }
+    .agree-wrap input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; cursor: pointer; accent-color: var(--primary); }
+    .agree-wrap input[type=checkbox]:disabled { cursor: not-allowed; opacity: .5; }
+    .agree-wrap label { font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; line-height: 1.5; }
+    .agree-wrap label.disabled { color: var(--muted); cursor: not-allowed; }
+
+    /* ボタン */
+    .btn-next { width: 100%; padding: 13px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s; }
+    .btn-next:hover:not(:disabled) { background: var(--primary-h); }
+    .btn-next:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* PDFダウンロードリンク */
+    .pdf-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-decoration: none; margin-bottom: 20px; }
+    .pdf-link:hover { color: var(--text); }
+
+    .alert { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; }
+    .alert-error { background: #ef444420; border: 1px solid #ef4444; color: #fca5a5; }
+    .alert-info { background: #6366f120; border: 1px solid var(--primary); color: #a5b4fc; }
+    .version-note { font-size: 11px; color: var(--muted); text-align: right; margin-top: 12px; }
+    .login-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .login-link a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/static/images/logo.svg" alt="Artivo">
+    <h1>Artivo パートナー登録</h1>
+    <p>ご利用の前に、利用契約書をご確認ください</p>
+  </div>
+
+  <div class="card">
+    <!-- ステップ -->
+    <div class="steps">
+      <div class="step active"><div class="step-num">1</div> 契約書確認</div>
+      <div class="step-line"></div>
+      <div class="step inactive"><div class="step-num">2</div> 情報入力・登録</div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'error' if cat == 'error' else 'info' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+      下記の契約書を最後までスクロールしてお読みください。最後まで読むと同意チェックが有効になります。
+    </p>
+
+    <!-- 契約書本文 -->
+    <div class="contract-box" id="contractBox">{{ contract.body_text }}</div>
+
+    <!-- スクロール通知 -->
+    <div class="scroll-notice" id="scrollNotice">
+      <span class="icon">📜</span>
+      <span id="scrollMsg">最後までスクロールすると同意できるようになります</span>
+    </div>
+
+    <!-- 登録前PDFダウンロード -->
+    <a href="{{ url_for('designer.register_contract_template_pdf') }}" class="pdf-link" target="_blank">
+      📥 契約書PDFをこの場でダウンロード（登録前確認用）
+    </a>
+
+    <!-- 同意フォーム -->
+    <form method="POST" id="agreeForm">
+      <div class="agree-wrap" id="agreeWrap">
+        <input type="checkbox" id="agreeCheck" name="agreed" value="1" disabled>
+        <label for="agreeCheck" id="agreeLabel" class="disabled">
+          上記『Artivo AIパートナー利用契約』の内容を確認し、同意します
+        </label>
+      </div>
+      <button type="submit" class="btn-next" id="nextBtn" disabled>
+        次へ（情報を入力する）→
+      </button>
+    </form>
+
+    <p class="version-note">v{{ contract.version }} / {{ contract.effective_date.strftime('%Y年%m月%d日') }}制定</p>
+  </div>
+
+  <p class="login-link">すでにアカウントをお持ちの方は <a href="{{ url_for('designer.login') }}">ログイン</a></p>
+
+  <script>
+  const box = document.getElementById('contractBox');
+  const check = document.getElementById('agreeCheck');
+  const label = document.getElementById('agreeLabel');
+  const nextBtn = document.getElementById('nextBtn');
+  const wrap = document.getElementById('agreeWrap');
+  const notice = document.getElementById('scrollNotice');
+  const noticeMsg = document.getElementById('scrollMsg');
+  let scrolled = false;
+
+  function enableAgreement() {
+    if (scrolled) return;
+    scrolled = true;
+    check.disabled = false;
+    label.classList.remove('disabled');
+    wrap.classList.add('enabled');
+    notice.classList.add('done');
+    noticeMsg.textContent = '最後までお読みいただきました。内容に同意する場合はチェックを入れてください。';
+  }
+
+  box.addEventListener('scroll', () => {
+    // 残り20px 以内でスクロール完了とみなす
+    const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 20;
+    if (atBottom) enableAgreement();
+  });
+
+  check.addEventListener('change', () => {
+    nextBtn.disabled = !check.checked;
+  });
+
+  // ページ読み込み時にすでに本文が短い（スクロール不要）場合は即時有効化
+  window.addEventListener('load', () => {
+    if (box.scrollHeight <= box.clientHeight + 20) {
+      enableAgreement();
+    }
+  });
+
+  // フォーム送信時に二重送信防止
+  document.getElementById('agreeForm').addEventListener('submit', (e) => {
+    if (!check.checked) { e.preventDefault(); return; }
+    nextBtn.disabled = true;
+    nextBtn.textContent = '処理中...';
+  });
+  </script>
+</body>
+</html>
