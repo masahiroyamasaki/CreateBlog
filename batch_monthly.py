@@ -38,7 +38,9 @@ def run_monthly_ideas_batch(app, db) -> dict:
         import anthropic as _anthropic
 
         ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-        clients = Client.query.filter_by(client_status="active").all()
+        clients = Client.query.filter(
+            Client.client_status.in_(["active", "test"])
+        ).all()
 
         for client in clients:
             count = client.monthly_post_count or 4

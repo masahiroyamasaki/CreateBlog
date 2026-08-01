@@ -240,59 +240,69 @@ def topic_generate(client_id: int, topic_id: int):
                         pass
 
         try:
-            # ── Instagram: 4エージェント + IG フォーマッター ──────────────────
+            from agents.blog_creator import BlogCreatorAgent
+            from agents.seo_checker import SeoCheckerAgent
+            from agents.fact_checker import FactCheckerAgent
+            from agents.legal_checker import LegalCheckerAgent
+            from agents.final_creator import FinalCreatorAgent
+            from agents.ig_formatter import IgFormatterAgent
+
+            # ── Step 1: 下書き作成 ───────────────────────────────────────────
+            run.update(step="blog_creator", step_num=1)
+            draft = BlogCreatorAgent().run({
+                "topic": topic_title,
+                "keywords": topic_outline,
+                "tone": "標準",
+                "word_count": target_word_count,
+                "existing_posts": wp_sample_posts,
+                "design_prompt": hp_design_prompt,
+                "taste": article_taste,
+                "target_audience": target_audience,
+                "character_prompt": character_prompt,
+                "business_description": business_description,
+            })
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 2: SEOチェック・最適化 ─────────────────────────────────
+            run.update(step="seo_checker", step_num=2)
+            seo_draft = SeoCheckerAgent().run({
+                "draft": draft,
+                "topic": topic_title,
+                "keywords": topic_outline,
+            })
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 3: ファクトチェック ─────────────────────────────────────
+            run.update(step="fact_checker", step_num=3)
+            fact_check = FactCheckerAgent().run({"draft": seo_draft})
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 4: リーガルチェック ─────────────────────────────────────
+            run.update(step="legal_checker", step_num=4)
+            legal_check = LegalCheckerAgent().run({"draft": seo_draft})
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 5: 最終記事生成 ─────────────────────────────────────────
+            run.update(step="final_creator", step_num=5)
+            final_content = FinalCreatorAgent().run({
+                "draft": seo_draft,
+                "content_check": fact_check,
+                "legal_check": legal_check,
+                "topic": topic_title,
+                "keywords": topic_outline,
+                "tone": "標準",
+                "word_count": target_word_count,
+            })
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 6: IGキャプション / フォーマッター ───────────────────────
             if platform_type == "instagram":
-                from agents.blog_creator import BlogCreatorAgent
-                from agents.content_checker import ContentCheckerAgent
-                from agents.legal_checker import LegalCheckerAgent
-                from agents.final_creator import FinalCreatorAgent
-                from agents.ig_formatter import IgFormatterAgent
-
-                # Step 1: 下書き作成
-                run.update(step="blog_creator", step_num=1)
-                draft = BlogCreatorAgent().run({
-                    "topic": topic_title,
-                    "keywords": topic_outline,
-                    "tone": "標準",
-                    "word_count": target_word_count,
-                    "existing_posts": wp_sample_posts,
-                    "design_prompt": hp_design_prompt,
-                    "taste": article_taste,
-                    "target_audience": target_audience,
-                    "character_prompt": character_prompt,
-                    "business_description": business_description,
-                })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 2: コンテンツチェック
-                run.update(step="content_checker", step_num=2)
-                content_check = ContentCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 3: リーガルチェック
-                run.update(step="legal_checker", step_num=3)
-                legal_check = LegalCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 4: 最終記事生成
-                run.update(step="final_creator", step_num=4)
-                final_content = FinalCreatorAgent().run({
-                    "draft": draft,
-                    "content_check": content_check,
-                    "legal_check": legal_check,
-                    "topic": topic_title,
-                    "keywords": topic_outline,
-                    "tone": "標準",
-                    "word_count": target_word_count,
-                })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 5: IG フォーマッター（Threads設定ありなら400字以内）
-                run.update(step="ig_formatter", step_num=5)
+                run.update(step="ig_formatter", step_num=6)
                 ig_caption = IgFormatterAgent().run({
                     "blog_content": final_content,
                     "topic": topic_title,
@@ -300,175 +310,75 @@ def topic_generate(client_id: int, topic_id: int):
                     "threads_limit": threads_limit,
                     "word_count": target_word_count,
                 })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 6: 保存 + スケジュール自動設定
-                run.update(step="saving", step_num=6)
-                with app.app_context():
-                    from schedule_utils import next_scheduled_at
-                    from models import Post as _Post, Client as _Client, PostImage as _PI, db as _db
-                    post = _Post.query.get(post_id)
-                    client_obj = _Client.query.get(client_id_val)
-                    if post:
-                        post.body_html  = ""
-                        post.ig_caption = _clean_ig_caption(ig_caption, client_name)
-                        post.status     = "draft"
-                        if client_obj and client_obj.schedule_type:
-                            existing = {
-                                p.scheduled_at.date()
-                                for p in _Post.query.filter(
-                                    _Post.client_id == client_id_val,
-                                    _Post.scheduled_at.isnot(None),
-                                ).all() if p.scheduled_at
-                            }
-                            post.scheduled_at = next_scheduled_at(client_obj, existing)
-                    topic_obj = TopicQueue.query.get(topic_id_val)
-                    if topic_obj:
-                        topic_obj.status = "generated"
-                    _db.session.commit()
-                    run["post_id"] = post_id
-                    # AI 画像生成
-                    if image_gen_enabled_val and post:
-                        run.update(step="ai_image", step_num=7)
-                        try:
-                            from ai_image_gen import generate_image as _gen_img
-                            img_path = _gen_img(
-                                title=topic_title,
-                                taste=image_taste_val,
-                                aspect_ratio=image_aspect_ratio_val,
-                                client_id=client_id_val,
-                                balance=image_balance_val,
-                                body_html=getattr(post, "body_html", "") or "",
-                                client_name=client_name,
-                                base_prompt=image_base_prompt_val,
-                            )
-                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
-                            _db.session.commit()
-                        except Exception as _img_err:
-                            import traceback
-                            print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
-
-                run.update(status="done", step="done", step_num=7)
-                _topic_to_run.pop(topic_id_val, None)
-
-            # ── WordPress / その他: 4エージェント + IGフォーマッター ──────────
+            elif platform_type == "email_only":
+                run.update(step="ig_caption", step_num=6)
+                ig_caption = final_content
             else:
-                from agents.blog_creator import BlogCreatorAgent
-                from agents.content_checker import ContentCheckerAgent
-                from agents.legal_checker import LegalCheckerAgent
-                from agents.final_creator import FinalCreatorAgent
-                from agents.ig_formatter import IgFormatterAgent
+                run.update(step="ig_caption", step_num=6)
+                ig_caption = IgFormatterAgent().run({
+                    "blog_content": final_content,
+                    "topic": topic_title,
+                    "client_name": client_name,
+                    "threads_limit": threads_limit,
+                    "word_count": target_word_count,
+                })
+            if run.get("cancel_requested"):
+                _cancel_and_cleanup(); return
+
+            # ── Step 7: 保存 + スケジュール自動設定 ─────────────────────────
+            run.update(step="saving", step_num=7)
+            if platform_type == "instagram":
+                body_html = ""
+            else:
                 import markdown as _md
-
-                # Step 1: 下書き作成
-                run.update(step="blog_creator", step_num=1)
-                draft = BlogCreatorAgent().run({
-                    "topic": topic_title,
-                    "keywords": topic_outline,
-                    "tone": "標準",
-                    "word_count": target_word_count,
-                    "existing_posts": wp_sample_posts,
-                    "design_prompt": hp_design_prompt,
-                    "taste": article_taste,
-                    "target_audience": target_audience,
-                    "character_prompt": character_prompt,
-                    "business_description": business_description,
-                })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 2: コンテンツチェック
-                run.update(step="content_checker", step_num=2)
-                content_check = ContentCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 3: リーガルチェック
-                run.update(step="legal_checker", step_num=3)
-                legal_check = LegalCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 4: 最終記事生成
-                run.update(step="final_creator", step_num=4)
-                final_content = FinalCreatorAgent().run({
-                    "draft": draft,
-                    "content_check": content_check,
-                    "legal_check": legal_check,
-                    "topic": topic_title,
-                    "keywords": topic_outline,
-                    "tone": "標準",
-                    "word_count": target_word_count,
-                })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-
-                # Step 5: IGキャプション生成（email_only はMarkdownをそのまま保存）
-                run.update(step="ig_caption", step_num=5)
-                if platform_type == "email_only":
-                    ig_caption = final_content  # Markdownをプレーンテキストとして保存
-                else:
-                    ig_caption = IgFormatterAgent().run({
-                        "blog_content": final_content,
-                        "topic": topic_title,
-                        "client_name": client_name,
-                        "threads_limit": threads_limit,
-                        "word_count": target_word_count,
-                    })
-                    if run.get("cancel_requested"):
-                        _cancel_and_cleanup(); return
-
-                # Step 6: プレースホルダーを更新して完成 + スケジュール自動設定
-                run.update(step="saving", step_num=6)
                 body_html = _md.markdown(final_content, extensions=["extra", "toc"])
 
-                with app.app_context():
-                    from schedule_utils import next_scheduled_at
-                    from models import Post as _Post, Client as _Client, PostImage as _PI, db as _db
-                    post = _Post.query.get(post_id)
-                    client_obj = _Client.query.get(client_id_val)
-                    if post:
-                        post.body_html  = body_html
-                        post.ig_caption = _clean_ig_caption(ig_caption, client_name)
-                        post.status     = "draft"
-                        if client_obj and client_obj.schedule_type:
-                            existing = {
-                                p.scheduled_at.date()
-                                for p in _Post.query.filter(
-                                    _Post.client_id == client_id_val,
-                                    _Post.scheduled_at.isnot(None),
-                                ).all() if p.scheduled_at
-                            }
-                            post.scheduled_at = next_scheduled_at(client_obj, existing)
-                    topic_obj = TopicQueue.query.get(topic_id_val)
-                    if topic_obj:
-                        topic_obj.status = "generated"
-                    _db.session.commit()
-                    run["post_id"] = post_id
-                    # AI 画像生成
-                    if image_gen_enabled_val and post:
-                        run.update(step="ai_image", step_num=7)
-                        try:
-                            from ai_image_gen import generate_image as _gen_img
-                            img_path = _gen_img(
-                                title=topic_title,
-                                taste=image_taste_val,
-                                aspect_ratio=image_aspect_ratio_val,
-                                client_id=client_id_val,
-                                balance=image_balance_val,
-                                body_html=getattr(post, "body_html", "") or "",
-                                client_name=client_name,
-                                base_prompt=image_base_prompt_val,
-                            )
-                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
-                            _db.session.commit()
-                        except Exception as _img_err:
-                            import traceback
-                            print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
+            with app.app_context():
+                from schedule_utils import next_scheduled_at
+                from models import Post as _Post, Client as _Client, PostImage as _PI, db as _db
+                post = _Post.query.get(post_id)
+                client_obj = _Client.query.get(client_id_val)
+                if post:
+                    post.body_html  = body_html
+                    post.ig_caption = _clean_ig_caption(ig_caption, client_name)
+                    post.status     = "draft"
+                    if client_obj and client_obj.schedule_type:
+                        existing = {
+                            p.scheduled_at.date()
+                            for p in _Post.query.filter(
+                                _Post.client_id == client_id_val,
+                                _Post.scheduled_at.isnot(None),
+                            ).all() if p.scheduled_at
+                        }
+                        post.scheduled_at = next_scheduled_at(client_obj, existing)
+                topic_obj = TopicQueue.query.get(topic_id_val)
+                if topic_obj:
+                    topic_obj.status = "generated"
+                _db.session.commit()
+                run["post_id"] = post_id
+                # AI 画像生成
+                if image_gen_enabled_val and post:
+                    run.update(step="ai_image", step_num=8)
+                    try:
+                        from ai_image_gen import generate_image as _gen_img
+                        img_path = _gen_img(
+                            title=topic_title,
+                            taste=image_taste_val,
+                            aspect_ratio=image_aspect_ratio_val,
+                            client_id=client_id_val,
+                            balance=image_balance_val,
+                            body_html=getattr(post, "body_html", "") or "",
+                            client_name=client_name,
+                            base_prompt=image_base_prompt_val,
+                        )
+                        _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                        _db.session.commit()
+                    except Exception as _img_err:
+                        import traceback
+                        print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
-                run.update(status="done", step="done", step_num=7)
-                _topic_to_run.pop(topic_id_val, None)
+            run.update(status="done", step="done", step_num=8)
+            _topic_to_run.pop(topic_id_val, None)
 
         except Exception as e:
             run.update(status="error", error=str(e))
@@ -627,7 +537,8 @@ def topic_bulk_generate(client_id: int):
 
             try:
                 from agents.blog_creator import BlogCreatorAgent
-                from agents.content_checker import ContentCheckerAgent
+                from agents.seo_checker import SeoCheckerAgent
+                from agents.fact_checker import FactCheckerAgent
                 from agents.legal_checker import LegalCheckerAgent
                 from agents.final_creator import FinalCreatorAgent
                 from agents.ig_formatter import IgFormatterAgent
@@ -637,33 +548,40 @@ def topic_bulk_generate(client_id: int):
                 draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count, "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt, "taste": article_taste, "target_audience": target_audience, "character_prompt": character_prompt, "business_description": business_description})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
-                run.update(step="content_checker", step_num=2)
-                content_check = ContentCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-                run.update(step="legal_checker", step_num=3)
-                legal_check = LegalCheckerAgent().run({"draft": draft})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-                run.update(step="final_creator", step_num=4)
-                final_content = FinalCreatorAgent().run({"draft": draft, "content_check": content_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count})
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-                run.update(step="ig_caption", step_num=5)
-                if platform_type == "email_only":
-                    ig_caption = final_content  # Markdownをプレーンテキストとして保存
-                else:
-                    ig_caption = IgFormatterAgent().run({
-                        "blog_content": final_content,
-                        "topic": topic_title,
-                        "client_name": client_name,
-                        "threads_limit": threads_limit,
-                        "word_count": target_word_count,
-                    })
-                if run.get("cancel_requested"):
-                    _cancel_and_cleanup(); return
-                run.update(step="saving", step_num=6)
 
+                run.update(step="seo_checker", step_num=2)
+                seo_draft = SeoCheckerAgent().run({"draft": draft, "topic": topic_title, "keywords": topic_outline})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
+
+                run.update(step="fact_checker", step_num=3)
+                fact_check = FactCheckerAgent().run({"draft": seo_draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
+
+                run.update(step="legal_checker", step_num=4)
+                legal_check = LegalCheckerAgent().run({"draft": seo_draft})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
+
+                run.update(step="final_creator", step_num=5)
+                final_content = FinalCreatorAgent().run({"draft": seo_draft, "content_check": fact_check, "legal_check": legal_check, "topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
+
+                if platform_type == "instagram":
+                    run.update(step="ig_formatter", step_num=6)
+                    ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name, "threads_limit": threads_limit, "word_count": target_word_count})
+                elif platform_type == "email_only":
+                    run.update(step="ig_caption", step_num=6)
+                    ig_caption = final_content
+                else:
+                    run.update(step="ig_caption", step_num=6)
+                    ig_caption = IgFormatterAgent().run({"blog_content": final_content, "topic": topic_title, "client_name": client_name, "threads_limit": threads_limit, "word_count": target_word_count})
+                if run.get("cancel_requested"):
+                    _cancel_and_cleanup(); return
+
+                run.update(step="saving", step_num=7)
                 body_html = "" if platform_type == "instagram" else _md.markdown(final_content, extensions=["extra", "toc"])
 
                 with app.app_context():
@@ -685,7 +603,7 @@ def topic_bulk_generate(client_id: int):
                     run["post_id"] = post_id
                     # AI 画像生成
                     if image_gen_enabled and post:
-                        run.update(step="ai_image", step_num=7)
+                        run.update(step="ai_image", step_num=8)
                         try:
                             from ai_image_gen import generate_image as _gen_img
                             img_path = _gen_img(
@@ -704,7 +622,7 @@ def topic_bulk_generate(client_id: int):
                             import traceback
                             print(f"[AI画像生成エラー] {_img_err}\n{traceback.format_exc()}")
 
-                run.update(status="done", step="done", step_num=7)
+                run.update(status="done", step="done", step_num=8)
                 _topic_to_run.pop(topic_id_val, None)
             except Exception as e:
                 run.update(status="error", error=str(e))

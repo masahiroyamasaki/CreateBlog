@@ -65,44 +65,51 @@
     <div class="pipe-step" id="step-2">
       <div class="pipe-icon">2</div>
       <div class="pipe-info">
-        <div class="pipe-name">コンテンツチェック</div>
+        <div class="pipe-name">SEOチェック・最適化</div>
         <div class="pipe-status" id="status-2">待機中</div>
       </div>
     </div>
     <div class="pipe-step" id="step-3">
       <div class="pipe-icon">3</div>
       <div class="pipe-info">
-        <div class="pipe-name">リーガルチェック</div>
+        <div class="pipe-name">ファクトチェック</div>
         <div class="pipe-status" id="status-3">待機中</div>
       </div>
     </div>
     <div class="pipe-step" id="step-4">
       <div class="pipe-icon">4</div>
       <div class="pipe-info">
-        <div class="pipe-name">最終記事生成</div>
+        <div class="pipe-name">リーガルチェック</div>
         <div class="pipe-status" id="status-4">待機中</div>
       </div>
     </div>
     <div class="pipe-step" id="step-5">
       <div class="pipe-icon">5</div>
       <div class="pipe-info">
-        <div class="pipe-name">IGキャプション生成</div>
+        <div class="pipe-name">最終記事生成</div>
         <div class="pipe-status" id="status-5">待機中</div>
       </div>
     </div>
     <div class="pipe-step" id="step-6">
       <div class="pipe-icon">6</div>
       <div class="pipe-info">
-        <div class="pipe-name">保存</div>
+        <div class="pipe-name">IGキャプション生成</div>
         <div class="pipe-status" id="status-6">待機中</div>
       </div>
     </div>
-    {% if image_gen_enabled %}
     <div class="pipe-step" id="step-7">
       <div class="pipe-icon">7</div>
       <div class="pipe-info">
-        <div class="pipe-name">AI画像生成</div>
+        <div class="pipe-name">保存</div>
         <div class="pipe-status" id="status-7">待機中</div>
+      </div>
+    </div>
+    {% if image_gen_enabled %}
+    <div class="pipe-step" id="step-8">
+      <div class="pipe-icon">8</div>
+      <div class="pipe-info">
+        <div class="pipe-name">AI画像生成</div>
+        <div class="pipe-status" id="status-8">待機中</div>
       </div>
     </div>
     {% endif %}
@@ -153,28 +160,30 @@ const CLIENT_ID = {{ client.id }};
 const TOPIC_ID  = {{ topic.id }};
 
 const IMAGE_GEN_ENABLED = {{ 'true' if image_gen_enabled else 'false' }};
-const TOTAL_STEPS = IMAGE_GEN_ENABLED ? 7 : 6;
+const TOTAL_STEPS = IMAGE_GEN_ENABLED ? 8 : 7;
 
 const STEP_MAP = {
-  blog_creator:    1,
-  content_checker: 2,
-  legal_checker:   3,
-  final_creator:   4,
-  ig_caption:      5,
-  ig_formatter:    5,
-  saving:          6,
-  ai_image:        7,
-  done:            TOTAL_STEPS,
+  blog_creator: 1,
+  seo_checker:  2,
+  fact_checker: 3,
+  legal_checker: 4,
+  final_creator: 5,
+  ig_caption:   6,
+  ig_formatter: 6,
+  saving:       7,
+  ai_image:     8,
+  done:         TOTAL_STEPS,
 };
 const STEP_LABELS = {
-  blog_creator:    '生成中（1〜2分）...',
-  content_checker: 'チェック中...',
-  legal_checker:   'チェック中...',
-  final_creator:   '生成中（1〜2分）...',
-  ig_caption:      '生成中...',
-  ig_formatter:    '生成中...',
-  saving:          '保存中...',
-  ai_image:        '画像生成中（30秒〜1分）...',
+  blog_creator: '生成中（1〜2分）...',
+  seo_checker:  'SEO最適化中...',
+  fact_checker: 'ファクトチェック中...',
+  legal_checker: 'リーガルチェック中...',
+  final_creator: '生成中（1〜2分）...',
+  ig_caption:   '生成中...',
+  ig_formatter: '生成中...',
+  saving:       '保存中...',
+  ai_image:     '画像生成中（30秒〜1分）...',
 };
 
 let runId = null;
