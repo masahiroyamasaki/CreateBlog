@@ -17,6 +17,38 @@ logger = logging.getLogger(__name__)
 _JST = timezone(timedelta(hours=9))
 
 
+def _extract_json_array(text: str) -> list:
+    """AIレスポンスから最初の完全なJSONアレイを確実に抽出する。
+    greedy regex の誤マッチを防ぐため、括弧の深さを追跡して切り出す。"""
+    # コードブロック記法を除去
+    text = re.sub(r'```[\w]*\s*', '', text).strip()
+    start = text.find('[')
+    if start < 0:
+        raise ValueError("AIレスポンスからJSONが見つかりませんでした")
+    depth = 0
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text[start:], start):
+        if esc:
+            esc = False
+            continue
+        if ch == '\\' and in_str:
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == '[':
+            depth += 1
+        elif ch == ']':
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[start:i + 1])
+    raise ValueError("AIレスポンスのJSONアレイが不完全です")
+
+
 def _plan_description(client) -> str:
     """企業の契約プランをもとに請求明細の内容文を生成する。"""
     count = client.monthly_post_count or 4
@@ -265,10 +297,7 @@ def _generate_ideas(client, ai, count: int, db) -> list:
         messages=[{"role": "user", "content": prompt}],
     )
     text = message.content[0].text
-    m = re.search(r'\[[\s\S]*\]', text)
-    if not m:
-        raise ValueError("AIレスポンスからJSONが見つかりませんでした")
-    ideas = json.loads(m.group())
+    ideas = _extract_json_array(text)
 
     last = (
         TopicQueue.query.filter_by(client_id=client.id, status="pending")

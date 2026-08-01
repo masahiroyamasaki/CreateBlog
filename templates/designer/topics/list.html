@@ -294,15 +294,16 @@ async function generateAiIdeaBulk() {
   const btn = document.getElementById('ai-idea-bulk-btn');
   const spinner = document.getElementById('ai-idea-bulk-spinner');
   const count = {{ client.monthly_post_count or 4 }};
-  if (!confirm(`契約数分（${count}件）のネタをAIで一括生成します。よろしいですか？`)) return;
+  if (!confirm(`契約数分（${count}件）のネタをAIで一括生成します。\n生成には1〜2分かかります。完了後にページが自動更新されます。`)) return;
   btn.disabled = true;
   spinner.style.display = 'inline-block';
   try {
     const res = await fetch(`/designer/clients/${clientId}/topics/ai-idea-bulk`, {method: 'POST'});
     const data = await res.json();
     if (data.success) {
-      showToast(`${data.count}件のネタを追加しました`);
-      setTimeout(() => location.reload(), 800);
+      showToast(`バックグラウンドで${data.count}件分のネタを生成中です。完了後に自動更新されます。`);
+      // 生成完了まで待ってリロード（1件あたり約15秒を想定）
+      setTimeout(() => location.reload(), Math.max(15000, count * 15000));
     } else {
       showToast(data.reason || 'エラーが発生しました', 'error');
       btn.disabled = false;

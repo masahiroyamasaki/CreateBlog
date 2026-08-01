@@ -698,20 +698,35 @@ def topic_ai_idea(client_id: int):
 @designer_bp.route("/clients/<int:client_id>/topics/ai-idea-bulk", methods=["POST"])
 @login_required
 def topic_ai_idea_bulk(client_id: int):
-    """管理者のみ: 契約数分（monthly_post_count件）のAI記事ネタを一括生成する"""
+    """管理者のみ: 契約数分（monthly_post_count件）のAI記事ネタをバックグラウンドで一括生成する"""
     if current_user.role != "admin":
         abort(403)
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
     count = client.monthly_post_count or 4
-    try:
-        from batch_monthly import _generate_ideas
-        from config import Config
-        import anthropic as _anthropic
-        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-        added = _generate_ideas(client, ai, count, db)
-        return jsonify({"success": True, "count": len(added)})
-    except ValueError as e:
-        return jsonify({"success": False, "reason": str(e)})
-    except Exception as e:
-        return jsonify({"success": False, "reason": f"エラー: {str(e)}"})
+
+    # テーマ未設定の事前チェック（同期、軽い）
+    if not (client.themes or "").strip():
+        return jsonify({"success": False, "reason": "企業テーマが設定されていません"})
+
+    app = current_app._get_current_object()
+    client_id_val = client.id
+
+    def _run():
+        with app.app_context():
+            try:
+                from models import Client as _Client, db as _db
+                from batch_monthly import _generate_ideas
+                from config import Config
+                import anthropic as _anthropic
+                c = _Client.query.get(client_id_val)
+                if not c:
+                    return
+                ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+                _generate_ideas(c, ai, count, _db)
+            except Exception as e:
+                import traceback
+                print(f"[AI Bulk Idea Error] {e}\n{traceback.format_exc()}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"success": True, "count": count})
