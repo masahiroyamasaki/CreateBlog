@@ -17,46 +17,78 @@ logger = logging.getLogger(__name__)
 _JST = timezone(timedelta(hours=9))
 
 
+def _repair_json(s: str) -> str:
+    """LLM生成JSONの典型的な問題（trailing comma・文字列内改行）を修復する"""
+    # trailing comma の除去
+    s = re.sub(r',\s*([\]}])', r'\1', s)
+    # 文字列値内のリテラル改行・復帰を JSON エスケープに変換
+    result = []
+    in_str = False
+    esc = False
+    for ch in s:
+        if esc:
+            result.append(ch)
+            esc = False
+            continue
+        if ch == '\\' and in_str:
+            result.append(ch)
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            result.append(ch)
+            continue
+        if in_str and ch == '\n':
+            result.append('\\n')
+            continue
+        if in_str and ch == '\r':
+            continue
+        result.append(ch)
+    return ''.join(result)
+
+
 def _extract_json_array(text: str) -> list:
-    """AIレスポンスから最初の完全なJSONアレイを抽出する。複数の方法を順に試みる。"""
+    """AIレスポンスから最初の完全なJSONアレイを抽出する。5段階フォールバック。"""
     # コードブロック記法（開き・閉じ両方）を除去
     cleaned = re.sub(r'```[\w]*', '', text)
     cleaned = cleaned.replace('```', '').strip()
 
-    # 方法1: テキスト全体をそのままパース
-    try:
-        result = json.loads(cleaned)
-        if isinstance(result, list):
-            return result
-    except (json.JSONDecodeError, ValueError):
-        pass
+    def _try_parse(s: str):
+        """通常パース → 修復パース の順に試みる"""
+        try:
+            r = json.loads(s)
+            return r if isinstance(r, list) else None
+        except (json.JSONDecodeError, ValueError):
+            pass
+        try:
+            r = json.loads(_repair_json(s))
+            return r if isinstance(r, list) else None
+        except (json.JSONDecodeError, ValueError):
+            return None
 
-    # 方法2: 最初の [ から最後の ] までを切り出してパース
+    # 方法1: 全体をそのままパース
+    r = _try_parse(cleaned)
+    if r is not None:
+        return r
+
     start = cleaned.find('[')
     if start >= 0:
+        # 方法2: 最初の [ から最後の ] を切り出してパース
         end = cleaned.rfind(']')
         if end > start:
-            try:
-                result = json.loads(cleaned[start:end + 1])
-                if isinstance(result, list):
-                    return result
-            except (json.JSONDecodeError, ValueError):
-                pass
+            r = _try_parse(cleaned[start:end + 1])
+            if r is not None:
+                return r
 
-        # 方法3: balanced-bracket で正確に切り出してパース
-        depth = 0
-        in_str = False
-        esc = False
+        # 方法3: balanced-bracket で切り出してパース
+        depth, in_str, esc = 0, False, False
         for i, ch in enumerate(cleaned[start:], start):
             if esc:
-                esc = False
-                continue
+                esc = False; continue
             if ch == '\\' and in_str:
-                esc = True
-                continue
+                esc = True; continue
             if ch == '"':
-                in_str = not in_str
-                continue
+                in_str = not in_str; continue
             if in_str:
                 continue
             if ch == '[':
@@ -64,12 +96,25 @@ def _extract_json_array(text: str) -> list:
             elif ch == ']':
                 depth -= 1
                 if depth == 0:
-                    try:
-                        return json.loads(cleaned[start:i + 1])
-                    except (json.JSONDecodeError, ValueError):
-                        pass
+                    r = _try_parse(cleaned[start:i + 1])
+                    if r is not None:
+                        return r
 
-    raise ValueError("AIレスポンスからJSONを抽出できませんでした")
+    # 方法4: 正規表現で title/outline ペアを直接抽出
+    titles   = re.findall(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"', cleaned)
+    outlines = re.findall(r'"outline"\s*:\s*"((?:[^"\\]|\\.)*)"', cleaned)
+    if titles:
+        result = []
+        for i, title in enumerate(titles):
+            outline = outlines[i] if i < len(outlines) else ""
+            result.append({"title": title.strip(), "outline": outline.strip()})
+        logger.warning(f"[_extract_json_array] 正規表現フォールバックで {len(result)} 件抽出")
+        return result
+
+    # 全て失敗 → 診断情報をエラーに含める
+    snippet = cleaned[:300].replace('\n', '↵') if cleaned else '(空のレスポンス)'
+    logger.error(f"[_extract_json_array] 全方法失敗。レスポンス先頭:\n{cleaned[:500]}")
+    raise ValueError(f"AIレスポンスからJSONを抽出できませんでした。レスポンス先頭: {snippet}")
 
 
 def _plan_description(client) -> str:
