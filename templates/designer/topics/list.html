@@ -26,8 +26,14 @@
 {% block content %}
 {% if not is_operational %}
 <div class="alert alert-error" style="display:flex;align-items:center;gap:10px;">
-  🚫 <span>このクライアントは現在<strong>停止中</strong>です。プランをご契約いただくと記事ネタ生成・AI記事生成・予約投稿が再開されます。
+  🚫
+  {% if not has_agreed_terms %}
+  <span>このクライアントは現在<strong>停止中</strong>です。<strong>利用規約への同意</strong>が必要です。
+  <a href="{{ url_for('designer.my_contract') }}" style="color:inherit;text-decoration:underline;margin-left:6px;">利用規約を確認する →</a></span>
+  {% else %}
+  <span>このクライアントは現在<strong>停止中</strong>です。プランをご契約いただくと記事ネタ生成・AI記事生成・予約投稿が再開されます。
   <a href="{{ url_for('designer.billing') }}" style="color:inherit;text-decoration:underline;margin-left:6px;">プランを確認する →</a></span>
+  {% endif %}
 </div>
 {% endif %}
 {% if processing_count > 0 %}

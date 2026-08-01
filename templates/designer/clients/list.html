@@ -43,8 +43,10 @@
             {% set cs = c.client_status or 'active' %}
             {% if cs == 'test' %}
             <span class="badge badge-blue">テスト</span>
+            {% elif current_user.role != 'admin' and not current_user.has_agreed_terms %}
+            <span class="badge badge-red" title="利用規約に未同意">停止中</span>
             {% elif current_user.role != 'admin' and current_user.subscription_status != 'active' %}
-            <span class="badge badge-red">停止中</span>
+            <span class="badge badge-red" title="プラン未契約">停止中</span>
             {% elif cs == 'active' %}
             <span class="badge badge-green">稼働中</span>
             {% elif cs == 'pending' %}

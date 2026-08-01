@@ -41,6 +41,7 @@ def topic_list(client_id: int):
     is_operational = is_client_operational(client, current_user)
     # 記事生成・投稿数は無制限。ネタがある分だけ生成できる。
     can_generate = is_operational
+    has_agreed_terms = current_user.has_agreed_terms if current_user.role != "admin" else True
     return render_template(
         "designer/topics/list.html",
         client=client,
@@ -49,6 +50,7 @@ def topic_list(client_id: int):
         processing_count=processing_count,
         can_generate=can_generate,
         is_operational=is_operational,
+        has_agreed_terms=has_agreed_terms,
     )
 
 

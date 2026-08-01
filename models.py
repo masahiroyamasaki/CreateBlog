@@ -50,6 +50,11 @@ class Designer(UserMixin, db.Model):
             return True
         return client_id in self.client_ids
 
+    @property
+    def has_agreed_terms(self) -> bool:
+        """利用規約への同意済みか（DesignerAgreement レコードが存在するか）"""
+        return self.agreements.count() > 0
+
 
 # ─── 契約企業マスタ ───────────────────────────────────────────────────────
 
