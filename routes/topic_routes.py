@@ -13,6 +13,10 @@ _generation_runs = {}
 # topic_id → run_id の逆引きマップ（進捗確認ページの再接続用）
 _topic_to_run: dict[int, str] = {}
 
+# 契約数分ネタ一括生成ジョブ（client_id → 状態）
+# daemon=False スレッドで実行し、ページ遷移後も完走させる
+_bulk_idea_jobs: dict[int, dict] = {}
+
 
 def _clean_ig_caption(caption: str, client_name: str = "") -> str:
     from caption_utils import strip_account_prefix
@@ -42,6 +46,7 @@ def topic_list(client_id: int):
     # 記事生成・投稿数は無制限。ネタがある分だけ生成できる。
     can_generate = is_operational
     has_agreed_terms = current_user.has_agreed_terms if current_user.role != "admin" else True
+    bulk_idea_job = _bulk_idea_jobs.get(client_id)
     return render_template(
         "designer/topics/list.html",
         client=client,
@@ -51,6 +56,7 @@ def topic_list(client_id: int):
         can_generate=can_generate,
         is_operational=is_operational,
         has_agreed_terms=has_agreed_terms,
+        bulk_idea_job=bulk_idea_job,
     )
 
 
@@ -703,11 +709,17 @@ def topic_ai_idea_bulk(client_id: int):
         abort(403)
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
-    count = client.monthly_post_count or 4
 
-    # テーマ未設定の事前チェック（同期、軽い）
+    # すでに実行中なら二重起動しない
+    job = _bulk_idea_jobs.get(client_id)
+    if job and job["status"] == "running":
+        return jsonify({"success": False, "reason": "すでに生成中です。完了をお待ちください。"})
+
     if not (client.themes or "").strip():
         return jsonify({"success": False, "reason": "企業テーマが設定されていません"})
+
+    count = client.monthly_post_count or 4
+    _bulk_idea_jobs[client_id] = {"status": "running", "total": count, "added": 0, "error": None}
 
     app = current_app._get_current_object()
     client_id_val = client.id
@@ -721,12 +733,31 @@ def topic_ai_idea_bulk(client_id: int):
                 import anthropic as _anthropic
                 c = _Client.query.get(client_id_val)
                 if not c:
+                    _bulk_idea_jobs[client_id_val]["status"] = "error"
+                    _bulk_idea_jobs[client_id_val]["error"] = "企業が見つかりません"
                     return
                 ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-                _generate_ideas(c, ai, count, _db)
+                added = _generate_ideas(c, ai, count, _db)
+                _bulk_idea_jobs[client_id_val]["added"] = len(added)
+                _bulk_idea_jobs[client_id_val]["status"] = "done"
             except Exception as e:
                 import traceback
                 print(f"[AI Bulk Idea Error] {e}\n{traceback.format_exc()}")
+                _bulk_idea_jobs[client_id_val]["status"] = "error"
+                _bulk_idea_jobs[client_id_val]["error"] = str(e)
 
-    threading.Thread(target=_run, daemon=True).start()
-    return jsonify({"success": True, "count": count})
+    # daemon=False: gunicorn ワーカー再起動時も完走させる
+    threading.Thread(target=_run, daemon=False).start()
+    return jsonify({"success": True, "total": count, "job": _bulk_idea_jobs[client_id]})
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/bulk-idea-status")
+@login_required
+def topic_bulk_idea_status(client_id: int):
+    """ネタ一括生成ジョブの状態を返す"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    job = _bulk_idea_jobs.get(client_id)
+    if not job:
+        return jsonify({"status": "none"})
+    return jsonify(job)

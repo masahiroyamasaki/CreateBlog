@@ -42,6 +42,20 @@
   <span>{{ processing_count }} 件のネタをAI生成中です。このページは自動更新されます。</span>
 </div>
 {% endif %}
+{% if bulk_idea_job and bulk_idea_job.status == 'running' %}
+<div class="alert" id="bulk-idea-banner" style="background:#fef3c7;border-color:#f59e0b;color:#92400e;display:flex;align-items:center;gap:10px;">
+  <span class="spinner" style="border-color:#f59e0b;border-top-color:transparent;"></span>
+  <span id="bulk-idea-banner-text">バックグラウンドで記事ネタを {{ bulk_idea_job.total }} 件生成中です。別のページに移動しても完了まで継続します。</span>
+</div>
+{% elif bulk_idea_job and bulk_idea_job.status == 'done' %}
+<div class="alert" style="background:#d1fae5;border-color:#10b981;color:#065f46;display:flex;align-items:center;gap:10px;">
+  ✓ <span>記事ネタ {{ bulk_idea_job.added }} 件の生成が完了しました。</span>
+</div>
+{% elif bulk_idea_job and bulk_idea_job.status == 'error' %}
+<div class="alert alert-error" style="display:flex;align-items:center;gap:10px;">
+  ✕ <span>ネタ生成でエラーが発生しました: {{ bulk_idea_job.error }}</span>
+</div>
+{% endif %}
 <div>
   <div class="card">
     <div class="card-header">
@@ -294,16 +308,15 @@ async function generateAiIdeaBulk() {
   const btn = document.getElementById('ai-idea-bulk-btn');
   const spinner = document.getElementById('ai-idea-bulk-spinner');
   const count = {{ client.monthly_post_count or 4 }};
-  if (!confirm(`契約数分（${count}件）のネタをAIで一括生成します。\n生成には1〜2分かかります。完了後にページが自動更新されます。`)) return;
+  if (!confirm(`契約数分（${count}件）のネタをAIで一括生成します。\n別のページに移動しても完了まで継続します。`)) return;
   btn.disabled = true;
   spinner.style.display = 'inline-block';
   try {
     const res = await fetch(`/designer/clients/${clientId}/topics/ai-idea-bulk`, {method: 'POST'});
     const data = await res.json();
     if (data.success) {
-      showToast(`バックグラウンドで${data.count}件分のネタを生成中です。完了後に自動更新されます。`);
-      // 生成完了まで待ってリロード（1件あたり約15秒を想定）
-      setTimeout(() => location.reload(), Math.max(15000, count * 15000));
+      showToast(`バックグラウンドで${data.total}件分のネタを生成中です。このページで完了を確認できます。`);
+      startBulkIdeaPolling();
     } else {
       showToast(data.reason || 'エラーが発生しました', 'error');
       btn.disabled = false;
@@ -315,6 +328,46 @@ async function generateAiIdeaBulk() {
     spinner.style.display = 'none';
   }
 }
+
+let _bulkIdeaPollTimer = null;
+function startBulkIdeaPolling() {
+  if (_bulkIdeaPollTimer) return;
+  // バナーがなければ作成
+  if (!document.getElementById('bulk-idea-banner')) {
+    const banner = document.createElement('div');
+    banner.id = 'bulk-idea-banner';
+    banner.className = 'alert';
+    banner.style.cssText = 'background:#fef3c7;border-color:#f59e0b;color:#92400e;display:flex;align-items:center;gap:10px;';
+    banner.innerHTML = '<span class="spinner" style="border-color:#f59e0b;border-top-color:transparent;"></span>'
+      + '<span id="bulk-idea-banner-text">バックグラウンドで記事ネタを生成中です。別のページに移動しても完了まで継続します。</span>';
+    document.querySelector('.card').before(banner);
+  }
+  _bulkIdeaPollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/designer/clients/${clientId}/topics/bulk-idea-status`);
+      const job = await res.json();
+      if (job.status === 'done') {
+        clearInterval(_bulkIdeaPollTimer);
+        _bulkIdeaPollTimer = null;
+        showToast(`ネタ ${job.added} 件の生成が完了しました！`);
+        setTimeout(() => location.reload(), 1500);
+      } else if (job.status === 'error') {
+        clearInterval(_bulkIdeaPollTimer);
+        _bulkIdeaPollTimer = null;
+        showToast(`エラー: ${job.error}`, 'error');
+        const banner = document.getElementById('bulk-idea-banner');
+        if (banner) banner.remove();
+        const btn = document.getElementById('ai-idea-bulk-btn');
+        if (btn) btn.disabled = false;
+      }
+    } catch(e) { /* 一時的なネットワークエラーは無視 */ }
+  }, 5000);
+}
+
+// ページ読み込み時に生成中なら自動でポーリング開始
+{% if bulk_idea_job and bulk_idea_job.status == 'running' %}
+window.addEventListener('load', () => startBulkIdeaPolling());
+{% endif %}
 
 const BULK_KEY = `bulk_pressed_${clientId}`;
 async function bulkGenerate() {
