@@ -1,8 +1,12 @@
 """batch_monthly.py — 月次自動生成バッチ
 
 VPS cron 設定:
-  # 毎月1日9時: ネタ生成
-  0 9 1 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-ideas >> /var/log/blog-monthly.log 2>&1
+  # 毎月1日 0時: ご利用明細書発行
+  0 0 1 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-billing >> /var/log/blog-monthly-billing.log 2>&1
+  # 毎月1日 9時: 記事ネタ生成
+  0 9 1 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-ideas >> /var/log/blog-monthly-ideas.log 2>&1
+  # 毎月10日 9時: 記事自動生成
+  0 9 10 * * cd /var/www/blog-app && /var/www/blog-app/venv/bin/flask run-monthly-articles >> /var/log/blog-monthly-articles.log 2>&1
 """
 import re
 import json

@@ -1,9 +1,9 @@
 {% extends "designer/base.html" %}
-{% block title %}請求書一覧{% endblock %}
-{% block page_title %}請求書管理{% endblock %}
+{% block title %}ご利用明細書一覧{% endblock %}
+{% block page_title %}ご利用明細書管理{% endblock %}
 {% block topbar_actions %}
   <form method="POST" action="{{ url_for('designer.admin_invoice_generate') }}"
-        onsubmit="return confirm('当月分の請求書を一括生成・送付します。よろしいですか？')">
+        onsubmit="return confirm('当月分のご利用明細書を一括生成・送付します。よろしいですか？')">
     <button type="submit" class="btn btn-primary btn-sm">当月分を一括生成・送付</button>
   </form>
 {% endblock %}
@@ -17,17 +17,16 @@
 
 <div class="card">
   <div class="card-header">
-    <h2>請求書一覧（{{ invoices|length }} 件）</h2>
+    <h2>ご利用明細書一覧（{{ invoices|length }} 件）</h2>
   </div>
   {% if invoices %}
   <table class="table">
     <thead>
       <tr>
-        <th>請求番号</th>
+        <th>明細書番号</th>
         <th>デザイナー</th>
         <th>対象月</th>
-        <th>支払い期限</th>
-        <th style="text-align:right;">請求金額（税込）</th>
+        <th style="text-align:right;">ご利用金額（税込）</th>
         <th>ステータス</th>
         <th>発行日</th>
         <th></th>
@@ -42,7 +41,6 @@
           <div style="font-size:11px;color:var(--muted);">{{ inv.designer.email }}</div>
         </td>
         <td>{{ inv.year }}年{{ inv.month }}月分</td>
-        <td style="font-size:12px;">{{ inv.payment_deadline }}</td>
         <td style="text-align:right;font-weight:700;">¥{{ "{:,}".format(inv.total_with_tax) }}</td>
         <td>
           <span class="badge {{ inv.status_badge }}">{{ inv.status_label }}</span>
@@ -54,11 +52,11 @@
             <a href="{{ url_for('designer.admin_invoice_pdf', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm">PDF</a>
             <a href="{{ url_for('designer.admin_invoice_edit', invoice_id=inv.id) }}" class="btn btn-secondary btn-sm">編集</a>
             <form method="POST" action="{{ url_for('designer.admin_invoice_reissue', invoice_id=inv.id) }}"
-                  onsubmit="return confirm('請求書を再発行してデザイナーへメールで送付しますか？')">
+                  onsubmit="return confirm('ご利用明細書を再発行してデザイナーへメールで送付しますか？')">
               <button type="submit" class="btn btn-primary btn-sm">再発行</button>
             </form>
             <form method="POST" action="{{ url_for('designer.admin_invoice_delete', invoice_id=inv.id) }}"
-                  onsubmit="return confirm('この請求書を削除しますか？この操作は取り消せません。')">
+                  onsubmit="return confirm('この明細書を削除しますか？この操作は取り消せません。')">
               <button type="submit" class="btn btn-danger btn-sm">削除</button>
             </form>
           </div>
@@ -68,7 +66,7 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty">請求書がありません。「当月分を一括生成・送付」ボタンで作成できます。</div>
+  <div class="empty">ご利用明細書がありません。「当月分を一括生成・送付」ボタンで作成できます。</div>
   {% endif %}
 </div>
 {% endblock %}

@@ -1,4 +1,4 @@
-"""billing.py — 請求書PDF生成
+"""billing.py — ご利用明細書PDF生成
 
 使用フォント: reportlab 組み込みの CID フォント (HeiseiKakuGo-W5) を使用。
 システムフォントのインストール不要。
@@ -60,13 +60,13 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     elements = []
 
     # ── タイトル ──
-    elements.append(Paragraph("請　求　書", ps(22, TA_CENTER)))
+    elements.append(Paragraph("ご利用明細書", ps(22, TA_CENTER)))
     elements.append(Spacer(1, 6 * mm))
 
-    # ── 請求番号・発行日 ──
+    # ── 明細書番号・発行日 ──
     issue_date = datetime.now(_JST).strftime("%Y年%m月%d日")
     meta = Table(
-        [["請求番号", invoice.invoice_number, "発行日", issue_date],
+        [["明細書番号", invoice.invoice_number, "発行日", issue_date],
          ["対象月", f"{invoice.year}年{invoice.month}月分", "", ""]],
         colWidths=[28*mm, 62*mm, 22*mm, 58*mm],
     )
@@ -97,7 +97,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
         ISSUER["email"],
     ]
     max_r = max(len(to_lines), len(from_lines))
-    party_data = [["【請求先】", "【請求元】"]]
+    party_data = [["【宛　先】", "【発行元】"]]
     for i in range(max_r):
         party_data.append([
             to_lines[i] if i < len(to_lines) else "",
@@ -127,7 +127,7 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     total_with_tax = invoice.total_with_tax
     discount_amount = invoice.discount_amount
     total_tbl = Table(
-        [["ご請求金額（税込）", f"¥{total_with_tax:,}"]],
+        [["ご利用金額（税込）", f"¥{total_with_tax:,}"]],
         colWidths=[content_w * 0.65, content_w * 0.35],
     )
     total_tbl.setStyle(TableStyle([
@@ -200,7 +200,11 @@ def generate_invoice_pdf(invoice, items_list) -> str:
 
     # ── 備考 ──
     elements.append(Paragraph(
-        f"※ お支払い期限：{invoice.payment_deadline}",
+        "※ 本明細書は毎月1日に自動発行されます。お支払いはStripeによる自動決済となります。",
+        ps(9, color=colors.HexColor("#64748b")),
+    ))
+    elements.append(Paragraph(
+        "※ ご不明な点は info@rk-rpa.com までお問い合わせください。",
         ps(9, color=colors.HexColor("#64748b")),
     ))
 

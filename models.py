@@ -278,13 +278,7 @@ class Invoice(db.Model):
 
     @property
     def invoice_number(self) -> str:
-        return f"INV-{self.year}{self.month:02d}-{self.designer_id:04d}"
-
-    @property
-    def payment_deadline(self) -> str:
-        import calendar
-        last_day = calendar.monthrange(self.year, self.month)[1]
-        return f"{self.year}年{self.month}月{last_day}日"
+        return f"MBS-{self.year}{self.month:02d}-{self.designer_id:04d}"
 
     @property
     def status_label(self) -> str:
