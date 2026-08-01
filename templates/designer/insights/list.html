@@ -1,0 +1,64 @@
+{% extends "designer/base.html" %}
+{% block title %}インサイト管理 — {{ client.name }}{% endblock %}
+{% block page_title %}Instagramインサイト{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ダッシュボード</a>
+  <a href="{{ url_for('designer.insight_new', client_id=client.id) }}" class="btn btn-primary btn-sm">+ データ入力</a>
+  <a href="{{ url_for('designer.insight_monthly_report', client_id=client.id) }}" class="btn btn-secondary btn-sm">月次レポート</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>週次インサイト一覧 — {{ client.name }}</h2>
+  </div>
+  <div class="card-body" style="padding:0;">
+    {% if insights %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>対象週</th>
+          <th>投稿数</th>
+          <th>Stage 1</th>
+          <th>デザイナーレポート</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for ins in insights %}
+      {% set posts = ins.posts_json | fromjson %}
+      {% set stage1 = ins.stage1_json | fromjson if ins.stage1_json else none %}
+        <tr>
+          <td style="font-weight:600;">{{ ins.week_start.strftime('%Y/%m/%d') }}〜</td>
+          <td>{{ posts | length }} 件</td>
+          <td>
+            {% if ins.stage1_json %}
+              <span class="badge badge-green">分析済</span>
+            {% else %}
+              <span class="badge badge-gray">未分析</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set dr = ins.reports | selectattr('report_type','eq','designer') | list | first %}
+            {% if dr %}
+              <span class="badge badge-blue">生成済</span>
+            {% else %}
+              <span class="badge badge-gray">未生成</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            <a href="{{ url_for('designer.insight_detail', client_id=client.id, insight_id=ins.id) }}"
+               class="btn btn-secondary btn-sm">詳細</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:40px;text-align:center;">
+      インサイトデータがありません。<a href="{{ url_for('designer.insight_new', client_id=client.id) }}">データを入力する →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

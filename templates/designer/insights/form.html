@@ -1,0 +1,164 @@
+{% extends "designer/base.html" %}
+{% block title %}{% if insight %}インサイト編集{% else %}インサイト入力{% endif %} — {{ client.name }}{% endblock %}
+{% block page_title %}{% if insight %}インサイト編集{% else %}週次インサイト入力{% endif %}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">← 一覧</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.section-title { font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:24px 0 10px; }
+.metrics-table { width:100%; border-collapse:collapse; font-size:14px; }
+.metrics-table th, .metrics-table td { padding:8px 12px; border:1px solid var(--border); }
+.metrics-table th { background:var(--bg3); font-weight:600; text-align:center; }
+.metrics-table td:first-child { font-weight:600; width:160px; }
+.metrics-table input { width:100%; border:none; background:transparent; text-align:right; font-size:14px; padding:2px 4px; }
+.metrics-table input:focus { outline:2px solid var(--primary); border-radius:3px; }
+.posts-table { width:100%; border-collapse:collapse; font-size:13px; }
+.posts-table th, .posts-table td { padding:7px 10px; border:1px solid var(--border); }
+.posts-table th { background:var(--bg3); font-weight:600; text-align:center; white-space:nowrap; }
+.posts-table input, .posts-table select { width:100%; border:none; background:transparent; font-size:13px; }
+.posts-table input[type=number] { text-align:right; }
+.posts-table input:focus, .posts-table select:focus { outline:2px solid var(--primary); border-radius:3px; }
+.btn-add-row { margin-top:10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set tw = (insight.this_week_json | fromjson) if insight and insight.this_week_json else {} %}
+{% set lw = (insight.last_week_json | fromjson) if insight and insight.last_week_json else {} %}
+{% set fa = (insight.four_week_avg_json | fromjson) if insight and insight.four_week_avg_json else {} %}
+{% set ac = (insight.account_json | fromjson) if insight and insight.account_json else {} %}
+{% set posts = (insight.posts_json | fromjson) if insight and insight.posts_json else [] %}
+
+<form method="POST">
+  <div class="card">
+    <div class="card-body">
+
+      <!-- 基本情報 -->
+      <div class="section-title">基本情報</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:500px;">
+        <div>
+          <label class="form-label">対象週（月曜日）</label>
+          <input class="form-control" type="date" name="week_start"
+                 value="{{ default_week_start }}" required>
+        </div>
+        <div>
+          <label class="form-label">フォロワー数</label>
+          <input class="form-control" type="number" name="followers" min="0"
+                 value="{{ ac.get('followers', '') or '' }}">
+        </div>
+      </div>
+
+      <!-- アカウント指標 -->
+      <div class="section-title">アカウント指標</div>
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;">指標</th>
+            <th>今週</th>
+            <th>先週</th>
+            <th>直近4週平均</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set metrics = [
+            ('reach',          'リーチ数（見られた回数）'),
+            ('profile_views',  'プロフィール閲覧数'),
+            ('follows',        'フォロワー増加数'),
+            ('website_clicks', 'ウェブサイトクリック数'),
+          ] %}
+          {% for key, label in metrics %}
+          <tr>
+            <td>{{ label }}</td>
+            <td><input type="number" name="tw_{{ key }}" min="0" value="{{ tw.get(key, '') or '' }}"></td>
+            <td><input type="number" name="lw_{{ key }}" min="0" value="{{ lw.get(key, '') or '' }}"></td>
+            <td><input type="number" name="fa_{{ key }}" min="0" value="{{ fa.get(key, '') or '' }}"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- 投稿データ -->
+      <div class="section-title">今週の投稿データ</div>
+      <table class="posts-table" id="posts-table">
+        <thead>
+          <tr>
+            <th>投稿ID</th>
+            <th>タイプ</th>
+            <th>キャプション要約（50字）</th>
+            <th>リーチ</th>
+            <th>保存</th>
+            <th>いいね</th>
+            <th>コメント</th>
+            <th>シェア</th>
+            <th>視聴回数</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="posts-body">
+          {% for p in posts %}
+          <tr>
+            <td><input type="text" name="post_id[]" value="{{ p.get('post_id','') }}" placeholder="post_1"></td>
+            <td>
+              <select name="post_media_type[]">
+                <option value="image"    {% if p.get('media_type')=='image' %}selected{% endif %}>画像</option>
+                <option value="carousel" {% if p.get('media_type')=='carousel' %}selected{% endif %}>カルーセル</option>
+                <option value="reel"     {% if p.get('media_type')=='reel' %}selected{% endif %}>リール</option>
+              </select>
+            </td>
+            <td><input type="text" name="post_caption[]" value="{{ p.get('caption_summary','') }}" maxlength="100"></td>
+            <td><input type="number" name="post_reach[]"    min="0" value="{{ p.get('reach','') or '' }}"></td>
+            <td><input type="number" name="post_saved[]"    min="0" value="{{ p.get('saved','') or '' }}"></td>
+            <td><input type="number" name="post_likes[]"    min="0" value="{{ p.get('likes','') or '' }}"></td>
+            <td><input type="number" name="post_comments[]" min="0" value="{{ p.get('comments','') or '' }}"></td>
+            <td><input type="number" name="post_shares[]"   min="0" value="{{ p.get('shares','') or '' }}"></td>
+            <td><input type="number" name="post_views[]"    min="0" value="{{ p.get('views','') or '' }}"></td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-secondary btn-sm btn-add-row" onclick="addRow()">+ 投稿を追加</button>
+
+    </div>
+    <div class="card-footer" style="display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary">保存する</button>
+      <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="btn btn-secondary">キャンセル</a>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROW_TEMPLATE = `<tr>
+  <td><input type="text" name="post_id[]" placeholder="post_X"></td>
+  <td><select name="post_media_type[]">
+    <option value="image">画像</option>
+    <option value="carousel">カルーセル</option>
+    <option value="reel">リール</option>
+  </select></td>
+  <td><input type="text" name="post_caption[]" maxlength="100"></td>
+  <td><input type="number" name="post_reach[]"    min="0"></td>
+  <td><input type="number" name="post_saved[]"    min="0"></td>
+  <td><input type="number" name="post_likes[]"    min="0"></td>
+  <td><input type="number" name="post_comments[]" min="0"></td>
+  <td><input type="number" name="post_shares[]"   min="0"></td>
+  <td><input type="number" name="post_views[]"    min="0"></td>
+  <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">✕</button></td>
+</tr>`;
+
+function addRow() {
+  document.getElementById('posts-body').insertAdjacentHTML('beforeend', ROW_TEMPLATE);
+}
+function removeRow(btn) {
+  btn.closest('tr').remove();
+}
+
+// 初期行が0のとき1行追加
+window.addEventListener('load', () => {
+  if (document.getElementById('posts-body').children.length === 0) addRow();
+});
+</script>
+{% endblock %}

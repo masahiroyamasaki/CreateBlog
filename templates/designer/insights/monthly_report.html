@@ -1,0 +1,83 @@
+{% extends "designer/base.html" %}
+{% block title %}月次レポート — {{ client.name }}{% endblock %}
+{% block page_title %}クライアント向け月次レポート{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">← 一覧</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.week-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.week-row:last-child { border-bottom:none; }
+.report-body { white-space:pre-wrap; font-size:14px; line-height:1.8; padding:20px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-family:var(--font-base); }
+.copy-bar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- 対象データ一覧 -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><h2>分析対象データ（最新4週）</h2></div>
+  <div class="card-body">
+    {% if recent4 %}
+    {% for ins in recent4 %}
+    <div class="week-row">
+      <span style="font-weight:600;min-width:140px;">{{ ins.week_start.strftime('%Y/%m/%d') }}〜</span>
+      <span class="badge badge-green">Stage 1 済</span>
+      {% set posts_count = (ins.posts_json | fromjson) | length %}
+      <span style="color:var(--muted);">投稿 {{ posts_count }} 件</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty" style="padding:24px;">
+      分析済みのインサイトデータがありません。<br>
+      <a href="{{ url_for('designer.insight_list', client_id=client.id) }}">データを入力して分析を実行してください →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 月次レポート生成 -->
+<div class="card">
+  <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <h2>月次レポート本文</h2>
+    <form method="POST">
+      <button type="submit" class="btn btn-primary btn-sm"
+              {% if not recent4 %}disabled{% endif %}>
+        {% if report_text %}再生成{% else %}レポートを生成{% endif %}
+      </button>
+    </form>
+  </div>
+  <div class="card-body">
+    {% if report_text %}
+    <div class="copy-bar">
+      <button class="btn btn-secondary btn-sm" onclick="copyReport()">コピー</button>
+    </div>
+    <div class="report-body" id="report-body">{{ report_text }}</div>
+    {% elif recent4 %}
+    <div class="empty" style="padding:32px;text-align:center;color:var(--muted);">
+      「レポートを生成」ボタンを押すとAIがクライアント向け月次サマリーを作成します。
+    </div>
+    {% else %}
+    <div class="empty" style="padding:32px;text-align:center;color:var(--muted);">
+      分析済みデータがないためレポートを生成できません。
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyReport() {
+  const body = document.getElementById('report-body');
+  navigator.clipboard.writeText(body.innerText).then(() => {
+    showToast('クリップボードにコピーしました');
+  }).catch(() => {
+    showToast('コピーに失敗しました', 'error');
+  });
+}
+</script>
+{% endblock %}

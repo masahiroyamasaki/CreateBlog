@@ -400,3 +400,43 @@ class AgreementPdf(db.Model):
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     agreement = db.relationship("DesignerAgreement", back_populates="pdf")
+
+
+# ─── Instagram 週次インサイト ────────────────────────────────────────────────
+
+class WeeklyInsight(db.Model):
+    __tablename__ = "weekly_insights"
+
+    id           = db.Column(db.Integer, primary_key=True)
+    client_id    = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False)
+    week_start   = db.Column(db.Date, nullable=False)          # 対象週の月曜日
+
+    # 入力データ（JSON文字列）
+    account_json      = db.Column(db.Text, default="{}")       # フォロワー数など
+    this_week_json    = db.Column(db.Text, default="{}")       # 今週集計値
+    last_week_json    = db.Column(db.Text, default="{}")       # 前週集計値
+    four_week_avg_json= db.Column(db.Text, default="{}")       # 直近4週平均
+    posts_json        = db.Column(db.Text, default="[]")       # 各投稿データ
+
+    # Stage 1 キャッシュ
+    stage1_json          = db.Column(db.Text, nullable=True)
+    stage1_generated_at  = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    client  = db.relationship("Client", backref=db.backref("weekly_insights", lazy="dynamic"))
+    reports = db.relationship("WeeklyReport", back_populates="insight",
+                              cascade="all, delete-orphan")
+
+
+class WeeklyReport(db.Model):
+    __tablename__ = "weekly_reports"
+
+    id                = db.Column(db.Integer, primary_key=True)
+    weekly_insight_id = db.Column(db.Integer, db.ForeignKey("weekly_insights.id"), nullable=False)
+    report_type       = db.Column(db.String(20), nullable=False)  # "designer" | "client_monthly"
+    result_json       = db.Column(db.Text, nullable=True)         # デザイナー向け（JSON）
+    result_text       = db.Column(db.Text, nullable=True)         # クライアント向け（プレーンテキスト）
+    generated_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    insight = db.relationship("WeeklyInsight", back_populates="reports")

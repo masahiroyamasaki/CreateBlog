@@ -1,4 +1,6 @@
 import os
+import re
+import json
 import logging
 import anthropic
 from dotenv import load_dotenv
@@ -50,3 +52,33 @@ class BaseAgent:
                 f" 文字数={len(text)}"
             )
         return text
+
+    def _generate_json(self, system: str, user_message: str):
+        """JSON（オブジェクトまたは配列）を返すAPIを呼び出し、パース済みオブジェクトを返す。
+        コードブロック除去 → 直接パース → {}/[] 切り出しの順に試みる。"""
+        text = self._generate(system, user_message)
+        cleaned = re.sub(r'```[\w]*', '', text).replace('```', '').strip()
+
+        # trailing comma の修復
+        cleaned = re.sub(r',\s*([\]}])', r'\1', cleaned)
+
+        def _try(s):
+            try:
+                return json.loads(s)
+            except (json.JSONDecodeError, ValueError):
+                return None
+
+        r = _try(cleaned)
+        if r is not None:
+            return r
+
+        for open_c, close_c in [('{', '}'), ('[', ']')]:
+            start = cleaned.find(open_c)
+            end   = cleaned.rfind(close_c)
+            if start >= 0 and end > start:
+                r = _try(cleaned[start:end + 1])
+                if r is not None:
+                    return r
+
+        snippet = cleaned[:300].replace('\n', '↵')
+        raise ValueError(f"JSONを抽出できませんでした。先頭: {snippet}")
