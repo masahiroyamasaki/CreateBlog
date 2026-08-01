@@ -18,35 +18,58 @@ _JST = timezone(timedelta(hours=9))
 
 
 def _extract_json_array(text: str) -> list:
-    """AIレスポンスから最初の完全なJSONアレイを確実に抽出する。
-    greedy regex の誤マッチを防ぐため、括弧の深さを追跡して切り出す。"""
-    # コードブロック記法を除去
-    text = re.sub(r'```[\w]*\s*', '', text).strip()
-    start = text.find('[')
-    if start < 0:
-        raise ValueError("AIレスポンスからJSONが見つかりませんでした")
-    depth = 0
-    in_str = False
-    esc = False
-    for i, ch in enumerate(text[start:], start):
-        if esc:
-            esc = False
-            continue
-        if ch == '\\' and in_str:
-            esc = True
-            continue
-        if ch == '"':
-            in_str = not in_str
-            continue
-        if in_str:
-            continue
-        if ch == '[':
-            depth += 1
-        elif ch == ']':
-            depth -= 1
-            if depth == 0:
-                return json.loads(text[start:i + 1])
-    raise ValueError("AIレスポンスのJSONアレイが不完全です")
+    """AIレスポンスから最初の完全なJSONアレイを抽出する。複数の方法を順に試みる。"""
+    # コードブロック記法（開き・閉じ両方）を除去
+    cleaned = re.sub(r'```[\w]*', '', text)
+    cleaned = cleaned.replace('```', '').strip()
+
+    # 方法1: テキスト全体をそのままパース
+    try:
+        result = json.loads(cleaned)
+        if isinstance(result, list):
+            return result
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # 方法2: 最初の [ から最後の ] までを切り出してパース
+    start = cleaned.find('[')
+    if start >= 0:
+        end = cleaned.rfind(']')
+        if end > start:
+            try:
+                result = json.loads(cleaned[start:end + 1])
+                if isinstance(result, list):
+                    return result
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # 方法3: balanced-bracket で正確に切り出してパース
+        depth = 0
+        in_str = False
+        esc = False
+        for i, ch in enumerate(cleaned[start:], start):
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_str:
+                esc = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch == '[':
+                depth += 1
+            elif ch == ']':
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(cleaned[start:i + 1])
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+
+    raise ValueError("AIレスポンスからJSONを抽出できませんでした")
 
 
 def _plan_description(client) -> str:
@@ -293,10 +316,12 @@ def _generate_ideas(client, ai, count: int, db) -> list:
 
     message = ai.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
     )
     text = message.content[0].text
+    if message.stop_reason == "max_tokens":
+        logger.warning(f"[_generate_ideas] max_tokens に達しました。レスポンスが切れている可能性があります。")
     ideas = _extract_json_array(text)
 
     last = (
