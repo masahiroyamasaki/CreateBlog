@@ -296,8 +296,52 @@ def run_monthly_billing_batch(app, db) -> dict:
 
 # ── ネタ生成 ─────────────────────────────────────────────────────────────────
 
+def _build_ideas_prompt(client_name, themes, business_note, audience_note, avoid, theme_note, n) -> str:
+    return f"""あなたはコンテンツプランナーです。
+以下のテーマをもとに、投稿ネタを{n}件考えてください。
+
+企業名: {client_name}{business_note}
+登録テーマ一覧:
+{themes}{audience_note}
+{avoid}
+
+【重要な条件】
+1. テーマ割り当て: {theme_note}
+2. タイトル表現の多様化: 同じ書き出し・言い回しを2件以上使わないこと。
+   以下の形式をバランスよく混在させること:
+   - How-to型    : 「〇〇する3つの方法」「〇〇のコツ」
+   - 疑問型      : 「〇〇できていますか？」「なぜ〇〇なのか」
+   - リスト型    : 「〇〇な人の特徴5選」「〇〇に必要なもの」
+   - 比較型      : 「〇〇vs〇〇」「〇〇と〇〇の違い」
+   - ストーリー型: 「〇〇を変えたら〇〇になった」「〇〇してわかったこと」
+   - 断言型      : 「〇〇はもう古い」「実は〇〇が重要だった」
+   - 共感型      : 「〇〇で悩んでいる方へ」「〇〇あるある」
+3. 切り口の多様化: 初心者向け・上級者向け・季節トレンド・よくある失敗・プロの視点など角度を変えること。
+4. 読者の悩みや関心に刺さるタイトルにすること。
+5. 大枠は投稿の方向性を2〜3文で簡潔に記載すること。
+6. 必ず{n}件すべて出力すること。途中で省略しないこと。
+
+JSONのみ出力してください（説明・前置き一切不要）:
+[
+  {{"title": "タイトル", "outline": "大枠・方向性"}},
+  ...
+]"""
+
+
+def _call_ideas_api(ai, prompt: str) -> list:
+    message = ai.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=8192,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    if message.stop_reason == "max_tokens":
+        logger.warning("[_generate_ideas] max_tokens (8192) に達しました。レスポンスが切れています。")
+    return _extract_json_array(message.content[0].text)
+
+
 def _generate_ideas(client, ai, count: int, db) -> list:
-    """AIでネタを count 件生成してキューに追加し、TopicQueue リストを返す。"""
+    """AIでネタを count 件生成してキューに追加し、TopicQueue リストを返す。
+    件数不足の場合は1回リトライして不足分を補う。"""
     from models import TopicQueue, Post
 
     themes = (client.themes or "").strip()
@@ -324,58 +368,46 @@ def _generate_ideas(client, ai, count: int, db) -> list:
     else:
         theme_note = "テーマは1種類です。切り口・対象読者・難易度・形式を毎回変えて多様なネタを生成してください。"
 
-    business_description = (client.business_description or "").strip()
-    business_note = f"\n事業内容: {business_description}" if business_description else ""
+    business_note = f"\n事業内容: {(client.business_description or '').strip()}" if (client.business_description or "").strip() else ""
+    audience_note = f"\n想定読者: {(client.target_audience or '').strip()}" if (client.target_audience or "").strip() else ""
 
-    target_audience = (client.target_audience or "").strip()
-    audience_note = f"\n想定読者: {target_audience}" if target_audience else ""
+    # ── 1回目の生成 ─────────────────────────────────────────────────────────
+    prompt = _build_ideas_prompt(client.name, themes, business_note, audience_note, avoid, theme_note, count)
+    ideas = _call_ideas_api(ai, prompt)
+    logger.info(f"[_generate_ideas] 1回目: {len(ideas)}/{count} 件取得")
 
-    prompt = f"""あなたはコンテンツプランナーです。
-以下のテーマをもとに、投稿ネタを{count}件考えてください。
+    # ── 不足時リトライ（最大1回） ────────────────────────────────────────────
+    if len(ideas) < count:
+        shortage = count - len(ideas)
+        logger.info(f"[_generate_ideas] {shortage} 件不足。リトライします。")
+        got_titles = {(d.get("title") or "").strip() for d in ideas}
+        retry_avoid = avoid + "\n" + "\n".join(f"- {t}" for t in got_titles if t)
+        retry_prompt = _build_ideas_prompt(
+            client.name, themes, business_note, audience_note,
+            retry_avoid, theme_note, shortage
+        )
+        try:
+            retry_ideas = _call_ideas_api(ai, retry_prompt)
+            # 重複タイトルを除いて追加
+            for d in retry_ideas:
+                title = (d.get("title") or "").strip()
+                if title and title not in got_titles:
+                    ideas.append(d)
+                    got_titles.add(title)
+                if len(ideas) >= count:
+                    break
+            logger.info(f"[_generate_ideas] リトライ後: {len(ideas)}/{count} 件")
+        except Exception as e:
+            logger.warning(f"[_generate_ideas] リトライ失敗: {e}")
 
-企業名: {client.name}{business_note}
-登録テーマ一覧:
-{themes}{audience_note}
-{avoid}
-
-【重要な条件】
-1. テーマ割り当て: {theme_note}
-2. タイトル表現の多様化: 同じ書き出し・言い回しを2件以上使わないこと。
-   以下の形式をバランスよく混在させること:
-   - How-to型    : 「〇〇する3つの方法」「〇〇のコツ」
-   - 疑問型      : 「〇〇できていますか？」「なぜ〇〇なのか」
-   - リスト型    : 「〇〇な人の特徴5選」「〇〇に必要なもの」
-   - 比較型      : 「〇〇vs〇〇」「〇〇と〇〇の違い」
-   - ストーリー型: 「〇〇を変えたら〇〇になった」「〇〇してわかったこと」
-   - 断言型      : 「〇〇はもう古い」「実は〇〇が重要だった」
-   - 共感型      : 「〇〇で悩んでいる方へ」「〇〇あるある」
-3. 切り口の多様化: 初心者向け・上級者向け・季節トレンド・よくある失敗・プロの視点など角度を変えること。
-4. 読者の悩みや関心に刺さるタイトルにすること。
-5. 大枠は投稿の方向性を2〜3文で簡潔に記載すること。
-
-以下のJSON形式のみで出力してください。他のテキストは一切含めないこと:
-[
-  {{"title": "タイトル", "outline": "大枠・方向性"}},
-  ...
-]"""
-
-    message = ai.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    text = message.content[0].text
-    if message.stop_reason == "max_tokens":
-        logger.warning(f"[_generate_ideas] max_tokens に達しました。レスポンスが切れている可能性があります。")
-    ideas = _extract_json_array(text)
-
+    # ── DB保存 ───────────────────────────────────────────────────────────────
     last = (
         TopicQueue.query.filter_by(client_id=client.id, status="pending")
         .order_by(TopicQueue.sort_order.desc()).first()
     )
     next_order = (last.sort_order + 1) if last else 1
     added = []
-    for i, idea in enumerate(ideas[:count]):
+    for idea in ideas[:count]:
         title = (idea.get("title") or "").strip()
         if not title:
             continue
