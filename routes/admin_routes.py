@@ -199,16 +199,37 @@ def admin_invoice_pdf(invoice_id: int):
 @designer_bp.route("/admin/invoices/generate", methods=["POST"])
 @login_required
 def admin_invoice_generate():
-    """手動で当月分の請求書を一括生成する。"""
+    """手動で当月分のご利用明細書を一括生成する。"""
     _admin_only()
     try:
         from batch_monthly import run_monthly_billing_batch
-        from models import db as _db
+        from models import db as _db, ClientSubscription
         from flask import current_app
+        from datetime import datetime, timezone, timedelta
+        _JST = timezone(timedelta(hours=9))
+        now = datetime.now(_JST)
+
+        # 事前チェック: 請求対象サブスクリプションの件数
+        trial_count    = ClientSubscription.query.filter_by(is_trial=True).count()
+        nontrial_count = ClientSubscription.query.filter_by(is_trial=False).count()
+
         result = run_monthly_billing_batch(current_app._get_current_object(), _db)
+
         if result["errors"]:
             flash(f"一部エラー: {'; '.join(result['errors'][:3])}", "warning")
-        flash(f"{result['invoices']} 件の請求書を生成しました", "success")
+
+        if result["invoices"] == 0 and nontrial_count == 0:
+            flash(
+                f"ご利用明細書の生成対象がありません（{now.year}年{now.month}月分）。"
+                f"請求対象の契約がすべてお試し中（{trial_count}件）になっています。"
+                "「契約マスタ」でお試しフラグをオフにしてください。",
+                "warning",
+            )
+        else:
+            flash(
+                f"{result['invoices']} 件のご利用明細書を生成しました（{now.year}年{now.month}月分）",
+                "success",
+            )
     except Exception as e:
         flash(f"エラー: {e}", "error")
     return redirect(url_for("designer.admin_invoices"))
