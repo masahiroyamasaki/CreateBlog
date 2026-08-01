@@ -108,11 +108,11 @@ def run_monthly_billing_batch(app, db) -> dict:
         # ── 請求対象の確定: is_trial=False の全 subscription ─────────────────
         subs = ClientSubscription.query.filter_by(is_trial=False).all()
 
-        # デザイナーごとに集計（稼働中 or テスト企業のみ）
+        # デザイナーごとに集計（稼働中・テスト・設定中企業を対象）
         designer_subs: dict[int, list] = {}
         for sub in subs:
             client = Client.query.get(sub.client_id)
-            if client and client.client_status in ("active", "test"):
+            if client and client.client_status in ("active", "test", "setting"):
                 designer_subs.setdefault(sub.designer_id, []).append(sub)
 
         for designer_id, sub_list in designer_subs.items():
@@ -128,7 +128,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                 total = sum(s.amount for s in sub_list)
                 for sub in sub_list:
                     c = Client.query.get(sub.client_id)
-                    if c and getattr(c, "image_gen_enabled", False) and c.client_status in ("active", "test"):
+                    if c and getattr(c, "image_gen_enabled", False) and c.client_status in ("active", "test", "setting"):
                         count = c.monthly_post_count or 4
                         total += (count // 4) * 2000
 
