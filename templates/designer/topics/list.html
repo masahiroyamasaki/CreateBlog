@@ -58,6 +58,11 @@
           <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
           AIでネタ生成
         </button>
+        <button class="btn btn-secondary btn-sm" id="ai-idea-bulk-btn" onclick="generateAiIdeaBulk()"
+          title="{{ client.monthly_post_count or 4 }}件生成（契約数分）">
+          <span id="ai-idea-bulk-spinner" class="spinner-sm" style="display:none;"></span>
+          契約数分ネタ生成（{{ client.monthly_post_count or 4 }}件）
+        </button>
         {% endif %}
         <button class="btn btn-primary btn-sm" id="bulk-gen-btn" onclick="bulkGenerate()"
           {% if pending_count == 0 or not can_generate %}disabled{% endif %}>
@@ -148,15 +153,16 @@ if (processingCount > 0) {
 
 // 生成ステップのインライン表示
 const STEP_NAMES_INLINE = {
-  init:            '初期化中',
-  blog_creator:    'ステップ 1/6: 下書き作成中',
-  content_checker: 'ステップ 2/6: コンテンツチェック中',
-  legal_checker:   'ステップ 3/6: リーガルチェック中',
-  final_creator:   'ステップ 4/6: 最終記事生成中',
-  ig_formatter:    'ステップ 5/6: キャプション生成中',
-  ig_caption:      'ステップ 5/6: キャプション生成中',
-  saving:          'ステップ 6/6: 保存中',
-  done:            '完了',
+  init:         '初期化中',
+  blog_creator: 'ステップ 1/7: 下書き作成中',
+  seo_checker:  'ステップ 2/7: SEO最適化中',
+  fact_checker: 'ステップ 3/7: ファクトチェック中',
+  legal_checker:'ステップ 4/7: リーガルチェック中',
+  final_creator:'ステップ 5/7: 最終記事生成中',
+  ig_formatter: 'ステップ 6/7: キャプション生成中',
+  ig_caption:   'ステップ 6/7: キャプション生成中',
+  saving:       'ステップ 7/7: 保存中',
+  done:         '完了',
 };
 const processingTopicIds = [{% for t in topics %}{% if t.status == 'processing' %}{{ t.id }},{% endif %}{% endfor %}];
 
@@ -271,6 +277,31 @@ async function generateAiIdea() {
     const data = await res.json();
     if (data.success) {
       showToast(`「${data.topic.title}」を追加しました`);
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(data.reason || 'エラーが発生しました', 'error');
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    }
+  } catch(e) {
+    showToast('通信エラー', 'error');
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+async function generateAiIdeaBulk() {
+  const btn = document.getElementById('ai-idea-bulk-btn');
+  const spinner = document.getElementById('ai-idea-bulk-spinner');
+  const count = {{ client.monthly_post_count or 4 }};
+  if (!confirm(`契約数分（${count}件）のネタをAIで一括生成します。よろしいですか？`)) return;
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/ai-idea-bulk`, {method: 'POST'});
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${data.count}件のネタを追加しました`);
       setTimeout(() => location.reload(), 800);
     } else {
       showToast(data.reason || 'エラーが発生しました', 'error');

@@ -693,3 +693,25 @@ def topic_ai_idea(client_id: int):
         return jsonify({"success": False, "reason": str(e)})
     except Exception as e:
         return jsonify({"success": False, "reason": f"エラー: {str(e)}"})
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/ai-idea-bulk", methods=["POST"])
+@login_required
+def topic_ai_idea_bulk(client_id: int):
+    """管理者のみ: 契約数分（monthly_post_count件）のAI記事ネタを一括生成する"""
+    if current_user.role != "admin":
+        abort(403)
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    count = client.monthly_post_count or 4
+    try:
+        from batch_monthly import _generate_ideas
+        from config import Config
+        import anthropic as _anthropic
+        ai = _anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        added = _generate_ideas(client, ai, count, db)
+        return jsonify({"success": True, "count": len(added)})
+    except ValueError as e:
+        return jsonify({"success": False, "reason": str(e)})
+    except Exception as e:
+        return jsonify({"success": False, "reason": f"エラー: {str(e)}"})
