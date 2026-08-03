@@ -163,10 +163,10 @@
         <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.topic_list' %}active{% endif %}">
           💡 記事ネタ
         </a>
-        <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="nav-link {% if 'insight' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="nav-link {% if request.endpoint and 'insight' in request.endpoint %}active{% endif %}">
           📈 インサイト
         </a>
-        <a href="{{ url_for('designer.report_list', client_id=client.id) }}" class="nav-link {% if 'report' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('designer.report_list', client_id=client.id) }}" class="nav-link {% if request.endpoint and 'report' in request.endpoint %}active{% endif %}">
           📋 レポート
         </a>
         {% endif %}
