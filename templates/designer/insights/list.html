@@ -3,8 +3,25 @@
 {% block page_title %}Instagramインサイト{% endblock %}
 {% block topbar_actions %}
   <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ダッシュボード</a>
-  <a href="{{ url_for('designer.insight_new', client_id=client.id) }}" class="btn btn-primary btn-sm">+ データ入力</a>
+  {% if client.ig_business_account_id and client.ig_access_token %}
+  <button class="btn btn-secondary btn-sm" onclick="openFetchModal()">🔄 APIから取得</button>
+  {% endif %}
+  <a href="{{ url_for('designer.insight_new', client_id=client.id) }}" class="btn btn-primary btn-sm">+ 手動入力</a>
   <a href="{{ url_for('designer.insight_monthly_report', client_id=client.id) }}" class="btn btn-secondary btn-sm">月次レポート</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.modal-backdrop.open { display:flex; }
+.modal-box { background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:28px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.modal-box h3 { font-size:16px;font-weight:700;margin-bottom:16px; }
+.modal-box label { font-size:13px;font-weight:600;display:block;margin-bottom:6px; }
+.modal-box input[type=date] { width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg);color:var(--text); }
+.modal-footer { display:flex;justify-content:flex-end;gap:8px;margin-top:20px; }
+.spinner-sm { display:inline-block;width:14px;height:14px;border:2px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -56,9 +73,95 @@
     </table>
     {% else %}
     <div class="empty" style="padding:40px;text-align:center;">
-      インサイトデータがありません。<a href="{{ url_for('designer.insight_new', client_id=client.id) }}">データを入力する →</a>
+      インサイトデータがありません。<br>
+      {% if client.ig_business_account_id and client.ig_access_token %}
+      <a href="#" onclick="openFetchModal();return false;">APIからデータを自動取得する →</a>
+      &nbsp;または&nbsp;
+      {% endif %}
+      <a href="{{ url_for('designer.insight_new', client_id=client.id) }}">手動でデータを入力する →</a>
     </div>
     {% endif %}
   </div>
 </div>
+
+<!-- APIデータ取得モーダル -->
+{% if client.ig_business_account_id and client.ig_access_token %}
+<div class="modal-backdrop" id="fetch-modal">
+  <div class="modal-box">
+    <h3>🔄 InstagramAPIからデータ取得</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+      指定した週のインサイトデータをInstagram Graph APIから自動取得します。<br>
+      既存のデータがある場合は上書きされます。
+    </p>
+    <label for="fetch-week-start">週開始日（月曜日）</label>
+    <input type="date" id="fetch-week-start" value="{{ last_monday }}">
+    <div id="fetch-error" style="display:none;margin-top:10px;padding:8px;background:#fee2e2;border-radius:6px;font-size:12px;color:#991b1b;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeFetchModal()">キャンセル</button>
+      <button class="btn btn-primary btn-sm" id="fetch-btn" onclick="runFetch()">
+        <span id="fetch-spinner" style="display:none;" class="spinner-sm"></span>
+        取得する
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CLIENT_ID   = {{ client.id }};
+const LAST_MONDAY = "{{ last_monday }}";
+
+function openFetchModal() {
+  document.getElementById('fetch-modal').classList.add('open');
+  document.getElementById('fetch-week-start').value = LAST_MONDAY;
+  document.getElementById('fetch-error').style.display = 'none';
+}
+function closeFetchModal() {
+  document.getElementById('fetch-modal').classList.remove('open');
+}
+
+async function runFetch() {
+  const btn     = document.getElementById('fetch-btn');
+  const spinner = document.getElementById('fetch-spinner');
+  const errBox  = document.getElementById('fetch-error');
+  const weekVal = document.getElementById('fetch-week-start').value;
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  errBox.style.display  = 'none';
+
+  try {
+    const res  = await fetch(`/designer/clients/${CLIENT_ID}/insights/fetch-api`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({week_start: weekVal}),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`APIからデータを取得しました（投稿${data.post_count}件）`);
+      setTimeout(() => {
+        window.location.href = `/designer/clients/${CLIENT_ID}/insights/${data.insight_id}`;
+      }, 800);
+    } else {
+      errBox.textContent = data.reason || '取得エラー';
+      errBox.style.display = 'block';
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    }
+  } catch(e) {
+    errBox.textContent = '通信エラーが発生しました';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+// モーダル外クリックで閉じる
+document.addEventListener('click', e => {
+  const modal = document.getElementById('fetch-modal');
+  if (modal && e.target === modal) closeFetchModal();
+});
+</script>
 {% endblock %}

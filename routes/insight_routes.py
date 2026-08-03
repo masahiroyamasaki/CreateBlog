@@ -5,6 +5,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, a
 from flask_login import login_required, current_user
 from models import db, Client, WeeklyInsight, WeeklyReport
 from routes import designer_bp
+from config import decrypt_field
 
 
 def _assert_access(client: Client):
@@ -30,7 +31,9 @@ def insight_list(client_id: int):
         .order_by(WeeklyInsight.week_start.desc())
         .all()
     )
-    return render_template("designer/insights/list.html", client=client, insights=insights)
+    return render_template("designer/insights/list.html",
+                           client=client, insights=insights,
+                           last_monday=_last_monday().isoformat())
 
 
 # ── 新規作成 ─────────────────────────────────────────────────────────────────
@@ -342,6 +345,65 @@ def report_view(client_id: int, report_id: int):
                            client=client,
                            report=report,
                            result_json=result_json)
+
+
+# ── Instagram API からデータ自動取得 ──────────────────────────────────────────
+
+@designer_bp.route("/clients/<int:client_id>/insights/fetch-api", methods=["POST"])
+@login_required
+def insight_fetch_api(client_id: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+
+    access_token = decrypt_field(client.ig_access_token or "")
+    ig_user_id = (client.ig_business_account_id or "").strip()
+
+    if not access_token or not ig_user_id:
+        return jsonify({"success": False,
+                        "reason": "InstagramのアカウントIDまたはアクセストークンが設定されていません"}), 400
+
+    body = request.get_json(silent=True) or {}
+    week_start_str = body.get("week_start", "")
+    try:
+        week_start = date.fromisoformat(week_start_str) if week_start_str else _last_monday()
+    except ValueError:
+        week_start = _last_monday()
+
+    try:
+        from ig_insights import InstagramInsightsFetcher
+        from datetime import datetime as _dt
+
+        fetcher = InstagramInsightsFetcher(access_token, ig_user_id)
+        data = fetcher.fetch_insight_data(week_start)
+
+        existing = WeeklyInsight.query.filter_by(
+            client_id=client_id, week_start=week_start
+        ).first()
+
+        if existing:
+            insight = existing
+        else:
+            insight = WeeklyInsight(client_id=client_id, week_start=week_start)
+            db.session.add(insight)
+
+        insight.account_json = json.dumps({
+            "industry": client.business_description or "",
+            "followers": data["followers"],
+        }, ensure_ascii=False)
+        insight.this_week_json    = json.dumps(data["this_week"],    ensure_ascii=False)
+        insight.last_week_json    = json.dumps(data["last_week"],    ensure_ascii=False)
+        insight.four_week_avg_json = json.dumps(data["four_week_avg"], ensure_ascii=False)
+        insight.posts_json        = json.dumps(data["posts"],        ensure_ascii=False)
+
+        # データ更新時は Stage1 キャッシュをクリア
+        insight.stage1_json = None
+        insight.stage1_generated_at = None
+
+        db.session.commit()
+        return jsonify({"success": True, "insight_id": insight.id,
+                        "post_count": len(data["posts"])})
+    except Exception as e:
+        return jsonify({"success": False, "reason": str(e)}), 500
 
 
 # ── ヘルパー ─────────────────────────────────────────────────────────────────
