@@ -165,11 +165,11 @@
           </div>
 
           <div class="form-group">
-            <label>ベースプロンプト（全画像共通・英語）</label>
+            <label>ベースプロンプト（全画像共通）</label>
             <textarea class="form-control" name="image_base_prompt" rows="4"
-                      placeholder="例: flat vector illustration style, warm pastel palette, consistent character design of a young professional woman with short black hair"
-                      style="font-size:13px;font-family:monospace;">{{ client.image_base_prompt if client and client.image_base_prompt else '' }}</textarea>
-            <p class="hint">全生成画像の先頭に必ず付加される英語プロンプト。空欄の場合はデフォルト（フラットベクターイラスト・女性キャラ）が使用されます。キャラクターデザイン・配色の一貫性を保つために設定してください。</p>
+                      placeholder="例: フラットベクターイラスト、温かいパステルカラー、ショートヘアの若い女性キャラクターを一貫して使用"
+                      style="font-size:13px;">{{ client.image_base_prompt if client and client.image_base_prompt else '' }}</textarea>
+            <p class="hint">全生成画像の先頭に付加されるデザイン指示。日本語で入力してください。AIが自動で英語に変換して画像生成に使用します。空欄の場合はデフォルト（フラットベクターイラスト・女性キャラ）が使用されます。</p>
           </div>
         </div>
       </div>

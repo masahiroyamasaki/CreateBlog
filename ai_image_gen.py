@@ -83,8 +83,10 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         raise ValueError("ANTHROPIC_API_KEY が設定されていません")
 
     body_text = _strip_html(body_html or "")[:1500]
-    effective_base = (base_prompt.strip() if base_prompt and base_prompt.strip()
-                      else _DEFAULT_BASE_PROMPT)
+    raw_base = base_prompt.strip() if base_prompt and base_prompt.strip() else ""
+    effective_base = raw_base if raw_base else _DEFAULT_BASE_PROMPT
+    # 日本語が含まれている場合は Claude に翻訳させる
+    _has_japanese = bool(re.search(r'[぀-鿿]', effective_base))
 
     if balance == "text_focus":
         text_section = f"""
@@ -108,11 +110,24 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         output_suffix = "high quality, no text, no letters, no words, no japanese characters"
         no_text_rule = '- 必ず "no text, no letters, no words, no japanese characters" を含めること'
 
+    if _has_japanese:
+        base_instruction = (
+            f"## ベースプロンプト（日本語→英語に翻訳して必ず先頭に付加すること）\n"
+            f"{effective_base}\n"
+            f"※ 上記を自然な英語に翻訳し、出力プロンプトの先頭に組み込むこと（日本語をそのまま出力しないこと）"
+        )
+        output_format = '"[ベースプロンプトを英語訳したもの], [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], ' + output_suffix + '"'
+    else:
+        base_instruction = (
+            f"## ベースプロンプト（必ず先頭に付加すること・変更禁止）\n"
+            f"{effective_base}"
+        )
+        output_format = f'"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"'
+
     user_msg = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
 
-## ベースプロンプト（必ず先頭に付加すること・変更禁止）
-{effective_base}
+{base_instruction}
 
 ## 記事情報
 企業名: {client_name or "（未設定）"}
@@ -134,7 +149,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - 雰囲気: 明るい/落ち着いた/活力あるなど
 
 ## 出力フォーマット（必ずこの形式で出力）
-"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"
+{output_format}
 
 ## 注意事項
 {_NEGATIVE_GUIDANCE}

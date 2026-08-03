@@ -103,7 +103,7 @@ class Client(db.Model):
     image_taste = db.Column(db.String(30), default="business_clean")   # business_clean / photo_real / illustration_pop / minimal / japanese_calm / colorful_energy
     image_balance = db.Column(db.String(30), default="balanced")        # balanced / image_focus / text_focus
     image_aspect_ratio = db.Column(db.String(10), default="1:1")       # 1:1 / 4:5 / 16:9
-    image_base_prompt = db.Column(db.Text, default="")                 # 全画像共通ベースプロンプト（英語）
+    image_base_prompt = db.Column(db.Text, default="")                 # 全画像共通ベースプロンプト（日本語可）
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     posts = db.relationship("Post", back_populates="client", lazy="dynamic")
