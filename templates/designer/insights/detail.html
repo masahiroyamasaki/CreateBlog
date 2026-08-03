@@ -125,12 +125,19 @@
     </div>
 
     <!-- 主要指標変化 -->
+    {% set metric_ja = {
+      'reach': 'リーチ数', 'profile_views': 'プロフィール閲覧',
+      'follows': 'フォロワー増加', 'website_clicks': 'Webクリック',
+      'likes': 'いいね数', 'comments': 'コメント数',
+      'shares': 'シェア数', 'saved': '保存数',
+      'views': '動画再生数', 'impressions': 'インプレッション'
+    } %}
     {% if stage1.get('key_metrics_change') %}
     <div style="margin-bottom:16px;">
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;">主要指標の変化</div>
       {% for m in stage1.key_metrics_change %}
       <div class="metric-row">
-        <span>{{ m.metric }}</span>
+        <span>{{ metric_ja.get(m.metric, m.metric) }}</span>
         <span>
           {{ m.this_week }} / 前週 {{ m.last_week }}
           <span class="{% if m.change_pct is not none and m.change_pct > 0 %}chg-up{% elif m.change_pct is not none and m.change_pct < 0 %}chg-down{% else %}chg-flat{% endif %}">
