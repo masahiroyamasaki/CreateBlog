@@ -1,0 +1,113 @@
+{% extends "designer/base.html" %}
+{% block title %}
+  {% if report.report_type == 'designer' %}デザイナー週次レポート{% else %}クライアント月次レポート{% endif %}
+  — {{ report.insight.week_start.strftime('%Y/%m/%d') }}
+{% endblock %}
+{% block page_title %}
+  {% if report.report_type == 'designer' %}デザイナー週次レポート{% else %}クライアント月次レポート{% endif %}
+{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.report_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">← レポート一覧</a>
+  <a href="{{ url_for('designer.insight_detail', client_id=client.id, insight_id=report.insight.id) }}"
+     class="btn btn-secondary btn-sm">インサイト詳細</a>
+{% endblock %}
+
+{% block head %}
+<style>
+.report-meta { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--muted); margin-bottom:20px; }
+.report-meta span { display:flex; align-items:center; gap:4px; }
+.action-item { display:flex; flex-direction:column; gap:4px; padding:10px 12px; background:var(--bg); border-left:3px solid var(--primary); border-radius:0 6px 6px 0; margin-bottom:8px; }
+.action-item .act { font-size:14px; font-weight:600; }
+.action-item .rsn { font-size:12px; color:var(--muted); }
+.report-body { white-space:pre-wrap; font-size:14px; line-height:1.8; padding:24px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-family:var(--font-base); }
+.section-label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:18px 0 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-meta">
+  <span>📅 対象週: <strong>{{ report.insight.week_start.strftime('%Y年%m月%d日') }}〜</strong></span>
+  <span>🕐 生成: {{ report.generated_at.strftime('%Y/%m/%d %H:%M') }}</span>
+  {% if report.report_type == 'designer' %}
+  <span><span class="badge badge-blue">デザイナー週次</span></span>
+  {% else %}
+  <span><span class="badge badge-green">クライアント月次</span></span>
+  {% endif %}
+</div>
+
+{% if report.report_type == 'designer' and result_json %}
+<!-- デザイナー週次レポート -->
+<div class="card">
+  <div class="card-body">
+
+    <!-- ヘッドライン -->
+    <div style="padding:16px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:#4338ca;margin-bottom:6px;">今週のひとこと</div>
+      <div style="font-size:18px;font-weight:700;color:#1e1b4b;">{{ result_json.headline }}</div>
+    </div>
+
+    <!-- 指標ハイライト -->
+    {% if result_json.get('metrics_highlight') %}
+    <div class="section-label">指標ハイライト</div>
+    <div style="font-size:14px;line-height:1.7;margin-bottom:16px;">{{ result_json.metrics_highlight }}</div>
+    {% endif %}
+
+    <!-- ベスト投稿コメント -->
+    {% if result_json.get('best_post_comment') %}
+    <div class="section-label">ベスト投稿</div>
+    <div style="padding:12px 16px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0;font-size:14px;margin-bottom:16px;">
+      {{ result_json.best_post_comment }}
+    </div>
+    {% endif %}
+
+    <!-- 推奨アクション -->
+    {% if result_json.get('actions') %}
+    <div class="section-label">来週の推奨アクション</div>
+    {% for a in result_json.actions %}
+    <div class="action-item">
+      <div class="act">{{ loop.index }}. {{ a.action }}</div>
+      <div class="rsn">理由: {{ a.reason }}</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- 注意点 -->
+    {% if result_json.get('caution_note') %}
+    <div style="margin-top:16px;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:13px;color:#9a3412;">
+      ⚠️ {{ result_json.caution_note }}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% elif report.report_type == 'client_monthly' and report.result_text %}
+<!-- クライアント月次レポート -->
+<div class="card">
+  <div class="card-header" style="justify-content:flex-end;">
+    <button class="btn btn-secondary btn-sm" onclick="copyReport()">コピー</button>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <div class="report-body" id="report-body">{{ report.result_text }}</div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="card-body empty">レポートデータが見つかりません。</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyReport() {
+  const body = document.getElementById('report-body');
+  if (!body) return;
+  navigator.clipboard.writeText(body.innerText).then(() => {
+    showToast('クリップボードにコピーしました');
+  }).catch(() => showToast('コピーに失敗しました', 'error'));
+}
+</script>
+{% endblock %}

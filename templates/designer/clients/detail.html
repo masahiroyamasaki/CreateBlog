@@ -29,6 +29,23 @@
   </div>
 </div>
 
+<!-- Instagramレポート -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <h2>📊 Instagramレポート</h2>
+    <div style="display:flex;gap:8px;">
+      <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">インサイト管理</a>
+      <a href="{{ url_for('designer.report_list', client_id=client.id) }}" class="btn btn-primary btn-sm">レポート一覧 →</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <div style="display:flex;gap:24px;font-size:13px;">
+      <a href="{{ url_for('designer.insight_new', client_id=client.id) }}" style="color:var(--primary);">+ データ入力</a>
+      <a href="{{ url_for('designer.insight_monthly_report', client_id=client.id) }}" style="color:var(--primary);">月次レポート生成</a>
+    </div>
+  </div>
+</div>
+
 <!-- 最近の投稿 -->
 <div class="card">
   <div class="card-header">

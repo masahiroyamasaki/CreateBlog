@@ -306,6 +306,44 @@ def insight_monthly_report(client_id: int):
                            report_text=report_text)
 
 
+# ── レポート一覧 ─────────────────────────────────────────────────────────────
+
+@designer_bp.route("/clients/<int:client_id>/reports")
+@login_required
+def report_list(client_id: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+
+    # 全WeeklyReportをinsight経由で取得（降順）
+    reports = (
+        WeeklyReport.query
+        .join(WeeklyInsight, WeeklyReport.weekly_insight_id == WeeklyInsight.id)
+        .filter(WeeklyInsight.client_id == client_id)
+        .order_by(WeeklyReport.generated_at.desc())
+        .all()
+    )
+    return render_template("designer/insights/report_list.html",
+                           client=client, reports=reports)
+
+
+# ── レポート個別閲覧 ──────────────────────────────────────────────────────────
+
+@designer_bp.route("/clients/<int:client_id>/reports/<int:report_id>")
+@login_required
+def report_view(client_id: int, report_id: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    report = WeeklyReport.query.get_or_404(report_id)
+    if report.insight.client_id != client_id:
+        abort(403)
+
+    result_json = json.loads(report.result_json) if report.result_json else None
+    return render_template("designer/insights/report_view.html",
+                           client=client,
+                           report=report,
+                           result_json=result_json)
+
+
 # ── ヘルパー ─────────────────────────────────────────────────────────────────
 
 def _int(val):

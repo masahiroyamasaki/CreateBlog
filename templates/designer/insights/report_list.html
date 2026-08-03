@@ -1,0 +1,54 @@
+{% extends "designer/base.html" %}
+{% block title %}レポート一覧 — {{ client.name }}{% endblock %}
+{% block page_title %}Instagramレポート一覧{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← ダッシュボード</a>
+  <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="btn btn-secondary btn-sm">インサイト管理</a>
+  <a href="{{ url_for('designer.insight_monthly_report', client_id=client.id) }}" class="btn btn-primary btn-sm">月次レポート生成</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><h2>生成済みレポート — {{ client.name }}</h2></div>
+  <div class="card-body" style="padding:0;">
+    {% if reports %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>対象週</th>
+          <th>種別</th>
+          <th>生成日時</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in reports %}
+        <tr>
+          <td style="font-weight:600;">{{ r.insight.week_start.strftime('%Y/%m/%d') }}〜</td>
+          <td>
+            {% if r.report_type == 'designer' %}
+              <span class="badge badge-blue">デザイナー週次</span>
+            {% else %}
+              <span class="badge badge-green">クライアント月次</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted);font-size:12px;">
+            {{ r.generated_at.strftime('%Y/%m/%d %H:%M') }}
+          </td>
+          <td style="text-align:right;">
+            <a href="{{ url_for('designer.report_view', client_id=client.id, report_id=r.id) }}"
+               class="btn btn-secondary btn-sm">閲覧</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:40px;text-align:center;">
+      まだレポートがありません。<br>
+      <a href="{{ url_for('designer.insight_list', client_id=client.id) }}">インサイトデータを入力して分析を実行してください →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
