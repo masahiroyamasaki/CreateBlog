@@ -133,7 +133,7 @@
         <span>{{ m.metric }}</span>
         <span>
           {{ m.this_week }} / 前週 {{ m.last_week }}
-          <span class="{% if m.change_pct > 0 %}chg-up{% elif m.change_pct < 0 %}chg-down{% else %}chg-flat{% endif %}">
+          <span class="{% if m.change_pct is not none and m.change_pct > 0 %}chg-up{% elif m.change_pct is not none and m.change_pct < 0 %}chg-down{% else %}chg-flat{% endif %}">
             {% if m.change_pct is not none %}({{ '%+.1f'|format(m.change_pct) }}%){% endif %}
           </span>
         </span>
@@ -150,7 +150,7 @@
         <div style="font-weight:700;color:#166534;margin-bottom:4px;">🏆 ベスト投稿</div>
         <div>{{ bp.caption_summary }}</div>
         <div style="font-size:11px;color:#166534;margin-top:4px;">
-          {{ bp.standout_metric }}: {{ bp.value }} (平均比 {{ '%+.0f'|format(bp.vs_avg_pct) }}%)
+          {{ bp.standout_metric }}: {{ bp.value }}{% if bp.vs_avg_pct is not none %} (平均比 {{ '%+.0f'|format(bp.vs_avg_pct) }}%){% endif %}
         </div>
       </div>
       {% endif %}
@@ -160,7 +160,7 @@
         <div style="font-weight:700;color:#991b1b;margin-bottom:4px;">📉 要改善投稿</div>
         <div>{{ wp.caption_summary }}</div>
         <div style="font-size:11px;color:#991b1b;margin-top:4px;">
-          {{ wp.weak_metric }}: {{ wp.value }} (平均比 {{ '%+.0f'|format(wp.vs_avg_pct) }}%)
+          {{ wp.weak_metric }}: {{ wp.value }}{% if wp.vs_avg_pct is not none %} (平均比 {{ '%+.0f'|format(wp.vs_avg_pct) }}%){% endif %}
         </div>
       </div>
       {% endif %}
