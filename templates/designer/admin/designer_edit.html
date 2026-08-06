@@ -81,7 +81,7 @@
           <div class="ss-trigger" id="ss-trigger" tabindex="0">
             <span id="ss-label">
               {% if designer.referred_by_id %}
-                {% for d in all_designers %}{% if d.id == designer.referred_by_id %}{{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}{% endif %}{% endfor %}
+                {% for d in all_designers %}{% if d.id == designer.referred_by_id %}{{ d.name }} ({{ d.email }}){% endif %}{% endfor %}
               {% else %}
                 — なし —
               {% endif %}
@@ -99,8 +99,11 @@
               {% for d in all_designers %}
               <div class="ss-item {% if designer.referred_by_id == d.id %}selected{% endif %}"
                    data-value="{{ d.id }}"
-                   data-label="{{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}">
-                {{ d.name }}{% if d.business_name %} <span style="color:var(--muted);font-size:12px;">({{ d.business_name }})</span>{% endif %}
+                   data-label="{{ d.name }} ({{ d.email }})">
+                <div>
+                  <div style="font-size:13px;">{{ d.name }}</div>
+                  <div style="font-size:11px;color:var(--muted);">{{ d.email }}</div>
+                </div>
               </div>
               {% endfor %}
             </div>
