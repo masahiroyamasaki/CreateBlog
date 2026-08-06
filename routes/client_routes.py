@@ -44,6 +44,11 @@ def my_profile():
         current_user.business_name = request.form.get("business_name", "").strip()
         current_user.region = request.form.get("region", "").strip()
         current_user.job_type = request.form.get("job_type", "").strip()
+        current_user.postal_code = request.form.get("postal_code", "").strip()
+        current_user.address = request.form.get("address", "").strip()
+        current_user.phone = request.form.get("phone", "").strip()
+        current_user.invoice_number = request.form.get("invoice_number", "").strip()
+        current_user.bank_account = request.form.get("bank_account", "").strip()
         new_password = request.form.get("new_password", "").strip()
         if new_password:
             if len(new_password) < 8:

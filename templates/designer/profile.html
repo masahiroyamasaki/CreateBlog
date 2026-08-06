@@ -30,6 +30,34 @@
           <input class="form-control" type="text" name="job_type" value="{{ current_user.job_type or '' }}" placeholder="例: Webデザイナー">
         </div>
 
+        <div class="form-group">
+          <label>郵便番号</label>
+          <input class="form-control" type="text" name="postal_code" value="{{ current_user.postal_code or '' }}" placeholder="例: 530-0001">
+        </div>
+
+        <div class="form-group">
+          <label>住所</label>
+          <input class="form-control" type="text" name="address" value="{{ current_user.address or '' }}" placeholder="例: 大阪府大阪市北区梅田1-1-1">
+        </div>
+
+        <div class="form-group">
+          <label>電話番号</label>
+          <input class="form-control" type="text" name="phone" value="{{ current_user.phone or '' }}" placeholder="例: 090-0000-0000">
+        </div>
+
+        <div class="form-group">
+          <label>インボイス登録番号</label>
+          <input class="form-control" type="text" name="invoice_number" value="{{ current_user.invoice_number or '' }}" placeholder="例: T1234567890123">
+        </div>
+
+        <hr style="border-color:var(--border);margin:20px 0;">
+
+        <div class="form-group">
+          <label>振込口座</label>
+          <input class="form-control" type="text" name="bank_account" value="{{ current_user.bank_account or '' }}" placeholder="例: ○○銀行 △△支店 普通 1234567 ヤマダ タロウ">
+          <div class="hint">銀行名・支店名・口座種別・口座番号・口座名義を入力してください。</div>
+        </div>
+
         <hr style="border-color:var(--border);margin:20px 0;">
 
         <div class="form-group">

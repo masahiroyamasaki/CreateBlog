@@ -49,11 +49,15 @@ def admin_designer_detail(designer_id: int):
     designer = Designer.query.get_or_404(designer_id)
     clients = [a.client for a in designer.assignments if a.client]
     total_revenue = sum(c.monthly_fee or 0 for c in clients)
+    referrer = Designer.query.get(designer.referred_by_id) if designer.referred_by_id else None
+    referrals = Designer.query.filter_by(referred_by_id=designer.id).order_by(Designer.name).all()
     return render_template(
         "designer/admin/designer_detail.html",
         designer=designer,
         clients=clients,
         total_revenue=total_revenue,
+        referrer=referrer,
+        referrals=referrals,
     )
 
 
@@ -63,12 +67,16 @@ def admin_designer_edit(designer_id: int):
     _admin_only()
     designer = Designer.query.get_or_404(designer_id)
 
+    all_designers = Designer.query.filter(Designer.id != designer_id).order_by(Designer.name).all()
+
     if request.method == "POST":
         designer.name          = request.form.get("name", designer.name).strip()
         designer.business_name = request.form.get("business_name", "").strip()
         designer.region        = request.form.get("region", "").strip()
         designer.job_type      = request.form.get("job_type", "").strip()
         designer.bank_account  = request.form.get("bank_account", "").strip()
+        referred_by_raw = request.form.get("referred_by_id", "").strip()
+        designer.referred_by_id = int(referred_by_raw) if referred_by_raw else None
         if current_user.role == "admin":
             new_role = request.form.get("role", "designer")
             if new_role in ("designer", "admin"):
@@ -77,13 +85,13 @@ def admin_designer_edit(designer_id: int):
         if new_pass:
             if len(new_pass) < 8:
                 flash("パスワードは8文字以上にしてください", "error")
-                return render_template("designer/admin/designer_edit.html", designer=designer)
+                return render_template("designer/admin/designer_edit.html", designer=designer, all_designers=all_designers)
             designer.set_password(new_pass)
         db.session.commit()
         flash("デザイナー情報を更新しました", "success")
         return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
 
-    return render_template("designer/admin/designer_edit.html", designer=designer)
+    return render_template("designer/admin/designer_edit.html", designer=designer, all_designers=all_designers)
 
 
 # ─── 料金プラン管理 ────────────────────────────────────────────────────────────

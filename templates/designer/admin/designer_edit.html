@@ -27,6 +27,27 @@
           <input class="form-control" type="text" name="region" value="{{ designer.region or '' }}" placeholder="例: 東京都">
         </div>
       </div>
+      <div class="form-group">
+        <label>振込口座</label>
+        <input class="form-control" type="text" name="bank_account" value="{{ designer.bank_account or '' }}" placeholder="例: ○○銀行 △△支店 普通 1234567 ヤマダ タロウ">
+        <div class="hint">銀行名・支店名・口座種別・口座番号・口座名義を入力してください。</div>
+      </div>
+
+      <hr style="border-color:var(--border);margin:20px 0;">
+
+      <div class="form-group">
+        <label>紹介者</label>
+        <select class="form-control" name="referred_by_id">
+          <option value="">— なし —</option>
+          {% for d in all_designers %}
+          <option value="{{ d.id }}" {% if designer.referred_by_id == d.id %}selected{% endif %}>
+            {{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <div class="hint">このデザイナーを紹介した方を選択してください。</div>
+      </div>
+
       {% if current_user.role == 'admin' %}
       <div class="form-group">
         <label>権限</label>

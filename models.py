@@ -30,6 +30,7 @@ class Designer(UserMixin, db.Model):
     address = db.Column(db.Text, default="")             # 住所
     phone = db.Column(db.String(20), default="")         # 電話番号
     invoice_number = db.Column(db.String(20), default="") # インボイス登録番号（T始まり）
+    referred_by_id = db.Column(db.Integer, nullable=True)  # 紹介者デザイナーID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime)
 

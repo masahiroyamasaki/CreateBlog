@@ -37,6 +37,29 @@
         <div style="font-weight:500;">{{ designer.bank_account }}</div>
       </div>
       {% endif %}
+
+      <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">紹介者</div>
+        {% if referrer %}
+        <a href="{{ url_for('designer.admin_designer_detail', designer_id=referrer.id) }}" style="font-weight:500;color:var(--primary);text-decoration:none;">
+          {{ referrer.name }}{% if referrer.business_name %} <span style="color:var(--muted);font-weight:400;">({{ referrer.business_name }})</span>{% endif %}
+        </a>
+        {% else %}
+        <span style="color:var(--muted);">—</span>
+        {% endif %}
+      </div>
+
+      {% if referrals %}
+      <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:8px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">このデザイナーが紹介した方（{{ referrals | length }} 名）</div>
+        {% for r in referrals %}
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none;{% endif %}">
+          <a href="{{ url_for('designer.admin_designer_detail', designer_id=r.id) }}" style="font-weight:500;color:var(--primary);text-decoration:none;font-size:13px;">{{ r.name }}</a>
+          {% if r.business_name %}<span style="font-size:12px;color:var(--muted);">{{ r.business_name }}</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
   </div>
 
