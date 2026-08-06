@@ -171,6 +171,52 @@
                       style="font-size:13px;">{{ client.image_base_prompt if client and client.image_base_prompt else '' }}</textarea>
             <p class="hint">全生成画像の先頭に付加されるデザイン指示。日本語で入力してください。AIが自動で英語に変換して画像生成に使用します。空欄の場合はデフォルト（フラットベクターイラスト・女性キャラ）が使用されます。</p>
           </div>
+
+          {% if client %}
+          <div class="form-group">
+            <label>スタイルサンプル画像（最大3枚）</label>
+            <p class="hint" style="margin-bottom:12px;">生成画像のスタイル参考にする画像を登録してください。登録すると、AIがこれらの画像を解析してスタイル・色調を合わせた画像を生成します。JPG・PNG・WebP 対応。</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+              {% for slot, img_path in [
+                  (1, client.sample_image_1_path),
+                  (2, client.sample_image_2_path),
+                  (3, client.sample_image_3_path)
+              ] %}
+              <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);">
+                {% if img_path %}
+                <div style="position:relative;">
+                  <img src="{{ url_for('static', filename=img_path) }}"
+                       alt="サンプル{{ slot }}"
+                       style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:6px;right:6px;">
+                    <form method="POST" action="{{ url_for('designer.client_delete_sample_image', client_id=client.id, slot=slot) }}"
+                          onsubmit="return confirm('サンプル画像 {{ slot }} を削除しますか？')">
+                      <button type="submit" style="background:#ef444490;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700;">削除</button>
+                    </form>
+                  </div>
+                </div>
+                <div style="padding:8px;font-size:11px;color:var(--success);font-weight:600;">✓ サンプル{{ slot }} 登録済み</div>
+                {% else %}
+                <div style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">未登録</div>
+                <div style="padding:8px;">
+                  <form method="POST" action="{{ url_for('designer.client_upload_sample_image', client_id=client.id, slot=slot) }}"
+                        enctype="multipart/form-data">
+                    <input type="file" name="sample_image" accept=".jpg,.jpeg,.png,.webp"
+                           style="display:none;" id="sample-file-{{ slot }}"
+                           onchange="this.form.submit()">
+                    <button type="button"
+                            onclick="document.getElementById('sample-file-{{ slot }}').click()"
+                            style="width:100%;padding:7px;background:var(--bg4);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">
+                      + 画像を選択
+                    </button>
+                  </form>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
 

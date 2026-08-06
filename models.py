@@ -105,6 +105,9 @@ class Client(db.Model):
     image_balance = db.Column(db.String(30), default="balanced")        # balanced / image_focus / text_focus
     image_aspect_ratio = db.Column(db.String(10), default="1:1")       # 1:1 / 4:5 / 16:9
     image_base_prompt = db.Column(db.Text, default="")                 # 全画像共通ベースプロンプト（日本語可）
+    sample_image_1_path = db.Column(db.String(500), default="")       # サンプル画像1（staticフォルダ相対パス）
+    sample_image_2_path = db.Column(db.String(500), default="")       # サンプル画像2
+    sample_image_3_path = db.Column(db.String(500), default="")       # サンプル画像3
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     posts = db.relationship("Post", back_populates="client", lazy="dynamic")

@@ -220,6 +220,11 @@ def topic_generate(client_id: int, topic_id: int):
     image_balance_val       = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_val  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
     image_base_prompt_val   = getattr(client, "image_base_prompt", "") or ""
+    image_sample_paths_val  = [p for p in [
+        getattr(client, "sample_image_1_path", "") or "",
+        getattr(client, "sample_image_2_path", "") or "",
+        getattr(client, "sample_image_3_path", "") or "",
+    ] if p]
 
     def _run():
         run = _generation_runs[run_id]
@@ -376,6 +381,7 @@ def topic_generate(client_id: int, topic_id: int):
                             body_html=getattr(post, "body_html", "") or "",
                             client_name=client_name,
                             base_prompt=image_base_prompt_val,
+                            sample_image_paths=image_sample_paths_val,
                         )
                         _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                         _db.session.commit()
@@ -479,6 +485,11 @@ def topic_bulk_generate(client_id: int):
     image_balance_bulk        = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_bulk   = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
     image_base_prompt_bulk    = getattr(client, "image_base_prompt", "") or ""
+    image_sample_paths_bulk   = [p for p in [
+        getattr(client, "sample_image_1_path", "") or "",
+        getattr(client, "sample_image_2_path", "") or "",
+        getattr(client, "sample_image_3_path", "") or "",
+    ] if p]
 
     run_ids = []
 
@@ -517,7 +528,8 @@ def topic_bulk_generate(client_id: int):
                  image_taste=image_taste_bulk,
                  image_balance=image_balance_bulk,
                  image_aspect_ratio=image_aspect_ratio_bulk,
-                 image_base_prompt=image_base_prompt_bulk):
+                 image_base_prompt=image_base_prompt_bulk,
+                 image_sample_paths=image_sample_paths_bulk):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -621,6 +633,7 @@ def topic_bulk_generate(client_id: int):
                                 body_html=getattr(post, "body_html", "") or "",
                                 client_name=client_name,
                                 base_prompt=image_base_prompt,
+                                sample_image_paths=image_sample_paths,
                             )
                             _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
                             _db.session.commit()

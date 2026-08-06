@@ -70,11 +70,37 @@ _NEGATIVE_GUIDANCE = (
 )
 
 
+def _load_image_blocks(paths: list) -> list:
+    """ファイルパスリストから Claude 用画像コンテンツブロックを生成する。"""
+    import base64 as _b64
+    blocks = []
+    ext_to_media = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+    for p in paths:
+        if not p:
+            continue
+        try:
+            import os as _os
+            base_dir = _os.path.dirname(_os.path.abspath(__file__))
+            abs_path = _os.path.join(base_dir, "static", p)
+            if not _os.path.exists(abs_path):
+                continue
+            ext = _os.path.splitext(abs_path)[1].lower()
+            media_type = ext_to_media.get(ext, "image/jpeg")
+            with open(abs_path, "rb") as f:
+                data = _b64.standard_b64encode(f.read()).decode("utf-8")
+            blocks.append({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}})
+        except Exception as e:
+            logger.warning(f"サンプル画像読み込み失敗: {p} — {e}")
+    return blocks
+
+
 def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                                   balance: str, aspect_ratio: str,
                                   client_name: str = "",
-                                  base_prompt: str = "") -> str:
-    """Claude Haiku で記事内容と企業設定から詳細な英語画像プロンプトを生成する。"""
+                                  base_prompt: str = "",
+                                  sample_image_paths: list = None) -> str:
+    """Claude Haiku で記事内容と企業設定から詳細な英語画像プロンプトを生成する。
+    sample_image_paths が渡された場合はマルチモーダルで画像スタイルを解析する。"""
     import anthropic
     from config import Config
 
@@ -124,11 +150,24 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         )
         output_format = f'"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"'
 
-    user_msg = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
+    # サンプル画像がある場合は解析指示を追加
+    image_blocks = _load_image_blocks(sample_image_paths or [])
+    sample_section = ""
+    if image_blocks:
+        sample_section = """
+## サンプル画像（最重要・必ず参照すること）
+添付した画像はこの企業の画像スタイルのサンプルです。
+- 色調・配色・全体的な雰囲気・タッチをこれらのサンプルに合わせること
+- サンプルのビジュアルスタイル（イラスト調/写真調/ミニマルなど）を踏襲すること
+- キャラクター・ロゴ・特徴的なデザイン要素があれば可能な限り再現すること
+- 上記のスタイル設定よりサンプル画像のスタイルを優先すること
+"""
+
+    text_body = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
 
 {base_instruction}
-
+{sample_section}
 ## 記事情報
 企業名: {client_name or "（未設定）"}
 タイトル: {title}
@@ -162,11 +201,14 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - DALL-E 3 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）
 {no_text_rule}"""
 
+    # マルチモーダル対応: サンプル画像がある場合は画像ブロックを先頭に追加
+    content = image_blocks + [{"type": "text", "text": text_body}] if image_blocks else text_body
+
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
-        messages=[{"role": "user", "content": user_msg}],
+        messages=[{"role": "user", "content": content}],
     )
     raw = message.content[0].text.strip()
     if raw.startswith('"') and raw.endswith('"'):
@@ -267,7 +309,8 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 
 def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                    balance: str = "balanced", body_html: str = "",
-                   client_name: str = "", base_prompt: str = "") -> str:
+                   client_name: str = "", base_prompt: str = "",
+                   sample_image_paths: list = None) -> str:
     """Claude でプロンプトを生成し、DALL-E 3 で画像を生成して保存する。"""
     from config import Config
 
@@ -284,6 +327,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             aspect_ratio=aspect_ratio,
             client_name=client_name,
             base_prompt=base_prompt,
+            sample_image_paths=sample_image_paths,
         )
     except Exception as e:
         logger.warning(f"[Claude] プロンプト生成失敗、フォールバック使用: {e}")

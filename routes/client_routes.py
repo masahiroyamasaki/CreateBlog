@@ -431,6 +431,73 @@ def client_upload_hp_template(client_id: int):
     return redirect(url_for("designer.client_edit", client_id=client_id))
 
 
+@designer_bp.route("/clients/<int:client_id>/upload-sample-image/<int:slot>", methods=["POST"])
+@login_required
+def client_upload_sample_image(client_id: int, slot: int):
+    """画像生成用サンプル画像（スロット1〜3）をアップロードする。"""
+    import os
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    if slot not in (1, 2, 3):
+        abort(400)
+
+    file = request.files.get("sample_image")
+    if not file or file.filename == "":
+        flash("ファイルが選択されていません", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id))
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+        flash("JPG・PNG・WebP 形式の画像をアップロードしてください", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id))
+
+    rel_path = f"uploads/companies/{client_id}/samples/sample_{slot}{ext}"
+    abs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "uploads", "companies", str(client_id), "samples")
+    os.makedirs(abs_dir, exist_ok=True)
+
+    # 既存ファイル削除（拡張子違いも）
+    old_rel = getattr(client, f"sample_image_{slot}_path", "") or ""
+    if old_rel:
+        old_abs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", old_rel)
+        if os.path.exists(old_abs):
+            try:
+                os.remove(old_abs)
+            except Exception:
+                pass
+
+    save_path = os.path.join(abs_dir, f"sample_{slot}{ext}")
+    file.save(save_path)
+    setattr(client, f"sample_image_{slot}_path", rel_path)
+    db.session.commit()
+    flash(f"サンプル画像 {slot} を保存しました", "success")
+    return redirect(url_for("designer.client_edit", client_id=client_id))
+
+
+@designer_bp.route("/clients/<int:client_id>/delete-sample-image/<int:slot>", methods=["POST"])
+@login_required
+def client_delete_sample_image(client_id: int, slot: int):
+    """サンプル画像を削除する。"""
+    import os
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    if slot not in (1, 2, 3):
+        abort(400)
+
+    old_rel = getattr(client, f"sample_image_{slot}_path", "") or ""
+    if old_rel:
+        old_abs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", old_rel)
+        if os.path.exists(old_abs):
+            try:
+                os.remove(old_abs)
+            except Exception:
+                pass
+
+    setattr(client, f"sample_image_{slot}_path", "")
+    db.session.commit()
+    flash(f"サンプル画像 {slot} を削除しました", "success")
+    return redirect(url_for("designer.client_edit", client_id=client_id))
+
+
 @designer_bp.route("/clients/<int:client_id>/reset-threads", methods=["POST"])
 @login_required
 def client_reset_threads(client_id: int):
