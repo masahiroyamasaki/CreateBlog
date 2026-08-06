@@ -5,10 +5,48 @@
   <a href="{{ url_for('designer.admin_designer_detail', designer_id=designer.id) }}" class="btn btn-secondary btn-sm">← キャンセル</a>
 {% endblock %}
 
+{% block head %}
+<style>
+  /* 検索付きカスタムドロップダウン */
+  .searchable-select { position: relative; }
+  .ss-trigger {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg3); color: var(--text); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    user-select: none;
+  }
+  .ss-trigger:hover { border-color: var(--primary); }
+  .ss-trigger.open { border-color: var(--primary); }
+  .ss-trigger .ss-arrow { opacity: .5; flex-shrink: 0; transition: transform .15s; }
+  .ss-trigger.open .ss-arrow { transform: rotate(180deg); }
+  .ss-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    z-index: 200; box-shadow: 0 8px 24px #0008; overflow: hidden;
+  }
+  .ss-dropdown.open { display: block; }
+  .ss-search-wrap { padding: 8px; border-bottom: 1px solid var(--border); }
+  .ss-search {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg3); color: var(--text); font-size: 13px; outline: none;
+  }
+  .ss-search:focus { border-color: var(--primary); }
+  .ss-list { max-height: 240px; overflow-y: auto; }
+  .ss-item {
+    padding: 9px 14px; font-size: 13px; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ss-item:hover { background: var(--bg3); color: var(--text); }
+  .ss-item.selected { color: var(--primary); font-weight: 600; }
+  .ss-item.hidden { display: none; }
+  .ss-empty { padding: 16px 14px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card" style="max-width:560px;">
   <div class="card-body">
-    <form method="POST">
+    <form method="POST" id="edit-form">
       <div class="form-group">
         <label>氏名</label>
         <input class="form-control" type="text" name="name" value="{{ designer.name }}" required>
@@ -35,17 +73,41 @@
 
       <hr style="border-color:var(--border);margin:20px 0;">
 
+      <!-- 紹介者（検索付きカスタムドロップダウン・管理者のみ） -->
       <div class="form-group">
         <label>紹介者</label>
-        <select class="form-control" name="referred_by_id">
-          <option value="">— なし —</option>
-          {% for d in all_designers %}
-          <option value="{{ d.id }}" {% if designer.referred_by_id == d.id %}selected{% endif %}>
-            {{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}
-          </option>
-          {% endfor %}
-        </select>
-        <div class="hint">このデザイナーを紹介した方を選択してください。</div>
+        <input type="hidden" name="referred_by_id" id="referred_by_id" value="{{ designer.referred_by_id or '' }}">
+        <div class="searchable-select" id="ss-referrer">
+          <div class="ss-trigger" id="ss-trigger" tabindex="0">
+            <span id="ss-label">
+              {% if designer.referred_by_id %}
+                {% for d in all_designers %}{% if d.id == designer.referred_by_id %}{{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}{% endif %}{% endfor %}
+              {% else %}
+                — なし —
+              {% endif %}
+            </span>
+            <svg class="ss-arrow" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+          </div>
+          <div class="ss-dropdown" id="ss-dropdown">
+            <div class="ss-search-wrap">
+              <input class="ss-search" id="ss-search" type="text" placeholder="名前で検索..." autocomplete="off">
+            </div>
+            <div class="ss-list" id="ss-list">
+              <div class="ss-item {% if not designer.referred_by_id %}selected{% endif %}" data-value="" data-label="— なし —">
+                — なし —
+              </div>
+              {% for d in all_designers %}
+              <div class="ss-item {% if designer.referred_by_id == d.id %}selected{% endif %}"
+                   data-value="{{ d.id }}"
+                   data-label="{{ d.name }}{% if d.business_name %} ({{ d.business_name }}){% endif %}">
+                {{ d.name }}{% if d.business_name %} <span style="color:var(--muted);font-size:12px;">({{ d.business_name }})</span>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="ss-empty" id="ss-empty" style="display:none;">該当なし</div>
+          </div>
+        </div>
+        <div class="hint">このデザイナーを紹介した方を選択してください。管理者のみ設定できます。</div>
       </div>
 
       {% if current_user.role == 'admin' %}
@@ -68,4 +130,69 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const trigger  = document.getElementById('ss-trigger');
+  const dropdown = document.getElementById('ss-dropdown');
+  const search   = document.getElementById('ss-search');
+  const list     = document.getElementById('ss-list');
+  const empty    = document.getElementById('ss-empty');
+  const label    = document.getElementById('ss-label');
+  const hidden   = document.getElementById('referred_by_id');
+  const items    = list.querySelectorAll('.ss-item');
+
+  function open() {
+    trigger.classList.add('open');
+    dropdown.classList.add('open');
+    search.value = '';
+    filterItems('');
+    search.focus();
+  }
+
+  function close() {
+    trigger.classList.remove('open');
+    dropdown.classList.remove('open');
+  }
+
+  function filterItems(q) {
+    let visibleCount = 0;
+    items.forEach(item => {
+      const text = item.dataset.label.toLowerCase();
+      const match = text.includes(q.toLowerCase());
+      item.classList.toggle('hidden', !match);
+      if (match) visibleCount++;
+    });
+    empty.style.display = visibleCount === 0 ? 'block' : 'none';
+  }
+
+  function select(item) {
+    items.forEach(i => i.classList.remove('selected'));
+    item.classList.add('selected');
+    hidden.value = item.dataset.value;
+    label.textContent = item.dataset.label;
+    close();
+  }
+
+  trigger.addEventListener('click', () => {
+    dropdown.classList.contains('open') ? close() : open();
+  });
+
+  trigger.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+  });
+
+  search.addEventListener('input', () => filterItems(search.value));
+
+  items.forEach(item => {
+    item.addEventListener('click', () => select(item));
+  });
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('ss-referrer').contains(e.target)) close();
+  });
+})();
+</script>
 {% endblock %}
