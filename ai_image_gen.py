@@ -144,6 +144,8 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         output_suffix = "high quality, no text, no letters, no words, no japanese characters"
         no_text_rule = '- 必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること（絶対省略禁止）'
 
+    # --- base_instruction / output_format を balance × base_prompt × sample の組み合わせで決定 ---
+    # まず素直に設定し、後段で上書きする
     if _has_japanese:
         base_instruction = (
             f"## ベースプロンプト（日本語→英語に翻訳して必ず先頭に付加すること）\n"
@@ -157,6 +159,32 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
             f"{effective_base}"
         )
         output_format = f'"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"'
+
+    # text_focus の場合: キャラクター指定を含むデフォルトbase_promptを使わない
+    if balance == "text_focus":
+        if raw_base:
+            no_char_note = "※ 人物・キャラクターの記述は無視し、背景スタイルのみを参照すること"
+            if _has_japanese:
+                base_instruction = (
+                    f"## ベースプロンプト（背景スタイルのみ参照・人物除外）\n"
+                    f"{effective_base}\n"
+                    f"※ 英語に翻訳すること。{no_char_note}"
+                )
+            else:
+                base_instruction = (
+                    f"## ベースプロンプト（背景スタイルのみ参照・人物除外）\n"
+                    f"{effective_base}\n"
+                    f"※ {no_char_note}"
+                )
+        else:
+            # カスタムbase_promptなし → デフォルトキャラクター定義を一切使わない
+            base_instruction = (
+                "## スタイル指定\n"
+                "抽象的・グラフィカルな背景スタイルで生成すること。\n"
+                "人物・キャラクター・顔・シルエットは一切含めないこと。\n"
+                "テキストが映えるクリーンな背景デザインにすること。"
+            )
+        output_format = '"[人物なし・抽象グラフィック背景], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
 
     # サンプル画像がある場合: スタイルをサンプル画像のみから決定し、デフォルト設定を上書き
     image_blocks = _load_image_blocks(sample_image_paths or [])
@@ -179,7 +207,11 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - ★ベースプロンプトやデフォルトスタイル設定よりサンプル画像のスタイルを絶対優先とすること
 - デフォルトキャラクター（若い女性・フラットベクターイラスト）は使用せず、サンプル画像に合わせた表現にすること
 """
-        subject_item = "- 主題: 記事の内容を象徴する被写体・情景（サンプル画像と同じスタイルで描写すること）"
+        # text_focus の人物禁止を保持しつつ subject_item を更新
+        if balance == "text_focus":
+            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（サンプル画像スタイルで）。人物・キャラクター・顔は絶対に含めないこと"
+        else:
+            subject_item = "- 主題: 記事の内容を象徴する被写体・情景（サンプル画像と同じスタイルで描写すること）"
         style_hint = "サンプル画像のスタイルを踏襲しつつ追加補足があれば"
         color_hint = "サンプル画像の色調・パレットを忠実に再現すること"
         base_prompt_rule = "- サンプル画像のスタイルに合わせた描写であること（ベースプロンプトよりサンプル画像を最優先）"
