@@ -127,17 +127,7 @@ def _get_past_post_image_paths(client_id: int, limit: int = 3) -> list:
 
 
 def _analyze_sample_images(image_paths: list) -> dict:
-    """サンプル画像を Claude で事前分析し、スタイル・文字有無・人物有無などを返す。
-
-    戻り値:
-        has_text    : 画像に文字・テキストが含まれているか
-        has_people  : 人物・キャラクターが含まれているか
-        style       : ビジュアルスタイルの説明
-        colors      : 主要カラー
-        layout      : 構図・レイアウト
-        mood        : 雰囲気
-        description : 分析テキスト全文（プロンプトへ埋め込む用）
-    """
+    """サンプル画像を Claude で事前分析し、背景・テキスト・デザイン情報を詳細に返す。"""
     import re as _re
     import anthropic
     from config import Config
@@ -150,18 +140,43 @@ def _analyze_sample_images(image_paths: list) -> dict:
     if not api_key:
         return {"has_text": False, "has_people": False, "description": ""}
 
-    analysis_prompt = """添付した画像を詳細に分析し、以下の形式で正確に答えてください。
+    analysis_prompt = """添付した画像を徹底的に分析してください。以下の各項目を正確に記述すること。
 
+━━ 基本情報 ━━
 HAS_TEXT: [YES または NO]
 HAS_PEOPLE: [YES または NO]
-STYLE: [ビジュアルスタイル。例: ミニマル写真調、カラフルイラスト、フラットデザイン、リアル写真など]
-COLORS: [主要な色を3〜5色。例: 白・紺・ゴールド]
-LAYOUT: [構図・レイアウト。例: 中央配置・左テキスト右画像・全面イメージなど]
-MOOD: [全体の雰囲気。例: プロフェッショナル・温かい・クール・元気など]
-TEXT_STYLE: [テキストがある場合のフォント・サイズ感・配置スタイル。なければ NONE]
-DESCRIPTION: [画像全体の詳細な説明を2〜3文で]
+OVERALL_STYLE: [例: ミニマル写真調 / フラットイラスト / リアル写真 / グラフィックデザインなど]
+MOOD: [例: プロフェッショナル / 温かい / クール / 活発など]
 
-各行をこの形式で出力すること（追加の説明文は不要）。"""
+━━ 背景の詳細 ━━
+BG_TYPE: [例: 単色 / グラデーション / 写真 / イラスト / テクスチャ / パターンなど]
+BG_COLOR: [背景の具体的な色。例: オフホワイト #F5F5F5 / 濃紺 / 淡いグレーなど]
+BG_ELEMENTS: [背景に含まれる要素。例: 抽象的な曲線 / 幾何学模様 / 自然の風景 / なしなど]
+
+━━ テキスト・文字の詳細（テキストがない場合は各項目を NONE と記載）━━
+TEXT_CONTENT: [画像内に実際に書かれているテキストをそのまま書き起こす。なければ NONE]
+TEXT_SIZE: [例: 見出し大（画像幅の40%以上）/ 中（20〜40%）/ 小（20%未満）など]
+TEXT_FONT_STYLE: [例: サンセリフ太字 / セリフ細め / 手書き風 / 明朝体など]
+TEXT_WEIGHT: [例: Bold / Regular / Light / ExtraBlack など]
+TEXT_COLOR: [文字色。例: 白 / 黒 / 濃紺 / ゴールドなど]
+TEXT_EFFECTS: [例: ドロップシャドウ / アウトライン / グラデーション / なしなど]
+TEXT_POSITION: [例: 中央 / 左上 / 右下 / 下部中央 / 上部1/3など]
+TEXT_ALIGNMENT: [例: 中央揃え / 左揃え / 右揃えなど]
+TEXT_LINES: [行数。例: 1行 / 2行 / 3行以上など]
+TEXT_AREA_RATIO: [テキストが画像全体に占める割合。例: 約10% / 約30% / 約50%など]
+
+━━ 全体の配色 ━━
+MAIN_COLORS: [主要な色を優先順に3〜5色。例: 白・濃紺・ゴールド・グレー]
+ACCENT_COLORS: [アクセントカラー。なければ NONE]
+
+━━ 構図・レイアウト ━━
+LAYOUT_STRUCTURE: [例: テキスト中央・背景全面 / 左半分テキスト右半分画像 / テキスト上部・ビジュアル下部など]
+VISUAL_WEIGHT: [視覚的な重心。例: 中央 / 左寄り / 上部など]
+
+━━ 総合説明 ━━
+DESCRIPTION: [上記を踏まえた画像全体の詳細な説明を3〜4文で。デザインの意図・印象まで含める]
+
+各行を上記形式で出力すること（余分な説明文は不要）。"""
 
     content = blocks + [{"type": "text", "text": analysis_prompt}]
 
@@ -169,7 +184,7 @@ DESCRIPTION: [画像全体の詳細な説明を2〜3文で]
         client_obj = anthropic.Anthropic(api_key=api_key)
         message = client_obj.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=500,
+            max_tokens=1200,
             messages=[{"role": "user", "content": content}],
         )
         raw = message.content[0].text.strip()
@@ -183,14 +198,28 @@ DESCRIPTION: [画像全体の詳細な説明を2〜3文で]
         has_people = _field("HAS_PEOPLE").upper() == "YES"
 
         return {
-            "has_text":    has_text,
-            "has_people":  has_people,
-            "style":       _field("STYLE"),
-            "colors":      _field("COLORS"),
-            "layout":      _field("LAYOUT"),
-            "mood":        _field("MOOD"),
-            "text_style":  _field("TEXT_STYLE"),
-            "description": raw,
+            "has_text":           has_text,
+            "has_people":         has_people,
+            "overall_style":      _field("OVERALL_STYLE"),
+            "mood":               _field("MOOD"),
+            "bg_type":            _field("BG_TYPE"),
+            "bg_color":           _field("BG_COLOR"),
+            "bg_elements":        _field("BG_ELEMENTS"),
+            "text_content":       _field("TEXT_CONTENT"),
+            "text_size":          _field("TEXT_SIZE"),
+            "text_font_style":    _field("TEXT_FONT_STYLE"),
+            "text_weight":        _field("TEXT_WEIGHT"),
+            "text_color":         _field("TEXT_COLOR"),
+            "text_effects":       _field("TEXT_EFFECTS"),
+            "text_position":      _field("TEXT_POSITION"),
+            "text_alignment":     _field("TEXT_ALIGNMENT"),
+            "text_lines":         _field("TEXT_LINES"),
+            "text_area_ratio":    _field("TEXT_AREA_RATIO"),
+            "main_colors":        _field("MAIN_COLORS"),
+            "accent_colors":      _field("ACCENT_COLORS"),
+            "layout_structure":   _field("LAYOUT_STRUCTURE"),
+            "visual_weight":      _field("VISUAL_WEIGHT"),
+            "description":        raw,
         }
     except Exception as e:
         logger.warning(f"サンプル画像分析失敗: {e}")
@@ -325,12 +354,28 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         allow_text_in_image   = has_text_in_sample and balance != "text_focus"
         allow_people_in_image = has_people_in_sample and balance != "text_focus"
 
-        # 分析結果をプロンプトに埋め込む
-        text_rule_line   = (
-            f"- テキスト・文字: サンプルに文字あり → 記事タイトル「{title}」をサンプルと同じタイポグラフィスタイルで画像内に配置すること"
-            if allow_text_in_image else
-            "- テキスト・文字: サンプルに文字なし → 生成画像にも文字・テキストは一切含めないこと"
-        )
+        # 分析結果から詳細なデザイン仕様を組み立てる
+        a = sample_analysis  # 短縮エイリアス
+
+        # 背景仕様
+        bg_spec = f"背景タイプ: {a.get('bg_type','')}, 背景色: {a.get('bg_color','')}, 背景要素: {a.get('bg_elements','')}"
+
+        # テキスト仕様（文字ありの場合のみ）
+        if allow_text_in_image:
+            text_spec = (
+                f"文字サイズ: {a.get('text_size','')}\n"
+                f"フォントスタイル: {a.get('text_font_style','')} / ウェイト: {a.get('text_weight','')}\n"
+                f"文字色: {a.get('text_color','')} / エフェクト: {a.get('text_effects','')}\n"
+                f"配置位置: {a.get('text_position','')} / 揃え: {a.get('text_alignment','')}\n"
+                f"行数: {a.get('text_lines','')} / 占有率: {a.get('text_area_ratio','')}"
+            )
+            text_rule_line = (
+                f"- ★テキスト: サンプルに文字あり → 記事タイトル「{title}」を以下のタイポグラフィ仕様で配置すること\n"
+                f"  {text_spec}"
+            )
+        else:
+            text_rule_line = "- ★テキスト: サンプルに文字なし → 生成画像にも文字・テキストは一切含めないこと"
+
         people_rule_line = (
             "- 人物・キャラクター: サンプルに人物あり → 同様のスタイルで人物を含めてよい"
             if allow_people_in_image else
@@ -340,28 +385,39 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         sample_section = f"""
 ## ★企業サンプル画像（スタイル絶対最優先）
 添付した画像はこの企業が指定したビジュアルスタイルのサンプルです。
-以下の分析結果をもとに、このスタイルを忠実に再現すること。
-テイスト設定・ベースプロンプト・デフォルトスタイルはすべて無視すること。
+テイスト設定・ベースプロンプト・デフォルトスタイルはすべて無視し、以下の分析結果のみに従うこと。
 
-【サンプル画像分析結果】
-{analysis_desc}
+【背景デザイン】
+{bg_spec}
 
-【生成ルール（分析結果に基づく）】
-- スタイル・色調・レイアウト・雰囲気を上記分析結果に忠実に合わせること
-- ★ロゴ・ブランド固有の記号・商標は生成画像に含めないこと
+【配色】
+メインカラー: {a.get('main_colors','')}
+アクセントカラー: {a.get('accent_colors','')}
+
+【構図・レイアウト】
+レイアウト構造: {a.get('layout_structure','')}
+視覚的重心: {a.get('visual_weight','')}
+
+【全体スタイル・雰囲気】
+スタイル: {a.get('overall_style','')}
+雰囲気: {a.get('mood','')}
+
+【生成ルール】
+- 上記の背景・配色・構図・スタイルを忠実に再現すること
+- ★ロゴ・ブランド固有の商標・記号は含めないこと
 {text_rule_line}
 {people_rule_line}
 """
         if balance == "text_focus":
-            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（企業サンプル画像スタイルで）。人物・顔は含めないこと"
+            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（企業サンプル画像の背景デザインを再現）。人物・顔は含めないこと"
         elif allow_people_in_image:
             subject_item = "- 主題: 記事の内容を象徴する情景（企業サンプル画像と同様に人物を含めること）"
         else:
             subject_item = "- 主題: 記事の内容を象徴する被写体・情景（企業サンプル画像スタイルで、人物なし）"
 
-        style_hint       = "企業サンプル画像の分析結果に合わせること（他の設定は無視）"
-        color_hint       = "企業サンプル画像の色調・パレットを忠実に再現すること"
-        base_prompt_rule = "- 企業サンプル画像のスタイルのみに従うこと（ベースプロンプトは無視してよい）"
+        style_hint       = f"企業サンプル画像のスタイル（{a.get('overall_style','サンプル参照')}）に合わせること"
+        color_hint       = f"メインカラー: {a.get('main_colors','サンプル参照')} を忠実に再現すること"
+        base_prompt_rule = "- 企業サンプル画像の分析結果のみに従うこと（ベースプロンプトは無視してよい）"
 
         base_instruction = (
             "## スタイル指定\n"
@@ -371,13 +427,26 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 
         if allow_text_in_image:
             _text_suffix = (
-                f'title text "{title}" placed in the same typography style and position as the sample images, '
+                f'title text "{title}" placed at {a.get("text_position","center")} '
+                f'in {a.get("text_font_style","sans-serif")} {a.get("text_weight","bold")} style, '
+                f'color {a.get("text_color","matching sample")}, '
+                f'{a.get("text_effects","no effects")}, '
                 f'high quality'
             )
-            output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + _text_suffix + '"'
-            no_text_rule = f'- 記事タイトル「{title}」をサンプル画像と同じスタイルで画像内に配置すること'
+            output_format = (
+                '"[企業サンプル画像の背景・配色・レイアウトを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], '
+                + _text_suffix + '"'
+            )
+            no_text_rule = (
+                f'- 記事タイトル「{title}」を上記タイポグラフィ仕様（位置: {a.get("text_position","center")}、'
+                f'フォント: {a.get("text_font_style","sans-serif")} {a.get("text_weight","bold")}、'
+                f'色: {a.get("text_color","サンプルに合わせる")}）で画像内に配置すること'
+            )
         else:
-            output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
+            output_format = (
+                '"[企業サンプル画像の背景・配色・レイアウトを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], '
+                + output_suffix + '"'
+            )
 
     elif past_blocks:
         # ── パターン2: 過去投稿画像あり（サンプル画像なし）──
