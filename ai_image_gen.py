@@ -10,11 +10,16 @@ import requests as _requests
 
 logger = logging.getLogger(__name__)
 
-# アスペクト比 → gpt-image-1 サイズマッピング
+# アスペクト比 → gpt-image-1 サイズマッピング（API サポート値）
 _ASPECT_TO_SIZE = {
     "1:1":  "1024x1024",
-    "4:5":  "1024x1536",
-    "16:9": "1536x1024",
+    "4:5":  "1024x1536",   # 生成後に 1024x1280 へクロップして正確な 4:5 を実現
+    "16:9": "1536x1024",   # 生成後に 1536x864 へクロップして正確な 16:9 を実現
+}
+# 生成後センタークロップ比率 (w, h) — None のサイズはクロップ不要
+_ASPECT_TO_CROP = {
+    "4:5":  (4, 5),
+    "16:9": (16, 9),
 }
 
 # Claude 失敗時フォールバック用
@@ -134,7 +139,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     else:
         text_section = ""
         output_suffix = "high quality, no text, no letters, no words, no japanese characters"
-        no_text_rule = '- 必ず "no text, no letters, no words, no japanese characters" を含めること'
+        no_text_rule = '- 必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること（絶対省略禁止）'
 
     if _has_japanese:
         base_instruction = (
@@ -155,17 +160,24 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     sample_section = ""
     if image_blocks:
         sample_section = """
-## サンプル画像（最重要・必ず参照すること）
-添付した画像はこの企業の画像スタイルのサンプルです。
+## サンプル画像（スタイル参照のみ・必ず確認すること）
+添付した画像はこの企業の画像スタイルのサンプルです。【スタイル・雰囲気・配色のみ】を参考にすること。
 - 色調・配色・全体的な雰囲気・タッチをこれらのサンプルに合わせること
 - サンプルのビジュアルスタイル（イラスト調/写真調/ミニマルなど）を踏襲すること
-- キャラクター・ロゴ・特徴的なデザイン要素があれば可能な限り再現すること
-- 上記のスタイル設定よりサンプル画像のスタイルを優先すること
+- ★サンプル内のテキスト・ロゴ・文字・記号・ブランド名は生成画像に一切含めないこと
+- ★スタイルのみを模倣し、サンプル内の具体的なオブジェクトやキャラクターをそのままコピーしないこと
+- 上記のスタイル設定よりサンプル画像の雰囲気・配色スタイルを優先すること
+"""
+
+    no_text_critical = "" if balance == "text_focus" else """
+## ★絶対制約: 文字・テキスト禁止★
+生成する画像には文字・テキスト・ロゴ・記号を一切含めてはならない。
+プロンプトには必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること。
 """
 
     text_body = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
-
+{no_text_critical}
 {base_instruction}
 {sample_section}
 ## 記事情報
@@ -350,7 +362,8 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             )
 
     size = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
-    return _call_dalle(prompt, size, client_id, api_key)
+    crop_ratio = _ASPECT_TO_CROP.get(aspect_ratio)
+    return _call_dalle(prompt, size, client_id, api_key, crop_ratio=crop_ratio)
 
 
 def refine_image(original_url: str, instruction: str, client_id: int,
@@ -399,7 +412,31 @@ def refine_image(original_url: str, instruction: str, client_id: int,
     return _call_dalle(prompt, size, client_id, api_key)
 
 
-def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
+def _crop_to_ratio(img_bytes: bytes, w_ratio: int, h_ratio: int) -> bytes:
+    """生成画像をセンタークロップして正確なアスペクト比に調整する。"""
+    from PIL import Image
+    img = Image.open(io.BytesIO(img_bytes))
+    w, h = img.size
+    target = w_ratio / h_ratio
+    current = w / h
+    if abs(current - target) < 0.01:
+        return img_bytes
+    if current > target:
+        new_w = int(h * target)
+        left = (w - new_w) // 2
+        img = img.crop((left, 0, left + new_w, h))
+    else:
+        new_h = int(w / target)
+        top = (h - new_h) // 2
+        img = img.crop((0, top, w, top + new_h))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    logger.info(f"画像クロップ完了: {w}x{h} → {img.size[0]}x{img.size[1]} ({w_ratio}:{h_ratio})")
+    return buf.getvalue()
+
+
+def _call_dalle(prompt: str, size: str, client_id: int, api_key: str,
+                crop_ratio: tuple = None) -> str:
     """gpt-image-1 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
     if len(prompt) > 4000:
         prompt = prompt[:4000]
@@ -424,7 +461,13 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str) -> str:
 
     data = resp.json()
     b64 = data["data"][0]["b64_json"]
-    return _save_image(base64.b64decode(b64), "png", client_id)
+    img_bytes = base64.b64decode(b64)
+    if crop_ratio:
+        try:
+            img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
+        except Exception as e:
+            logger.warning(f"クロップ失敗、元画像を使用: {e}")
+    return _save_image(img_bytes, "png", client_id)
 
 
 def _call_dalle_edit(prompt: str, image_bytes: bytes, size: str, client_id: int, api_key: str) -> str:
