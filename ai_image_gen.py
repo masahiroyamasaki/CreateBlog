@@ -99,13 +99,46 @@ def _load_image_blocks(paths: list) -> list:
     return blocks
 
 
+def _get_past_post_image_paths(client_id: int, limit: int = 3) -> list:
+    """この企業の直近投稿画像のファイルパス（static 相対）を最新順で返す。"""
+    try:
+        from models import PostImage, Post
+        imgs = (
+            PostImage.query
+            .join(Post, PostImage.post_id == Post.id)
+            .filter(Post.client_id == client_id)
+            .filter(PostImage.image_url.isnot(None))
+            .order_by(PostImage.id.desc())
+            .limit(limit)
+            .all()
+        )
+        paths = []
+        for img in imgs:
+            url = (img.image_url or "").split("?")[0]
+            if url.startswith("/static/"):
+                paths.append(url[len("/static/"):])
+            elif url.startswith("uploads/"):
+                paths.append(url)
+        logger.info(f"[過去投稿画像] client_id={client_id}: {len(paths)} 件取得")
+        return paths
+    except Exception as e:
+        logger.warning(f"過去投稿画像取得失敗: {e}")
+        return []
+
+
 def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                                   balance: str, aspect_ratio: str,
                                   client_name: str = "",
                                   base_prompt: str = "",
-                                  sample_image_paths: list = None) -> str:
+                                  sample_image_paths: list = None,
+                                  past_image_paths: list = None) -> str:
     """Claude Haiku で記事内容と企業設定から詳細な英語画像プロンプトを生成する。
-    sample_image_paths が渡された場合はマルチモーダルで画像スタイルを解析する。"""
+
+    優先度:
+    1. sample_image_paths (企業設定サンプル画像) → 最優先。テイスト設定を完全に上書き。
+    2. past_image_paths (過去投稿画像) → 補助参照。テイスト/バランス設定と併用。
+    3. なし → テイスト/バランス/ベースプロンプトのみで生成。
+    """
     import anthropic
     from config import Config
 
@@ -186,9 +219,13 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
             )
         output_format = '"[人物なし・抽象グラフィック背景], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
 
-    # サンプル画像がある場合: スタイルをサンプル画像のみから決定し、デフォルト設定を上書き
-    image_blocks = _load_image_blocks(sample_image_paths or [])
-    sample_section = ""
+    # ── 画像参照の優先度ロジック ──────────────────────────────────────────────
+    # 1. 企業設定サンプル画像: 最優先。テイスト/ベースプロンプト設定を完全上書き。
+    # 2. 過去投稿画像: 補助参照。テイスト/バランス設定と併用（上書きしない）。
+    # 3. なし: テイスト/バランス/ベースプロンプトのみ。
+    company_blocks = _load_image_blocks(sample_image_paths or [])
+    past_blocks    = _load_image_blocks(past_image_paths or [])
+
     if balance == "text_focus":
         subject_item = "- 主題: テキストを配置しやすいクリーンな背景・抽象的なグラフィック構図。人物・キャラクター・顔は絶対に含めないこと"
     else:
@@ -196,48 +233,57 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     style_hint = "ベースを踏襲しつつ追加補足があれば"
     color_hint = "ベースのwarm pastel paletteを踏襲しつつ差分があれば"
     base_prompt_rule = "- ベースプロンプトを必ず先頭に含めること（変更・省略禁止）"
+    sample_section = ""
+    image_blocks = []
 
-    if image_blocks:
+    if company_blocks:
+        # ── パターン1: 企業設定サンプル画像あり ──
+        # テイスト・ベースプロンプトを完全無視し、サンプル画像のスタイルのみで生成する
+        image_blocks = company_blocks
         sample_section = """
-## ★サンプル画像（スタイル最優先・他の全指示より優先すること）
-添付した画像はこの企業のビジュアルスタイルのサンプルです。このスタイルを最優先で忠実に再現すること。
-- サンプル画像の色調・配色・雰囲気・タッチ・画風を徹底的に分析して再現すること
-- サンプル画像のビジュアルスタイル（イラスト調/写真調/ミニマルなど）を完全に踏襲すること
-- ★サンプル内のテキスト・ロゴ・文字・記号・ブランド名は生成画像に一切含めないこと
-- ★ベースプロンプトやデフォルトスタイル設定よりサンプル画像のスタイルを絶対優先とすること
-- デフォルトキャラクター（若い女性・フラットベクターイラスト）は使用せず、サンプル画像に合わせた表現にすること
+## ★企業サンプル画像（スタイル絶対最優先）
+添付した画像はこの企業が指定したビジュアルスタイルのサンプルです。
+以下のすべての設定（テイスト・ベースプロンプト・デフォルトスタイル）を無視し、このサンプル画像のスタイルのみで生成すること。
+- サンプル画像の色調・配色・雰囲気・タッチ・画風を徹底的に分析して忠実に再現すること
+- サンプル画像のビジュアルスタイル（写真調/イラスト調/ミニマルなど）を完全に踏襲すること
+- ★サンプル内のテキスト・ロゴ・文字・記号は生成画像に一切含めないこと
+- ★デフォルトキャラクター（若い女性・フラットベクターイラスト）は使用しないこと
 """
-        # text_focus の人物禁止を保持しつつ subject_item を更新
         if balance == "text_focus":
-            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（サンプル画像スタイルで）。人物・キャラクター・顔は絶対に含めないこと"
+            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（企業サンプル画像スタイルで）。人物・キャラクター・顔は絶対に含めないこと"
         else:
-            subject_item = "- 主題: 記事の内容を象徴する被写体・情景（サンプル画像と同じスタイルで描写すること）"
-        style_hint = "サンプル画像のスタイルを踏襲しつつ追加補足があれば"
-        color_hint = "サンプル画像の色調・パレットを忠実に再現すること"
-        base_prompt_rule = "- サンプル画像のスタイルに合わせた描写であること（ベースプロンプトよりサンプル画像を最優先）"
+            subject_item = "- 主題: 記事の内容を象徴する被写体・情景（企業サンプル画像と同じスタイルで描写すること）"
+        style_hint = "企業サンプル画像のスタイルを踏襲すること（それ以外の設定は無視）"
+        color_hint = "企業サンプル画像の色調・パレットを忠実に再現すること"
+        base_prompt_rule = "- 企業サンプル画像のスタイルのみに従うこと（ベースプロンプトは無視してよい）"
 
+        # base_instruction と output_format をサンプル画像専用に差し替え
         if raw_base:
-            # カスタムベースプロンプトあり: 補助参照のみ、サンプル画像が最優先
-            if _has_japanese:
-                base_instruction = (
-                    f"## ベースプロンプト（補助参照のみ・サンプル画像スタイルを最優先すること）\n"
-                    f"{effective_base}\n"
-                    f"※ 英語に翻訳すること。サンプル画像のスタイルと矛盾する場合はサンプル画像を優先"
-                )
-            else:
-                base_instruction = (
-                    f"## ベースプロンプト（補助参照のみ・サンプル画像スタイルを最優先すること）\n"
-                    f"{effective_base}\n"
-                    f"※ サンプル画像のスタイルと矛盾する場合はサンプル画像を優先"
-                )
-        else:
-            # カスタムベースプロンプトなし: デフォルト固定スタイルを一切使わない
             base_instruction = (
-                "## スタイル指定\n"
-                "スタイル・配色・雰囲気はサンプル画像のみを参照して決定すること。\n"
-                "デフォルトの固定キャラクター（若い女性・フラットベクターイラスト等）や過去の生成スタイルは参照しないこと。"
+                f"## ベースプロンプト（無視してよい・企業サンプル画像を最優先にすること）\n"
+                f"{effective_base}\n"
+                f"※ 企業サンプル画像のスタイルを最優先とし、矛盾する場合はサンプル画像を優先"
             )
-        output_format = '"[サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
+        else:
+            base_instruction = (
+                "## スタイル\n"
+                "企業サンプル画像のスタイルのみを参照すること。\n"
+                "デフォルトの固定キャラクター（若い女性・フラットベクターイラスト等）は一切使用しないこと。"
+            )
+        output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
+
+    elif past_blocks:
+        # ── パターン2: 過去投稿画像あり（サンプル画像なし）──
+        # テイスト/バランス設定は維持しつつ、過去画像のスタイルを補助参照する
+        image_blocks = past_blocks
+        sample_section = """
+## 過去投稿画像（スタイル参考・テイスト設定と併用）
+添付した画像はこの企業の直近の投稿画像です。テイスト設定に従いつつ、これらのスタイル・雰囲気も参考にすること。
+- 過去画像の色調・配色・全体的な雰囲気・タッチを参考にすること
+- テイスト設定（下記）が最優先だが、過去画像のスタイルと整合するよう努めること
+- 過去画像内のテキスト・ロゴ・文字は生成画像に含めないこと
+"""
+        # base_instruction / output_format はそのまま（テイスト設定を維持）
 
     no_text_critical = "" if balance == "text_focus" else """
 ## ★絶対制約: 文字・テキスト禁止★
@@ -392,13 +438,22 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                    balance: str = "balanced", body_html: str = "",
                    client_name: str = "", base_prompt: str = "",
-                   sample_image_paths: list = None) -> str:
-    """Claude でプロンプトを生成し、DALL-E 3 で画像を生成して保存する。"""
+                   sample_image_paths: list = None,
+                   past_image_paths: list = None) -> str:
+    """Claude でプロンプトを生成し、DALL-E 3 で画像を生成して保存する。
+
+    sample_image_paths が未設定の場合は自動で過去投稿画像を取得してスタイル参照に使う。
+    past_image_paths=[] を明示的に渡すと自動取得をスキップする。
+    """
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
     if not api_key:
         raise ValueError("OPENAI_API_KEY が設定されていません")
+
+    # サンプル画像未設定の場合、過去投稿画像を自動取得
+    if not sample_image_paths and past_image_paths is None:
+        past_image_paths = _get_past_post_image_paths(client_id)
 
     try:
         prompt = _generate_prompt_with_claude(
@@ -410,6 +465,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             client_name=client_name,
             base_prompt=base_prompt,
             sample_image_paths=sample_image_paths,
+            past_image_paths=past_image_paths,
         )
     except Exception as e:
         logger.warning(f"[Claude] プロンプト生成失敗、フォールバック使用: {e}")
@@ -649,26 +705,29 @@ def generate_images_for_post(
 
     count=1: タイトル+本文ベースの1枚（従来通り）
     count>=2: 1枚目=タイトル専用、2枚目以降=本文各要点ベース
+
+    サンプル画像未設定の場合は過去投稿画像を一度だけ取得して全枚数に使いまわす。
     """
+    # 過去投稿画像を一度だけ取得（サンプル画像がある場合は不要）
+    past_image_paths = None
+    if not sample_image_paths:
+        past_image_paths = _get_past_post_image_paths(client_id)
+
+    _common = dict(
+        taste=taste, aspect_ratio=aspect_ratio, client_id=client_id,
+        balance=balance, client_name=client_name, base_prompt=base_prompt,
+        sample_image_paths=sample_image_paths, past_image_paths=past_image_paths,
+    )
+
     if count <= 1:
-        url = generate_image(
-            title=title, taste=taste, aspect_ratio=aspect_ratio,
-            client_id=client_id, balance=balance, body_html=body_html,
-            client_name=client_name, base_prompt=base_prompt,
-            sample_image_paths=sample_image_paths,
-        )
+        url = generate_image(title=title, body_html=body_html, **_common)
         return [url]
 
     urls = []
 
     # 1枚目: タイトルイメージ（body_html は渡さず title のみに集中）
     try:
-        url1 = generate_image(
-            title=title, taste=taste, aspect_ratio=aspect_ratio,
-            client_id=client_id, balance=balance, body_html="",
-            client_name=client_name, base_prompt=base_prompt,
-            sample_image_paths=sample_image_paths,
-        )
+        url1 = generate_image(title=title, body_html="", **_common)
         urls.append(url1)
     except Exception as e:
         logger.warning(f"[画像1枚目生成エラー] {e}")
@@ -683,12 +742,7 @@ def generate_images_for_post(
     # 2枚目以降: 各要点ベースの画像
     for kp in key_points:
         try:
-            url = generate_image(
-                title=f"{title}: {kp}", taste=taste, aspect_ratio=aspect_ratio,
-                client_id=client_id, balance=balance, body_html=body_html,
-                client_name=client_name, base_prompt=base_prompt,
-                sample_image_paths=sample_image_paths,
-            )
+            url = generate_image(title=f"{title}: {kp}", body_html=body_html, **_common)
             urls.append(url)
         except Exception as e:
             logger.warning(f"[画像生成エラー: {kp[:30]}] {e}")
