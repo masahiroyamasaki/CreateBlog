@@ -252,25 +252,22 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     _has_japanese = bool(re.search(r'[぀-鿿]', effective_base))
 
     if balance == "text_focus":
-        text_section = f"""
-## テキスト描写指示（最重要）
-記事タイトル「{title}」を画像内に美しく配置すること。
+        text_section = """
+## テキストオーバーレイ対応（最重要）
+この画像はPILで後からテキストを重ねるため、画像自体にはテキスト・文字を一切描画しないこと。
 【必須制約】
-- テキストは画像の全四辺から必ず10%以上内側に収めること（絶対に端で切れないこと）
-- フォントサイズは全文字が画像内に完全に収まる大きさに調整すること
-- タイトルが長い場合は2〜3行に折り返してよい（行ごとに収まるサイズで）
-- テキストが1文字でもはみ出たり途切れたりしてはならない
-- 日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい
-- ★人物・人間・キャラクターは一切含めないこと（背景＋テキストのみの構図にすること）"""
+- 画像内に文字・テキスト・数字・ロゴを含めないこと（英語・日本語・記号すべて禁止）
+- 下部1/3エリアをやや暗め・シンプルに仕上げること（テキストが読みやすい領域を確保するため）
+- 人物・人間・キャラクター・顔は一切含めないこと
+- 抽象的・グラフィカルな背景のみで構成すること"""
         output_suffix = (
-            f'title text "{title}" fully contained within image boundaries with generous safe margins from all edges, '
-            f'complete text fully visible without any cropping or cutoff, '
-            f'font size adjusted small enough so entire title fits within the frame, '
-            f'text placed in center or lower third area, '
-            f'no people, no persons, no human figures, no characters, no faces, '
-            f'high quality'
+            "clean abstract background optimized for text overlay, "
+            "lower third area with subtle darker tone or gradient for text readability, "
+            "no people, no persons, no human figures, no characters, no faces, "
+            "no text, no letters, no words, no numbers, no watermarks, "
+            "high quality"
         )
-        no_text_rule = f'- タイトル「{title}」を画像内に描写するため「no text」「no letters」は含めないこと'
+        no_text_rule = '- text_focusモードのため「no text, no letters, no words, no numbers」を必ず含めること（PILでテキストを後から重ねるため画像自体には文字不要）'
     else:
         text_section = ""
         output_suffix = "high quality, no text, no letters, no words, no japanese characters"
@@ -522,7 +519,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     client_obj = anthropic.Anthropic(api_key=api_key)
     message = client_obj.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=200,
         messages=[{"role": "user", "content": content}],
     )
     raw = message.content[0].text.strip()
@@ -530,17 +527,20 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         raw = raw[1:-1]
 
     # ── 最終プロンプトへの強制付与（Claude Haiku が忘れた場合の保険）──
-    # 人物禁止: サンプル画像に人物がいる場合のみ人物を許可し、それ以外は必ず禁止ワードを追加
+    # 人物禁止: サンプル画像に人物がいる場合のみ人物を許可し、それ以外は先頭に禁止ワードを追加
+    _no_people_str = "no people, no persons, no human figures, no characters, no faces"
     if not allow_people_in_image:
-        _no_people_kws = ["no people", "no person", "no human", "no character", "no face"]
-        if not any(kw in raw.lower() for kw in _no_people_kws):
-            raw += ", no people, no persons, no human figures, no characters, no faces"
+        if not any(kw in raw.lower() for kw in ["no people", "no person", "no human", "no character", "no face"]):
+            raw = _no_people_str + ", " + raw
+        # text_focus は常に先頭に付与（後段のオーバーレイと組み合わせた安全策）
+        if balance == "text_focus" and not raw.startswith(_no_people_str):
+            raw = _no_people_str + ", " + raw
 
-    # 文字禁止: サンプル画像に文字がある or text_focus 以外で文字禁止の場合
-    if not allow_text_in_image and balance != "text_focus":
-        _no_text_kws = ["no text", "no letter", "no word", "no number", "no sign"]
-        if not any(kw in raw.lower() for kw in _no_text_kws):
-            raw += ", no text, no letters, no words, no numbers, no japanese characters, no logos"
+    # 文字禁止: text_focus も含めて必ず文字禁止ワードを付与（PILオーバーレイで文字は後付け）
+    _no_text_str = "no text, no letters, no words, no numbers, no japanese characters, no logos"
+    if not allow_text_in_image or balance == "text_focus":
+        if not any(kw in raw.lower() for kw in ["no text", "no letter", "no word", "no number", "no sign"]):
+            raw += ", " + _no_text_str
 
     logger.info(f"[Claude] 生成プロンプト: {raw[:150]}...")
     return raw
@@ -675,11 +675,11 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         aspect_hint  = _ASPECT_HINTS.get(aspect_ratio, _ASPECT_HINTS["1:1"])
         if balance == "text_focus":
             prompt = (
-                f"Professional blog article thumbnail about: {title}. "
-                f"{taste_hint}, {balance_hint}, {aspect_hint}, "
-                f'title text "{title}" fully contained within image boundaries with generous safe margins, '
-                f"complete text fully visible without any cropping or cutoff, "
-                f"font size adjusted so entire title fits within frame, high quality."
+                f"Professional blog article thumbnail, {taste_hint}, {aspect_hint}, "
+                f"clean abstract background optimized for text overlay, "
+                f"lower third area with subtle darker tone for text readability, "
+                f"no people, no persons, no human figures, no characters, no faces, "
+                f"no text, no letters, no words, no numbers, high quality."
             )
         else:
             prompt = (
@@ -690,7 +690,8 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
 
     size = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
     crop_ratio = _ASPECT_TO_CROP.get(aspect_ratio)
-    return _call_dalle(prompt, size, client_id, api_key, crop_ratio=crop_ratio)
+    overlay_title = title if balance == "text_focus" else None
+    return _call_dalle(prompt, size, client_id, api_key, crop_ratio=crop_ratio, overlay_title=overlay_title)
 
 
 def refine_image(original_url: str, instruction: str, client_id: int,
@@ -762,8 +763,90 @@ def _crop_to_ratio(img_bytes: bytes, w_ratio: int, h_ratio: int) -> bytes:
     return buf.getvalue()
 
 
+def _overlay_title_text(img_bytes: bytes, title: str) -> bytes:
+    """画像の下部にタイトルテキストをPILで重ねて返す。日本語フォントを自動検索。"""
+    from PIL import Image, ImageDraw, ImageFont
+
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    w, h = img.size
+
+    # 日本語フォントの候補パス（Linux/ConoHa → Windows の順に試す）
+    font_candidates = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/meiryob.ttc",
+        "C:/Windows/Fonts/YuGothB.ttc",
+        "C:/Windows/Fonts/msgothic.ttc",
+    ]
+
+    font_size = max(28, w // 18)
+    font = None
+    for fp in font_candidates:
+        if os.path.exists(fp):
+            try:
+                font = ImageFont.truetype(fp, font_size)
+                break
+            except Exception:
+                continue
+    if font is None:
+        try:
+            font = ImageFont.load_default(size=font_size)
+        except Exception:
+            font = ImageFont.load_default()
+
+    # テキストを折り返す（最大幅 = 画像幅 - 両端マージン）
+    margin_x = int(w * 0.06)
+    max_text_w = w - margin_x * 2
+    draw_dummy = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+
+    def _text_width(t):
+        try:
+            return draw_dummy.textlength(t, font=font)
+        except Exception:
+            return len(t) * font_size * 0.6
+
+    lines = []
+    current = ""
+    for ch in title:
+        test = current + ch
+        if _text_width(test) > max_text_w and current:
+            lines.append(current)
+            current = ch
+        else:
+            current = test
+    if current:
+        lines.append(current)
+
+    line_h = int(font_size * 1.4)
+    text_block_h = line_h * len(lines)
+    pad = int(h * 0.03)
+    overlay_h = text_block_h + pad * 2
+
+    # 半透明の黒帯を下部に描画（高速な単色オーバーレイ）
+    overlay_y = h - overlay_h
+    overlay = Image.new("RGBA", (w, overlay_h), (0, 0, 0, 170))
+    img.paste(overlay, (0, overlay_y), overlay)
+
+    draw = ImageDraw.Draw(img)
+    for i, line in enumerate(lines):
+        lw = _text_width(line)
+        x = (w - lw) / 2
+        y = overlay_y + pad + i * line_h
+        # 影
+        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, 200))
+        # 本文
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="PNG")
+    logger.info(f"テキストオーバーレイ完了: '{title}' ({len(lines)}行)")
+    return buf.getvalue()
+
+
 def _call_dalle(prompt: str, size: str, client_id: int, api_key: str,
-                crop_ratio: tuple = None) -> str:
+                crop_ratio: tuple = None, overlay_title: str = None) -> str:
     """gpt-image-1 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
     if len(prompt) > 4000:
         prompt = prompt[:4000]
@@ -794,6 +877,11 @@ def _call_dalle(prompt: str, size: str, client_id: int, api_key: str,
             img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
         except Exception as e:
             logger.warning(f"クロップ失敗、元画像を使用: {e}")
+    if overlay_title:
+        try:
+            img_bytes = _overlay_title_text(img_bytes, overlay_title)
+        except Exception as e:
+            logger.warning(f"テキストオーバーレイ失敗、元画像を使用: {e}")
     return _save_image(img_bytes, "png", client_id)
 
 
