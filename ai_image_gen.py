@@ -66,12 +66,11 @@ _ASPECT_LABELS = {
 
 _DEFAULT_BASE_PROMPT = (
     "flat vector illustration style, warm pastel palette, "
-    "consistent character design of a young professional woman with short black hair"
+    "no people, no persons, no human figures, no characters, no faces"
 )
 
 _NEGATIVE_GUIDANCE = (
-    "Avoid: text, watermark, extra limbs, inconsistent character design, "
-    "photorealistic rendering, low quality."
+    "Avoid: text, watermark, photorealistic rendering, low quality."
 )
 
 
@@ -329,7 +328,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     if balance == "text_focus":
         subject_item = "- 主題: テキストを配置しやすいクリーンな背景・抽象的なグラフィック構図。人物・キャラクター・顔は絶対に含めないこと"
     else:
-        subject_item = "- 主題: 記事の内容を象徴する被写体・情景。ベースキャラクター（若い女性）の配置も含めること"
+        subject_item = "- 主題: 記事の内容を象徴する被写体・情景・抽象表現（人物・キャラクター・顔は含めないこと）"
     style_hint = "ベースを踏襲しつつ追加補足があれば"
     color_hint = "ベースのwarm pastel paletteを踏襲しつつ差分があれば"
     base_prompt_rule = "- ベースプロンプトを必ず先頭に含めること（変更・省略禁止）"
@@ -529,7 +528,21 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     raw = message.content[0].text.strip()
     if raw.startswith('"') and raw.endswith('"'):
         raw = raw[1:-1]
-    logger.info(f"[Claude] 生成プロンプト: {raw[:120]}...")
+
+    # ── 最終プロンプトへの強制付与（Claude Haiku が忘れた場合の保険）──
+    # 人物禁止: サンプル画像に人物がいる場合のみ人物を許可し、それ以外は必ず禁止ワードを追加
+    if not allow_people_in_image:
+        _no_people_kws = ["no people", "no person", "no human", "no character", "no face"]
+        if not any(kw in raw.lower() for kw in _no_people_kws):
+            raw += ", no people, no persons, no human figures, no characters, no faces"
+
+    # 文字禁止: サンプル画像に文字がある or text_focus 以外で文字禁止の場合
+    if not allow_text_in_image and balance != "text_focus":
+        _no_text_kws = ["no text", "no letter", "no word", "no number", "no sign"]
+        if not any(kw in raw.lower() for kw in _no_text_kws):
+            raw += ", no text, no letters, no words, no numbers, no japanese characters, no logos"
+
+    logger.info(f"[Claude] 生成プロンプト: {raw[:150]}...")
     return raw
 
 
