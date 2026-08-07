@@ -128,12 +128,15 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - フォントサイズは全文字が画像内に完全に収まる大きさに調整すること
 - タイトルが長い場合は2〜3行に折り返してよい（行ごとに収まるサイズで）
 - テキストが1文字でもはみ出たり途切れたりしてはならない
-- 日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい"""
+- 日本語タイトルはそのまま日本語で、または英語に意訳して配置してよい
+- ★人物・人間・キャラクターは一切含めないこと（背景＋テキストのみの構図にすること）"""
         output_suffix = (
             f'title text "{title}" fully contained within image boundaries with generous safe margins from all edges, '
             f'complete text fully visible without any cropping or cutoff, '
             f'font size adjusted small enough so entire title fits within the frame, '
-            f'text placed in center or lower third area, high quality'
+            f'text placed in center or lower third area, '
+            f'no people, no persons, no human figures, no characters, no faces, '
+            f'high quality'
         )
         no_text_rule = f'- タイトル「{title}」を画像内に描写するため「no text」「no letters」は含めないこと'
     else:
@@ -158,7 +161,10 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     # サンプル画像がある場合: スタイルをサンプル画像のみから決定し、デフォルト設定を上書き
     image_blocks = _load_image_blocks(sample_image_paths or [])
     sample_section = ""
-    subject_item = "- 主題: 記事の内容を象徴する被写体・情景。ベースキャラクター（若い女性）の配置も含めること"
+    if balance == "text_focus":
+        subject_item = "- 主題: テキストを配置しやすいクリーンな背景・抽象的なグラフィック構図。人物・キャラクター・顔は絶対に含めないこと"
+    else:
+        subject_item = "- 主題: 記事の内容を象徴する被写体・情景。ベースキャラクター（若い女性）の配置も含めること"
     style_hint = "ベースを踏襲しつつ追加補足があれば"
     color_hint = "ベースのwarm pastel paletteを踏襲しつつ差分があれば"
     base_prompt_rule = "- ベースプロンプトを必ず先頭に含めること（変更・省略禁止）"
@@ -236,6 +242,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 
 ## 注意事項
 {_NEGATIVE_GUIDANCE}
+{"Absolutely avoid: people, persons, human figures, faces, characters, portraits. Background and typography only." if balance == "text_focus" else ""}
 
 ## 出力ルール
 - 英語のみで出力すること
