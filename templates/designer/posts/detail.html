@@ -569,7 +569,8 @@ const IMG_JOB_KEY = `imgJob_${postId}`;
 const PLACEHOLDER_ID = 'img-gen-placeholder';
 
 // ── 生成中プレースホルダーカード（新規生成用） ──
-function _addGeneratingPlaceholder() {
+function _addGeneratingPlaceholder(count) {
+  count = count || 1;
   if (document.getElementById(PLACEHOLDER_ID)) return;
   const noMsg = document.getElementById('no-image-msg');
   if (noMsg) noMsg.remove();
@@ -578,14 +579,16 @@ function _addGeneratingPlaceholder() {
   card.className = 'img-card is-generating';
   card.id = PLACEHOLDER_ID;
   card.style.cssText = 'pointer-events:none;';
+  const countLabel = count > 1 ? `（${count}枚）` : '';
+  const timeHint   = count > 1 ? `${count}枚を順番に生成します。${count}〜${count * 2}分かかります` : '30秒〜1分かかります';
   card.innerHTML = `
     <div class="img-card-row">
       <div style="width:56px;height:56px;background:var(--bg2);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <div class="img-spinner-blue"></div>
       </div>
       <div style="flex:1;">
-        <div style="font-size:13px;color:var(--primary);font-weight:700;">AI画像を生成中...</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;">30秒〜1分かかります</div>
+        <div style="font-size:13px;color:var(--primary);font-weight:700;">AI画像を生成中${countLabel}...</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">${timeHint}</div>
       </div>
     </div>`;
   list.appendChild(card);
@@ -622,8 +625,9 @@ function _removeRefineOverlay(imgId) {
     if (!stored) return;
     const job = JSON.parse(stored);
     if (job.type === 'generate') {
-      _setGeneratingUI(true);
-      _addGeneratingPlaceholder();
+      const count = job.count || 1;
+      _setGeneratingUI(true, count);
+      _addGeneratingPlaceholder(count);
       _pollImageJob(job.job_id, _onGenerateDone, _onJobError);
     } else if (job.type === 'refine') {
       const btn = document.getElementById('refine-btn-' + job.origImgId);
@@ -635,14 +639,15 @@ function _removeRefineOverlay(imgId) {
   } catch(e) { sessionStorage.removeItem(IMG_JOB_KEY); }
 })();
 
-function _setGeneratingUI(on) {
+function _setGeneratingUI(on, count) {
+  count = count || 1;
   const btn = document.getElementById('ai-img-btn');
   const resultEl = document.getElementById('ai-img-result');
   isGenerating = on;
   if (!btn) return;
   if (on) {
     btn.disabled = true;
-    btn.textContent = '生成中...（30秒〜1分）';
+    btn.textContent = count > 1 ? `生成中...(${count}枚・${count}〜${count*2}分)` : '生成中...（30秒〜1分）';
     if (resultEl) resultEl.style.display = 'none';
   } else {
     btn.disabled = false;
@@ -680,15 +685,24 @@ function _pollImageJob(jobId, onDone, onError) {
 function _onGenerateDone(data) {
   _removeGeneratingPlaceholder();
   _setGeneratingUI(false);
-  // リロード後にJinja2が既にレンダリングしている場合は重複追加しない
-  if (data.id && !document.getElementById('img-' + data.id)) {
-    appendImageCard(data.id, data.image_url, data.sort_order, 'AI生成画像');
+  // images 配列（新形式）と旧形式の両方に対応
+  const images = data.images && data.images.length
+    ? data.images
+    : (data.id ? [{ id: data.id, image_url: data.image_url, sort_order: data.sort_order }] : []);
+  for (const img of images) {
+    if (img.id && !document.getElementById('img-' + img.id)) {
+      appendImageCard(img.id, img.image_url, img.sort_order, 'AI生成画像');
+    }
   }
   editCount = data.edit_count;
   updateEditCountUI();
+  const n = images.length;
   const resultEl = document.getElementById('ai-img-result');
-  if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = '<span style="color:var(--success);">✓ AI画像を生成しました</span>'; }
-  showToast('AI画像を生成しました', 'success');
+  if (resultEl) {
+    resultEl.style.display = '';
+    resultEl.innerHTML = `<span style="color:var(--success);">✓ AI画像を${n}枚生成しました</span>`;
+  }
+  showToast(`AI画像を${n}枚生成しました`, 'success');
 }
 
 function _onRefineDone(data, origImgId) {
@@ -725,23 +739,21 @@ function _onJobError(errMsg) {
 async function generateAiImage() {
   const resultEl = document.getElementById('ai-img-result');
   if (isGenerating) return;
-  _setGeneratingUI(true);
-  _addGeneratingPlaceholder();
 
   try {
     const res = await fetch(`/designer/clients/${clientId}/posts/${postId}/generate-ai-image`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'generate' }));
+      const count = data.count || 1;
+      _setGeneratingUI(true, count);
+      _addGeneratingPlaceholder(count);
+      sessionStorage.setItem(IMG_JOB_KEY, JSON.stringify({ job_id: data.job_id, type: 'generate', count }));
       _pollImageJob(data.job_id, _onGenerateDone, _onJobError);
     } else {
-      _removeGeneratingPlaceholder();
-      _setGeneratingUI(false);
       if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ ${data.reason}</span>`; }
       showToast('生成エラー: ' + data.reason, 'error');
     }
   } catch (err) {
-    _removeGeneratingPlaceholder();
     _setGeneratingUI(false);
     if (resultEl) { resultEl.style.display = ''; resultEl.innerHTML = `<span style="color:var(--danger);">✗ 通信エラー: ${err.message}</span>`; }
   }

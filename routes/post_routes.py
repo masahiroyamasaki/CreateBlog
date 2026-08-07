@@ -263,39 +263,50 @@ def post_generate_ai_image(client_id: int, post_id: int):
 
     app = current_app._get_current_object()
     job_id = str(_uuid_mod.uuid4())
-    _write_job(job_id, {"status": "running", "image_url": None, "error": None,
-                        "id": None, "edit_count": None, "sort_order": None})
+    _write_job(job_id, {"status": "running", "images": [], "error": None, "edit_count": None})
 
     taste        = getattr(client, "image_taste", "business_clean") or "business_clean"
     balance      = getattr(client, "image_balance", "balanced") or "balanced"
     aspect_ratio = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
+    img_count    = int(getattr(client, "image_count_per_post", 1) or 1)
     title        = post.title or "ブログ記事"
     body_context = post.body_html or post.ig_caption or ""
     client_name  = client.name or ""
     base_prompt  = getattr(client, "image_base_prompt", "") or ""
+    sample_paths = [p for p in [
+        getattr(client, "sample_image_1_path", "") or "",
+        getattr(client, "sample_image_2_path", "") or "",
+        getattr(client, "sample_image_3_path", "") or "",
+    ] if p]
 
     def _run():
         try:
-            from ai_image_gen import generate_image
-            img_path = generate_image(
-                title=title, taste=taste, aspect_ratio=aspect_ratio,
-                client_id=client_id, balance=balance, body_html=body_context,
+            from ai_image_gen import generate_images_for_post
+            img_urls = generate_images_for_post(
+                title=title, body_html=body_context,
+                taste=taste, aspect_ratio=aspect_ratio,
+                client_id=client_id, balance=balance,
                 client_name=client_name, base_prompt=base_prompt,
+                sample_image_paths=sample_paths if sample_paths else None,
+                count=img_count,
             )
             with app.app_context():
                 from models import Post as _Post, PostImage as _PI, db as _db
                 p = _Post.query.get(post_id)
                 if p:
                     last = p.images.order_by(_PI.sort_order.desc()).first()
-                    sort_order = (last.sort_order + 1) if last else 1
-                    img = _PI(post_id=post_id, image_url=img_path, sort_order=sort_order)
-                    _db.session.add(img)
+                    base_order = (last.sort_order + 1) if last else 1
+                    saved = []
+                    for i, url in enumerate(img_urls):
+                        img = _PI(post_id=post_id, image_url=url, sort_order=base_order + i)
+                        _db.session.add(img)
+                        _db.session.flush()
+                        saved.append({"id": img.id, "image_url": url, "sort_order": base_order + i})
                     p.image_edit_count = (p.image_edit_count or 0) + 1
                     _db.session.commit()
                     _write_job(job_id, {
-                        "status": "done", "image_url": img_path,
-                        "id": img.id, "edit_count": p.image_edit_count,
-                        "sort_order": sort_order, "error": None,
+                        "status": "done", "images": saved,
+                        "edit_count": p.image_edit_count, "error": None,
                     })
                 else:
                     _write_job(job_id, {"status": "error", "error": "投稿が見つかりません"})
@@ -304,7 +315,7 @@ def post_generate_ai_image(client_id: int, post_id: int):
             _write_job(job_id, {"status": "error", "error": str(e)})
 
     _threading.Thread(target=_run, daemon=True).start()
-    return jsonify({"success": True, "job_id": job_id})
+    return jsonify({"success": True, "job_id": job_id, "count": img_count})
 
 
 @designer_bp.route("/clients/<int:client_id>/posts/<int:post_id>/generate-ai-image-status/<job_id>")
