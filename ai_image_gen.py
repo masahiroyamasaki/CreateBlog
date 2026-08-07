@@ -126,6 +126,77 @@ def _get_past_post_image_paths(client_id: int, limit: int = 3) -> list:
         return []
 
 
+def _analyze_sample_images(image_paths: list) -> dict:
+    """サンプル画像を Claude で事前分析し、スタイル・文字有無・人物有無などを返す。
+
+    戻り値:
+        has_text    : 画像に文字・テキストが含まれているか
+        has_people  : 人物・キャラクターが含まれているか
+        style       : ビジュアルスタイルの説明
+        colors      : 主要カラー
+        layout      : 構図・レイアウト
+        mood        : 雰囲気
+        description : 分析テキスト全文（プロンプトへ埋め込む用）
+    """
+    import re as _re
+    import anthropic
+    from config import Config
+
+    blocks = _load_image_blocks(image_paths)
+    if not blocks:
+        return {"has_text": False, "has_people": False, "description": ""}
+
+    api_key = Config.ANTHROPIC_API_KEY
+    if not api_key:
+        return {"has_text": False, "has_people": False, "description": ""}
+
+    analysis_prompt = """添付した画像を詳細に分析し、以下の形式で正確に答えてください。
+
+HAS_TEXT: [YES または NO]
+HAS_PEOPLE: [YES または NO]
+STYLE: [ビジュアルスタイル。例: ミニマル写真調、カラフルイラスト、フラットデザイン、リアル写真など]
+COLORS: [主要な色を3〜5色。例: 白・紺・ゴールド]
+LAYOUT: [構図・レイアウト。例: 中央配置・左テキスト右画像・全面イメージなど]
+MOOD: [全体の雰囲気。例: プロフェッショナル・温かい・クール・元気など]
+TEXT_STYLE: [テキストがある場合のフォント・サイズ感・配置スタイル。なければ NONE]
+DESCRIPTION: [画像全体の詳細な説明を2〜3文で]
+
+各行をこの形式で出力すること（追加の説明文は不要）。"""
+
+    content = blocks + [{"type": "text", "text": analysis_prompt}]
+
+    try:
+        client_obj = anthropic.Anthropic(api_key=api_key)
+        message = client_obj.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            messages=[{"role": "user", "content": content}],
+        )
+        raw = message.content[0].text.strip()
+        logger.info(f"[サンプル画像分析]\n{raw}")
+
+        def _field(key):
+            m = _re.search(rf'^{key}:\s*(.+)$', raw, _re.MULTILINE | _re.IGNORECASE)
+            return m.group(1).strip() if m else ""
+
+        has_text   = _field("HAS_TEXT").upper()   == "YES"
+        has_people = _field("HAS_PEOPLE").upper() == "YES"
+
+        return {
+            "has_text":    has_text,
+            "has_people":  has_people,
+            "style":       _field("STYLE"),
+            "colors":      _field("COLORS"),
+            "layout":      _field("LAYOUT"),
+            "mood":        _field("MOOD"),
+            "text_style":  _field("TEXT_STYLE"),
+            "description": raw,
+        }
+    except Exception as e:
+        logger.warning(f"サンプル画像分析失敗: {e}")
+        return {"has_text": False, "has_people": False, "description": ""}
+
+
 def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                                   balance: str, aspect_ratio: str,
                                   client_name: str = "",
@@ -236,41 +307,77 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     sample_section = ""
     image_blocks = []
 
+    # サンプル画像を事前分析（APIコール1回）→ 文字/人物有無を確定させてから分岐
+    sample_analysis = _analyze_sample_images(sample_image_paths or []) if company_blocks else {}
+    has_text_in_sample   = sample_analysis.get("has_text", False)
+    has_people_in_sample = sample_analysis.get("has_people", False)
+    analysis_desc        = sample_analysis.get("description", "")
+
+    # text/人物禁止フラグの初期値（後段で上書き可）
+    allow_text_in_image   = False   # True = サンプルに文字あり → 生成画像にも文字を入れる
+    allow_people_in_image = False   # True = サンプルに人物あり → 生成画像にも人物を入れてよい
+
     if company_blocks:
-        # ── パターン1: 企業設定サンプル画像あり ──
-        # テイスト・ベースプロンプトを完全無視し、サンプル画像のスタイルのみで生成する
+        # ── パターン1: 企業設定サンプル画像あり（事前分析済み）──
+        # テイスト・ベースプロンプトを完全無視し、分析結果のスタイルのみで生成する
         image_blocks = company_blocks
-        sample_section = """
+
+        allow_text_in_image   = has_text_in_sample and balance != "text_focus"
+        allow_people_in_image = has_people_in_sample and balance != "text_focus"
+
+        # 分析結果をプロンプトに埋め込む
+        text_rule_line   = (
+            f"- テキスト・文字: サンプルに文字あり → 記事タイトル「{title}」をサンプルと同じタイポグラフィスタイルで画像内に配置すること"
+            if allow_text_in_image else
+            "- テキスト・文字: サンプルに文字なし → 生成画像にも文字・テキストは一切含めないこと"
+        )
+        people_rule_line = (
+            "- 人物・キャラクター: サンプルに人物あり → 同様のスタイルで人物を含めてよい"
+            if allow_people_in_image else
+            "- 人物・キャラクター: サンプルに人物なし → 生成画像にも人物・顔・キャラクターは含めないこと"
+        )
+
+        sample_section = f"""
 ## ★企業サンプル画像（スタイル絶対最優先）
 添付した画像はこの企業が指定したビジュアルスタイルのサンプルです。
-以下のすべての設定（テイスト・ベースプロンプト・デフォルトスタイル）を無視し、このサンプル画像のスタイルのみで生成すること。
-- サンプル画像の色調・配色・雰囲気・タッチ・画風を徹底的に分析して忠実に再現すること
-- サンプル画像のビジュアルスタイル（写真調/イラスト調/ミニマルなど）を完全に踏襲すること
-- ★サンプル内のテキスト・ロゴ・文字・記号は生成画像に一切含めないこと
-- ★デフォルトキャラクター（若い女性・フラットベクターイラスト）は使用しないこと
+以下の分析結果をもとに、このスタイルを忠実に再現すること。
+テイスト設定・ベースプロンプト・デフォルトスタイルはすべて無視すること。
+
+【サンプル画像分析結果】
+{analysis_desc}
+
+【生成ルール（分析結果に基づく）】
+- スタイル・色調・レイアウト・雰囲気を上記分析結果に忠実に合わせること
+- ★ロゴ・ブランド固有の記号・商標は生成画像に含めないこと
+{text_rule_line}
+{people_rule_line}
 """
         if balance == "text_focus":
-            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（企業サンプル画像スタイルで）。人物・キャラクター・顔は絶対に含めないこと"
+            subject_item = "- 主題: テキストを配置しやすいクリーンな背景（企業サンプル画像スタイルで）。人物・顔は含めないこと"
+        elif allow_people_in_image:
+            subject_item = "- 主題: 記事の内容を象徴する情景（企業サンプル画像と同様に人物を含めること）"
         else:
-            subject_item = "- 主題: 記事の内容を象徴する被写体・情景（企業サンプル画像と同じスタイルで描写すること）"
-        style_hint = "企業サンプル画像のスタイルを踏襲すること（それ以外の設定は無視）"
-        color_hint = "企業サンプル画像の色調・パレットを忠実に再現すること"
+            subject_item = "- 主題: 記事の内容を象徴する被写体・情景（企業サンプル画像スタイルで、人物なし）"
+
+        style_hint       = "企業サンプル画像の分析結果に合わせること（他の設定は無視）"
+        color_hint       = "企業サンプル画像の色調・パレットを忠実に再現すること"
         base_prompt_rule = "- 企業サンプル画像のスタイルのみに従うこと（ベースプロンプトは無視してよい）"
 
-        # base_instruction と output_format をサンプル画像専用に差し替え
-        if raw_base:
-            base_instruction = (
-                f"## ベースプロンプト（無視してよい・企業サンプル画像を最優先にすること）\n"
-                f"{effective_base}\n"
-                f"※ 企業サンプル画像のスタイルを最優先とし、矛盾する場合はサンプル画像を優先"
+        base_instruction = (
+            "## スタイル指定\n"
+            "企業サンプル画像の分析結果のスタイルのみを参照すること。\n"
+            "デフォルトの固定キャラクター（若い女性・フラットベクターイラスト等）は一切使用しないこと。"
+        )
+
+        if allow_text_in_image:
+            _text_suffix = (
+                f'title text "{title}" placed in the same typography style and position as the sample images, '
+                f'high quality'
             )
+            output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + _text_suffix + '"'
+            no_text_rule = f'- 記事タイトル「{title}」をサンプル画像と同じスタイルで画像内に配置すること'
         else:
-            base_instruction = (
-                "## スタイル\n"
-                "企業サンプル画像のスタイルのみを参照すること。\n"
-                "デフォルトの固定キャラクター（若い女性・フラットベクターイラスト等）は一切使用しないこと。"
-            )
-        output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
+            output_format = '"[企業サンプル画像のスタイルを再現した描写], [主題], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
 
     elif past_blocks:
         # ── パターン2: 過去投稿画像あり（サンプル画像なし）──
@@ -285,13 +392,25 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 """
         # base_instruction / output_format はそのまま（テイスト設定を維持）
 
-    no_text_critical = "" if balance == "text_focus" else """
+    # no_text_critical: サンプル画像に文字がある場合はテキスト禁止を解除
+    if allow_text_in_image:
+        no_text_critical = ""
+    elif balance == "text_focus":
+        no_text_critical = ""
+    else:
+        no_text_critical = """
 ## ★絶対制約: 文字・テキスト禁止★
 生成する画像には文字・テキスト・ロゴ・記号を一切含めてはならない。
 プロンプトには必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること。
 """
 
-    text_body = f"""あなたはAI画像生成（DALL-E 3）のプロンプト専門家です。
+    # text_focus かつ人物禁止の追加注意
+    people_avoid_note = (
+        "Absolutely avoid: people, persons, human figures, faces, characters, portraits. Background and typography only."
+        if balance == "text_focus" and not allow_people_in_image else ""
+    )
+
+    text_body = f"""あなたはAI画像生成（gpt-image-1）のプロンプト専門家です。
 以下の記事情報と企業設定をもとに、ブログ記事のサムネイル画像を生成するための英語プロンプトを作成してください。
 {no_text_critical}
 {base_instruction}
@@ -320,13 +439,13 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 
 ## 注意事項
 {_NEGATIVE_GUIDANCE}
-{"Absolutely avoid: people, persons, human figures, faces, characters, portraits. Background and typography only." if balance == "text_focus" else ""}
+{people_avoid_note}
 
 ## 出力ルール
 - 英語のみで出力すること
 {base_prompt_rule}
 - ダブルクォーテーションで囲んだプロンプト文のみを出力すること（説明文・日本語不要）
-- DALL-E 3 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）
+- gpt-image-1 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）
 {no_text_rule}"""
 
     # マルチモーダル対応: サンプル画像がある場合は画像ブロックを先頭に追加
