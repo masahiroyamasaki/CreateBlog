@@ -172,6 +172,18 @@
             <p class="hint">全生成画像の先頭に付加されるデザイン指示。日本語で入力してください。AIが自動で英語に変換して画像生成に使用します。空欄の場合はデフォルト（フラットベクターイラスト・女性キャラ）が使用されます。</p>
           </div>
 
+          <div class="form-group">
+            <label>記事あたり画像生成枚数</label>
+            {% set cur_img_count = (client.image_count_per_post if client and client.image_count_per_post else 1) %}
+            <select class="form-control" name="image_count_per_post">
+              <option value="1" {% if cur_img_count == 1 %}selected{% endif %}>1枚 — タイトルイメージ（デフォルト）</option>
+              <option value="2" {% if cur_img_count == 2 %}selected{% endif %}>2枚 — タイトル + 要点1</option>
+              <option value="3" {% if cur_img_count == 3 %}selected{% endif %}>3枚 — タイトル + 要点2</option>
+              <option value="4" {% if cur_img_count == 4 %}selected{% endif %}>4枚 — タイトル + 要点3</option>
+            </select>
+            <p class="hint">複数枚の場合、1枚目はタイトルイメージ、2枚目以降はAIが記事本文から要点を抽出してテーマにした画像を生成します。枚数分の API コストが発生します。</p>
+          </div>
+
           {% if client %}
           <div class="form-group">
             <label>スタイルサンプル画像（最大3枚）</label>

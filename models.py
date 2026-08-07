@@ -108,6 +108,7 @@ class Client(db.Model):
     sample_image_1_path = db.Column(db.String(500), default="")       # サンプル画像1（staticフォルダ相対パス）
     sample_image_2_path = db.Column(db.String(500), default="")       # サンプル画像2
     sample_image_3_path = db.Column(db.String(500), default="")       # サンプル画像3
+    image_count_per_post = db.Column(db.Integer, default=1)           # 記事あたり生成画像枚数（1〜4）
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     posts = db.relationship("Post", back_populates="client", lazy="dynamic")

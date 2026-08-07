@@ -527,6 +527,105 @@ def _save_image(img_bytes: bytes, ext: str, client_id: int) -> str:
 
 # ─── ユーティリティ ──────────────────────────────────────────────────────────
 
+def _extract_key_points(body_html: str, count: int, title: str) -> list:
+    """本文から画像生成テーマとなる要点を count 個抽出する（Claude Haiku 使用）。"""
+    import anthropic
+    from config import Config
+
+    api_key = Config.ANTHROPIC_API_KEY
+    body_text = _strip_html(body_html or "")[:2000]
+    if not api_key or not body_text:
+        return [f"{title} — ポイント{i + 1}" for i in range(count)]
+
+    user_msg = f"""以下のブログ記事の本文から、画像生成のテーマとなる要点を{count}つ日本語で抽出してください。
+
+記事タイトル: {title}
+
+本文:
+{body_text}
+
+## 出力ルール
+- {count}つの要点を1行1つで出力
+- 各行を「・」で始める（例: ・○○のポイント）
+- 各要点は15〜30文字程度の簡潔な日本語フレーズ
+- 記事の異なるセクション・視点・ポイントを網羅すること
+- 説明文・番号・空行は不要"""
+
+    client_obj = anthropic.Anthropic(api_key=api_key)
+    message = client_obj.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    raw = message.content[0].text.strip()
+    points = []
+    for line in raw.split("\n"):
+        line = line.strip().lstrip("・-•").strip()
+        if line:
+            points.append(line)
+    while len(points) < count:
+        points.append(f"{title} — ポイント{len(points) + 1}")
+    logger.info(f"[Claude] 要点抽出: {points[:count]}")
+    return points[:count]
+
+
+def generate_images_for_post(
+    title: str, body_html: str, taste: str, aspect_ratio: str, client_id: int,
+    balance: str = "balanced", client_name: str = "",
+    base_prompt: str = "", sample_image_paths: list = None,
+    count: int = 1
+) -> list:
+    """記事1件に対して count 枚の画像 URL リストを返す。
+
+    count=1: タイトル+本文ベースの1枚（従来通り）
+    count>=2: 1枚目=タイトル専用、2枚目以降=本文各要点ベース
+    """
+    if count <= 1:
+        url = generate_image(
+            title=title, taste=taste, aspect_ratio=aspect_ratio,
+            client_id=client_id, balance=balance, body_html=body_html,
+            client_name=client_name, base_prompt=base_prompt,
+            sample_image_paths=sample_image_paths,
+        )
+        return [url]
+
+    urls = []
+
+    # 1枚目: タイトルイメージ（body_html は渡さず title のみに集中）
+    try:
+        url1 = generate_image(
+            title=title, taste=taste, aspect_ratio=aspect_ratio,
+            client_id=client_id, balance=balance, body_html="",
+            client_name=client_name, base_prompt=base_prompt,
+            sample_image_paths=sample_image_paths,
+        )
+        urls.append(url1)
+    except Exception as e:
+        logger.warning(f"[画像1枚目生成エラー] {e}")
+
+    # 要点を count-1 個抽出
+    try:
+        key_points = _extract_key_points(body_html, count - 1, title)
+    except Exception as e:
+        logger.warning(f"[要点抽出エラー] {e}")
+        key_points = [f"{title} — ポイント{i + 1}" for i in range(count - 1)]
+
+    # 2枚目以降: 各要点ベースの画像
+    for kp in key_points:
+        try:
+            url = generate_image(
+                title=f"{title}: {kp}", taste=taste, aspect_ratio=aspect_ratio,
+                client_id=client_id, balance=balance, body_html=body_html,
+                client_name=client_name, base_prompt=base_prompt,
+                sample_image_paths=sample_image_paths,
+            )
+            urls.append(url)
+        except Exception as e:
+            logger.warning(f"[画像生成エラー: {kp[:30]}] {e}")
+
+    return urls
+
+
 def _strip_html(html: str) -> str:
     text = re.sub(r'<[^>]+>', ' ', html)
     text = re.sub(r'&[a-zA-Z#0-9]+;', ' ', text)

@@ -225,6 +225,7 @@ def topic_generate(client_id: int, topic_id: int):
         getattr(client, "sample_image_2_path", "") or "",
         getattr(client, "sample_image_3_path", "") or "",
     ] if p]
+    image_count_val = int(getattr(client, "image_count_per_post", 1) or 1)
 
     def _run():
         run = _generation_runs[run_id]
@@ -371,19 +372,21 @@ def topic_generate(client_id: int, topic_id: int):
                 if image_gen_enabled_val and post:
                     run.update(step="ai_image", step_num=8)
                     try:
-                        from ai_image_gen import generate_image as _gen_img
-                        img_path = _gen_img(
+                        from ai_image_gen import generate_images_for_post as _gen_imgs
+                        img_urls = _gen_imgs(
                             title=topic_title,
+                            body_html=getattr(post, "body_html", "") or "",
                             taste=image_taste_val,
                             aspect_ratio=image_aspect_ratio_val,
                             client_id=client_id_val,
                             balance=image_balance_val,
-                            body_html=getattr(post, "body_html", "") or "",
                             client_name=client_name,
                             base_prompt=image_base_prompt_val,
                             sample_image_paths=image_sample_paths_val,
+                            count=image_count_val,
                         )
-                        _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                        for _i, _url in enumerate(img_urls, start=1):
+                            _db.session.add(_PI(post_id=post.id, image_url=_url, sort_order=_i))
                         _db.session.commit()
                     except Exception as _img_err:
                         import traceback
@@ -485,6 +488,7 @@ def topic_bulk_generate(client_id: int):
     image_balance_bulk        = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_bulk   = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
     image_base_prompt_bulk    = getattr(client, "image_base_prompt", "") or ""
+    image_count_bulk          = int(getattr(client, "image_count_per_post", 1) or 1)
     image_sample_paths_bulk   = [p for p in [
         getattr(client, "sample_image_1_path", "") or "",
         getattr(client, "sample_image_2_path", "") or "",
@@ -529,7 +533,8 @@ def topic_bulk_generate(client_id: int):
                  image_balance=image_balance_bulk,
                  image_aspect_ratio=image_aspect_ratio_bulk,
                  image_base_prompt=image_base_prompt_bulk,
-                 image_sample_paths=image_sample_paths_bulk):
+                 image_sample_paths=image_sample_paths_bulk,
+                 image_count=image_count_bulk):
             run = _generation_runs[run_id]
 
             def _cancel_and_cleanup():
@@ -623,19 +628,21 @@ def topic_bulk_generate(client_id: int):
                     if image_gen_enabled and post:
                         run.update(step="ai_image", step_num=8)
                         try:
-                            from ai_image_gen import generate_image as _gen_img
-                            img_path = _gen_img(
+                            from ai_image_gen import generate_images_for_post as _gen_imgs
+                            img_urls = _gen_imgs(
                                 title=topic_title,
+                                body_html=getattr(post, "body_html", "") or "",
                                 taste=image_taste,
                                 aspect_ratio=image_aspect_ratio,
                                 client_id=client_id_val,
                                 balance=image_balance,
-                                body_html=getattr(post, "body_html", "") or "",
                                 client_name=client_name,
                                 base_prompt=image_base_prompt,
                                 sample_image_paths=image_sample_paths,
+                                count=image_count,
                             )
-                            _db.session.add(_PI(post_id=post.id, image_url=img_path, sort_order=1))
+                            for _i, _url in enumerate(img_urls, start=1):
+                                _db.session.add(_PI(post_id=post.id, image_url=_url, sort_order=_i))
                             _db.session.commit()
                         except Exception as _img_err:
                             import traceback

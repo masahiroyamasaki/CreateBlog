@@ -186,6 +186,7 @@ def client_new():
             image_taste=request.form.get("image_taste", "business_clean"),
             image_balance=request.form.get("image_balance", "balanced"),
             image_aspect_ratio=request.form.get("image_aspect_ratio", "1:1"),
+            image_count_per_post=int(request.form.get("image_count_per_post", 1) or 1),
         )
         db.session.add(client)
         db.session.flush()
@@ -327,6 +328,7 @@ def client_edit(client_id: int):
         client.image_balance = request.form.get("image_balance", "balanced")
         client.image_aspect_ratio = request.form.get("image_aspect_ratio", "1:1")
         client.image_base_prompt = request.form.get("image_base_prompt", "")
+        client.image_count_per_post = int(request.form.get("image_count_per_post", 1) or 1)
         db.session.commit()
         if locked:
             flash("変更を保存しました（投稿タイプ・月間投稿数は25日〜末日のみ変更可）", "success")
