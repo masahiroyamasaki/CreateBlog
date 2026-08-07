@@ -182,34 +182,31 @@
                   (2, client.sample_image_2_path),
                   (3, client.sample_image_3_path)
               ] %}
-              <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);">
+              <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);" id="sample-slot-{{ slot }}">
                 {% if img_path %}
                 <div style="position:relative;">
                   <img src="{{ url_for('static', filename=img_path) }}"
                        alt="サンプル{{ slot }}"
                        style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block;">
                   <div style="position:absolute;top:6px;right:6px;">
-                    <form method="POST" action="{{ url_for('designer.client_delete_sample_image', client_id=client.id, slot=slot) }}"
-                          onsubmit="return confirm('サンプル画像 {{ slot }} を削除しますか？')">
-                      <button type="submit" style="background:#ef444490;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700;">削除</button>
-                    </form>
+                    <button type="button"
+                            onclick="deleteSampleImage({{ client.id }}, {{ slot }})"
+                            style="background:#ef444490;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700;">削除</button>
                   </div>
                 </div>
                 <div style="padding:8px;font-size:11px;color:var(--success);font-weight:600;">✓ サンプル{{ slot }} 登録済み</div>
                 {% else %}
-                <div style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">未登録</div>
+                <div style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;" id="sample-empty-{{ slot }}">未登録</div>
                 <div style="padding:8px;">
-                  <form method="POST" action="{{ url_for('designer.client_upload_sample_image', client_id=client.id, slot=slot) }}"
-                        enctype="multipart/form-data">
-                    <input type="file" name="sample_image" accept=".jpg,.jpeg,.png,.webp"
-                           style="display:none;" id="sample-file-{{ slot }}"
-                           onchange="this.form.submit()">
-                    <button type="button"
-                            onclick="document.getElementById('sample-file-{{ slot }}').click()"
-                            style="width:100%;padding:7px;background:var(--bg4);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">
-                      + 画像を選択
-                    </button>
-                  </form>
+                  <input type="file" name="sample_image" accept=".jpg,.jpeg,.png,.webp"
+                         style="display:none;" id="sample-file-{{ slot }}"
+                         onchange="uploadSampleImage(this, {{ client.id }}, {{ slot }})">
+                  <button type="button"
+                          id="sample-btn-{{ slot }}"
+                          onclick="document.getElementById('sample-file-{{ slot }}').click()"
+                          style="width:100%;padding:7px;background:var(--bg4);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">
+                    + 画像を選択
+                  </button>
                 </div>
                 {% endif %}
               </div>
@@ -846,6 +843,38 @@ function resetThreads(clientId) {
     }
   })
   .catch(() => showToast('リセットに失敗しました', 'error'));
+}
+
+// サンプル画像アップロード（fetch で POST、ネストフォームを使わない）
+function uploadSampleImage(inputEl, clientId, slot) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const btn = document.getElementById('sample-btn-' + slot);
+  if (btn) { btn.textContent = 'アップロード中...'; btn.disabled = true; }
+  const fd = new FormData();
+  fd.append('sample_image', file);
+  fetch('/designer/clients/' + clientId + '/upload-sample-image/' + slot, {
+    method: 'POST', body: fd,
+  }).then(r => {
+    if (r.ok || r.redirected) { window.location.reload(); }
+    else { throw new Error('upload failed'); }
+  }).catch(() => {
+    if (btn) { btn.textContent = '+ 画像を選択'; btn.disabled = false; }
+    showToast('アップロードに失敗しました', 'error');
+  });
+}
+
+// サンプル画像削除（fetch で POST）
+function deleteSampleImage(clientId, slot) {
+  if (!confirm('サンプル画像 ' + slot + ' を削除しますか？')) return;
+  fetch('/designer/clients/' + clientId + '/delete-sample-image/' + slot, {
+    method: 'POST',
+  }).then(r => {
+    if (r.ok || r.redirected) { window.location.reload(); }
+    else { throw new Error('delete failed'); }
+  }).catch(() => {
+    showToast('削除に失敗しました', 'error');
+  });
 }
 
 // 送信前: 未選択ならデフォルトをセット
