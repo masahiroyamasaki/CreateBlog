@@ -103,12 +103,41 @@
     @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+
+    /* ── ハンバーガーボタン（スマホのみ表示） ── */
+    .hamburger { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+    .hamburger span, .hamburger span::before, .hamburger span::after {
+      display: block; width: 18px; height: 2px; background: var(--text); border-radius: 2px; position: relative; transition: all .2s;
+    }
+    .hamburger span::before { content: ''; position: absolute; top: -5px; }
+    .hamburger span::after  { content: ''; position: absolute; top:  5px; }
+
+    /* ── サイドバーオーバーレイ（スマホのみ） ── */
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: #000a; z-index: 99; }
+
+    /* ── スマホ向けレスポンシブ ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar {
+        left: calc(-1 * var(--sidebar-w) - 2px);
+        transition: left .25s ease;
+        z-index: 100;
+      }
+      .sidebar.open { left: 0; }
+      .sidebar-overlay.open { display: block; }
+      .main { margin-left: 0; }
+      .topbar { padding: 0 14px; gap: 10px; }
+      .content { padding: 16px; }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body>
+  <!-- サイドバーオーバーレイ（スマホ用） -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
   <!-- サイドバー -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div style="display:flex;align-items:center;gap:10px;">
         <img src="{{ url_for('static', filename='images/logo.svg') }}"
@@ -199,6 +228,7 @@
   <!-- メイン -->
   <div class="main">
     <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="メニュー" type="button"><span></span></button>
       {% if client is defined and client and accessible_clients | length > 1 %}
       <div class="client-switcher" id="client-switcher">
         <button class="client-switcher-btn" onclick="toggleClientSwitcher(event)" type="button">
@@ -236,6 +266,17 @@
     document.getElementById('client-switcher')?.classList.toggle('open');
   }
   document.addEventListener('click', () => document.getElementById('client-switcher')?.classList.remove('open'));
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+  // ナビリンクをタップしたらサイドバーを閉じる（スマホ）
+  document.querySelectorAll('.nav-link').forEach(el => el.addEventListener('click', closeSidebar));
 
   function showToast(msg, type='success') {
     const w = document.getElementById('toast-wrap');
