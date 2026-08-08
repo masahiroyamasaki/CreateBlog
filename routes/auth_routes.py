@@ -16,7 +16,7 @@ def _contract_hash(text: str) -> str:
 
 
 def _get_or_seed_contract():
-    """ContractTemplate v1.0 を返す。未作成なら自動作成。"""
+    """ContractTemplate v1.0 を返す。未作成なら自動作成。本文が変更されていれば更新する。"""
     from models import ContractTemplate
     from contract_text import CONTRACT_VERSION, CONTRACT_BODY, CONTRACT_EFFECTIVE_DATE
     from datetime import date
@@ -30,6 +30,9 @@ def _get_or_seed_contract():
             is_current=True,
         )
         db.session.add(tmpl)
+        db.session.commit()
+    elif tmpl.body_text != CONTRACT_BODY:
+        tmpl.body_text = CONTRACT_BODY
         db.session.commit()
     return tmpl
 
