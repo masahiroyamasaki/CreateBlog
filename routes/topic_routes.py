@@ -19,9 +19,22 @@ _bulk_idea_jobs: dict[int, dict] = {}
 
 
 def _clean_ig_caption(caption: str, client_name: str = "") -> str:
-    from caption_utils import strip_account_prefix, strip_hashtags
+    from caption_utils import strip_account_prefix
     caption = strip_account_prefix(caption, client_name)
-    caption = strip_hashtags(caption)
+
+    # ハッシュタグを直接除去（caption_utils に依存しない）
+    lines = caption.splitlines()
+    cleaned = []
+    for line in lines:
+        without_tags = re.sub(r'#\S+', '', line).strip()
+        if not without_tags:
+            continue
+        line = re.sub(r'\s*#\S+', '', line).strip()
+        if line:
+            cleaned.append(line)
+    caption = re.sub(r'\n{3,}', '\n\n', '\n'.join(cleaned)).strip()
+
+    print(f"[_clean_ig_caption] hashtag_removed caption[:200]={repr(caption[:200])}", flush=True)
     return caption
 
 
@@ -338,6 +351,8 @@ def topic_generate(client_id: int, topic_id: int):
                 })
             if run.get("cancel_requested"):
                 _cancel_and_cleanup(); return
+
+            print(f"[ig_caption RAW] has_hashtag={'#' in ig_caption} tail={repr(ig_caption[-200:])}", flush=True)
 
             # ── Step 7: 保存 + スケジュール自動設定 ─────────────────────────
             run.update(step="saving", step_num=7)
