@@ -31,10 +31,16 @@
         {% endfor %}
       </table>
 
-      {% if designer.bank_account %}
+      {% if designer.bank_name or designer.bank_account_number %}
       <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">振込口座</div>
-        <div style="font-weight:500;">{{ designer.bank_account }}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">振込口座</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+          <div><span style="color:var(--muted);font-size:11px;">銀行名</span><br>{{ designer.bank_name or '—' }}</div>
+          <div><span style="color:var(--muted);font-size:11px;">支店名</span><br>{{ designer.bank_branch or '—' }}</div>
+          <div><span style="color:var(--muted);font-size:11px;">口座種別</span><br>{{ designer.bank_account_type or '—' }}</div>
+          <div><span style="color:var(--muted);font-size:11px;">口座番号</span><br>{{ designer.bank_account_number or '—' }}</div>
+        </div>
+        <div style="margin-top:6px;font-size:13px;"><span style="color:var(--muted);font-size:11px;">口座名義</span><br>{{ designer.bank_account_holder or '—' }}</div>
       </div>
       {% endif %}
 

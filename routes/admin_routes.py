@@ -74,7 +74,11 @@ def admin_designer_edit(designer_id: int):
         designer.business_name = request.form.get("business_name", "").strip()
         designer.region        = request.form.get("region", "").strip()
         designer.job_type      = request.form.get("job_type", "").strip()
-        designer.bank_account  = request.form.get("bank_account", "").strip()
+        designer.bank_name           = request.form.get("bank_name", "").strip()
+        designer.bank_branch         = request.form.get("bank_branch", "").strip()
+        designer.bank_account_type   = request.form.get("bank_account_type", "").strip()
+        designer.bank_account_number = request.form.get("bank_account_number", "").strip()
+        designer.bank_account_holder = request.form.get("bank_account_holder", "").strip()
         referred_by_raw = request.form.get("referred_by_id", "").strip()
         designer.referred_by_id = int(referred_by_raw) if referred_by_raw else None
         if current_user.role == "admin":

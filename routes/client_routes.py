@@ -48,7 +48,11 @@ def my_profile():
         current_user.address = request.form.get("address", "").strip()
         current_user.phone = request.form.get("phone", "").strip()
         current_user.invoice_number = request.form.get("invoice_number", "").strip()
-        current_user.bank_account = request.form.get("bank_account", "").strip()
+        current_user.bank_name           = request.form.get("bank_name", "").strip()
+        current_user.bank_branch         = request.form.get("bank_branch", "").strip()
+        current_user.bank_account_type   = request.form.get("bank_account_type", "").strip()
+        current_user.bank_account_number = request.form.get("bank_account_number", "").strip()
+        current_user.bank_account_holder = request.form.get("bank_account_holder", "").strip()
         new_password = request.form.get("new_password", "").strip()
         if new_password:
             if len(new_password) < 8:

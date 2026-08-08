@@ -173,7 +173,11 @@ def register():
         phone = request.form.get("phone", "").strip()
         region = request.form.get("region", "").strip()
         job_type = request.form.get("job_type", "").strip()
-        bank_account = request.form.get("bank_account", "").strip()
+        bank_name           = request.form.get("bank_name", "").strip()
+        bank_branch         = request.form.get("bank_branch", "").strip()
+        bank_account_type   = request.form.get("bank_account_type", "").strip()
+        bank_account_number = request.form.get("bank_account_number", "").strip()
+        bank_account_holder = request.form.get("bank_account_holder", "").strip()
         invoice_number = request.form.get("invoice_number", "").strip()
 
         error = None
@@ -201,7 +205,11 @@ def register():
                 phone=phone,
                 region=region,
                 job_type=job_type,
-                bank_account=bank_account,
+                bank_name=bank_name,
+                bank_branch=bank_branch,
+                bank_account_type=bank_account_type,
+                bank_account_number=bank_account_number,
+                bank_account_holder=bank_account_holder,
                 invoice_number=invoice_number,
                 role="designer",
             )

@@ -132,10 +132,36 @@
                value="{{ request.form.get('job_type', '') }}">
       </div>
       <div class="group">
-        <label>振込口座（請求書受領用）</label>
-        <input type="text" name="bank_account" placeholder="例: ○○銀行 △△支店 普通 1234567"
-               value="{{ request.form.get('bank_account', '') }}">
-        <p class="hint">報酬の受け取りに使用する銀行口座を入力してください（後から変更可能）</p>
+        <label>振込口座（後から変更可能）</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">銀行名</div>
+            <input type="text" name="bank_name" placeholder="例: ○○銀行" value="{{ request.form.get('bank_name', '') }}">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">支店名</div>
+            <input type="text" name="bank_branch" placeholder="例: △△支店" value="{{ request.form.get('bank_branch', '') }}">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">口座種別</div>
+            <select name="bank_account_type" style="width:100%;padding:10px 12px;border:1px solid #2e323a;border-radius:8px;background:#1a1d23;color:#e2e8f0;font-size:13px;">
+              <option value="">選択</option>
+              <option value="普通" {% if request.form.get('bank_account_type') == '普通' %}selected{% endif %}>普通</option>
+              <option value="当座" {% if request.form.get('bank_account_type') == '当座' %}selected{% endif %}>当座</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">口座番号</div>
+            <input type="text" name="bank_account_number" placeholder="例: 1234567" value="{{ request.form.get('bank_account_number', '') }}">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">口座名義（カナ）</div>
+          <input type="text" name="bank_account_holder" placeholder="例: ヤマダ タロウ" value="{{ request.form.get('bank_account_holder', '') }}">
+        </div>
+        <p class="hint" style="margin-top:8px;">報酬の受け取りに使用する銀行口座を入力してください（後から変更可能）</p>
       </div>
       <div class="group">
         <label>インボイス登録番号</label>

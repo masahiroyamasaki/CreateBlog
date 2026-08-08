@@ -20,7 +20,11 @@ class Designer(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.Enum("designer", "admin"), default="designer", nullable=False)
     business_name = db.Column(db.String(255), default="")  # 屋号・法人名
-    bank_account = db.Column(db.String(255), default="")   # 振込口座
+    bank_name          = db.Column(db.String(100), default="")  # 銀行名
+    bank_branch        = db.Column(db.String(100), default="")  # 支店名
+    bank_account_type  = db.Column(db.String(20),  default="")  # 口座種別（普通/当座）
+    bank_account_number= db.Column(db.String(30),  default="")  # 口座番号
+    bank_account_holder= db.Column(db.String(100), default="")  # 口座名義（カナ）
     region = db.Column(db.String(100), default="")         # 活動地域
     job_type = db.Column(db.String(100), default="")       # 職種
     stripe_customer_id = db.Column(db.String(255), default="")      # Stripe 顧客 ID
