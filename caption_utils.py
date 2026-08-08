@@ -13,11 +13,11 @@ def strip_hashtags(caption: str) -> str:
     cleaned = []
     for line in lines:
         # ハッシュタグのみで構成される行（空白・絵文字含む）を除去
-        stripped = re.sub(r'#[\w぀-鿿豈-﫿]+', '', line).strip()
+        stripped = re.sub(r'#\S+', '', line).strip()
         if not stripped:
             continue
         # 行内のハッシュタグを除去
-        line = re.sub(r'\s*#[\w぀-鿿豈-﫿]+', '', line)
+        line = re.sub(r'\s*#\S+', '', line)
         if line.strip():
             cleaned.append(line)
 
