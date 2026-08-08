@@ -11,7 +11,6 @@ _JST = timezone(timedelta(hours=9))
 ISSUER = {
     "name": "RKパートナーズ",
     "rep": "代表　山﨑粛福",
-    "address": "大阪府羽曳野市碓井4-22-5",
     "email": "info@rk-rpa.com",
 }
 
@@ -93,7 +92,6 @@ def generate_invoice_pdf(invoice, items_list) -> str:
     from_lines = [
         ISSUER["name"],
         ISSUER["rep"],
-        ISSUER["address"],
         ISSUER["email"],
     ]
     max_r = max(len(to_lines), len(from_lines))

@@ -9,7 +9,6 @@ AGREEMENT_DIR = os.path.join(os.path.dirname(__file__), "uploads", "agreements")
 ISSUER = {
     "name": "RKパートナーズ",
     "rep": "代表　山﨑粛福",
-    "address": "大阪府羽曳野市碓井4-22-5",
     "email": "info@rk-rpa.com",
 }
 
@@ -95,7 +94,7 @@ def generate_agreement_pdf(designer, agreement, contract_text: str) -> str:
     story.append(Paragraph("【運営（乙）】", s_body))
     story.append(Paragraph(f"社名：{ISSUER['name']}", s_info))
     story.append(Paragraph(f"代表者：{ISSUER['rep']}", s_info))
-    story.append(Paragraph(f"所在地：{ISSUER['address']}", s_info))
+
     story.append(Paragraph(f"連絡先：{ISSUER['email']}", s_info))
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#cccccc"), spaceBefore=12, spaceAfter=12))
