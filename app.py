@@ -106,6 +106,56 @@ except Exception as _mysql_err:
     import logging
     logging.warning(f"MySQL 接続スキップ（既存 SQLite 機能は継続）: {_mysql_err}")
 
+# ── カスタムエラーページ ──────────────────────────────────────────────────────
+_ERROR_PAGE = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title} — Artivo</title>
+  <link rel="icon" type="image/svg+xml" href="/static/images/logo.svg">
+  <style>
+    *{{box-sizing:border-box;margin:0;padding:0}}
+    body{{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}}
+    .box{{text-align:center;padding:40px 32px;max-width:420px;}}
+    .code{{font-size:72px;font-weight:800;color:#6366f1;line-height:1;margin-bottom:16px;}}
+    h1{{font-size:20px;font-weight:700;margin-bottom:10px;}}
+    p{{color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:28px;}}
+    a{{display:inline-block;padding:10px 24px;background:#6366f1;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;}}
+    a:hover{{background:#4f52c9;}}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="code">{code}</div>
+    <h1>{title}</h1>
+    <p>{message}</p>
+    <a href="/designer/login">ログインページへ戻る</a>
+  </div>
+</body>
+</html>"""
+
+@app.errorhandler(403)
+def error_403(e):
+    return _ERROR_PAGE.format(
+        code=403, title="アクセスが拒否されました",
+        message="このページにアクセスする権限がありません。<br>ログインし直してもアクセスできない場合は、管理者にお問い合わせください。"
+    ), 403
+
+@app.errorhandler(404)
+def error_404(e):
+    return _ERROR_PAGE.format(
+        code=404, title="ページが見つかりません",
+        message="お探しのページは存在しないか、移動・削除された可能性があります。"
+    ), 404
+
+@app.errorhandler(500)
+def error_500(e):
+    return _ERROR_PAGE.format(
+        code=500, title="サーバーエラーが発生しました",
+        message="しばらく時間をおいてから再度お試しください。<br>問題が続く場合は管理者にお問い合わせください。"
+    ), 500
+
 # ── SQLite (既存システム) ─────────────────────────────────────────────────────
 database.init_db()
 
