@@ -2,6 +2,30 @@
 import re
 
 
+def strip_hashtags(caption: str) -> str:
+    """AIが生成したハッシュタグ（#〇〇）をすべて除去する。
+
+    - ハッシュタグのみの行を丸ごと削除
+    - 本文中に混在するハッシュタグも除去
+    - 末尾の空行をまとめる
+    """
+    lines = caption.splitlines()
+    cleaned = []
+    for line in lines:
+        # ハッシュタグのみで構成される行（空白・絵文字含む）を除去
+        stripped = re.sub(r'#[\w぀-鿿豈-﫿]+', '', line).strip()
+        if not stripped:
+            continue
+        # 行内のハッシュタグを除去
+        line = re.sub(r'\s*#[\w぀-鿿豈-﫿]+', '', line)
+        if line.strip():
+            cleaned.append(line)
+
+    # 連続する空行を1行にまとめる
+    result = re.sub(r'\n{3,}', '\n\n', '\n'.join(cleaned))
+    return result.strip()
+
+
 def strip_account_prefix(caption: str, client_name: str = "") -> str:
     """冒頭に混入した企業名・@メンションを段落・行レベルで除去する。
 

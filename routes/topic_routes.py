@@ -19,8 +19,10 @@ _bulk_idea_jobs: dict[int, dict] = {}
 
 
 def _clean_ig_caption(caption: str, client_name: str = "") -> str:
-    from caption_utils import strip_account_prefix
-    return strip_account_prefix(caption, client_name)
+    from caption_utils import strip_account_prefix, strip_hashtags
+    caption = strip_account_prefix(caption, client_name)
+    caption = strip_hashtags(caption)
+    return caption
 
 
 def _assert_access(client: Client):
