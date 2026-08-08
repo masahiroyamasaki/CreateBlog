@@ -56,6 +56,10 @@
           <label>振込口座</label>
           <input class="form-control" type="text" name="bank_account" value="{{ current_user.bank_account or '' }}" placeholder="例: ○○銀行 △△支店 普通 1234567 ヤマダ タロウ">
           <div class="hint">銀行名・支店名・口座種別・口座番号・口座名義を入力してください。</div>
+          <div class="hint" style="margin-top:8px;line-height:1.7;">
+            こちらの振込口座は、本システム（Artivo AI）を他のデザイナーにご紹介いただいた際の報酬の受取口座として設定をお願いします。<br>
+            <span style="color:var(--warning);">※現状では、まだ報酬の設定はございませんが、今後、設定する予定です。</span>
+          </div>
         </div>
 
         <hr style="border-color:var(--border);margin:20px 0;">
