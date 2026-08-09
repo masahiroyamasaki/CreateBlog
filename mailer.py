@@ -522,6 +522,61 @@ def send_result_notification(
         return {"success": False, "reason": str(e)}
 
 
+def send_admin_notification(subject: str, body_rows: list[tuple[str, str]]) -> dict:
+    """info@rk-rpa.com への管理者通知メール（汎用）。
+    body_rows: [("ラベル", "値"), ...] のリスト。
+    """
+    to_email = "info@rk-rpa.com"
+    if not is_configured():
+        return {"success": False, "reason": "メール設定が未完了です"}
+
+    rows_html = "".join(
+        f'<tr><td style="padding:6px 0;font-size:13px;color:#64748b;width:140px;vertical-align:top;">{label}</td>'
+        f'<td style="padding:6px 0;font-size:14px;color:#1e293b;">{value}</td></tr>'
+        for label, value in body_rows
+    )
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f8;font-family:sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f8;padding:40px 0;">
+  <tr><td align="center">
+  <table width="600" cellpadding="0" cellspacing="0"
+         style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+    <tr><td style="background:#2f5d8a;padding:24px 36px;">
+      <p style="margin:0;color:rgba(255,255,255,.75);font-size:13px;">Artivo AI — 管理通知</p>
+      <h1 style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:700;">{subject}</h1>
+    </td></tr>
+    <tr><td style="padding:28px 36px;">
+      <table style="width:100%;border-collapse:collapse;">{rows_html}</table>
+    </td></tr>
+    <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 36px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:12px;">Artivo AI — RKパートナーズ</p>
+    </td></tr>
+  </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"【Artivo AI】{subject}"
+    msg["From"] = f"Artivo AI <{MAIL_FROM}>"
+    msg["To"] = to_email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(MAIL_USERNAME, MAIL_PASSWORD)
+            smtp.send_message(msg)
+        return {"success": True}
+    except smtplib.SMTPAuthenticationError:
+        return {"success": False, "reason": "メール認証失敗"}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 def send_registration_email(designer, pdf_path: str = None) -> dict:
     """パートナー登録完了メール（契約書PDF添付）を送信する。"""
     if not is_configured():

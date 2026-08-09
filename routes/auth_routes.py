@@ -266,6 +266,24 @@ def register():
             except Exception:
                 pass
 
+            # ⑥ 管理者への通知
+            try:
+                from mailer import send_admin_notification
+                send_admin_notification(
+                    "新規デザイナーが登録しました",
+                    [
+                        ("氏名",         designer.name),
+                        ("メールアドレス", designer.email),
+                        ("屋号",         designer.business_name or "—"),
+                        ("地域",         designer.region or "—"),
+                        ("電話番号",     designer.phone or "—"),
+                        ("職種",         designer.job_type or "—"),
+                        ("登録日時",     datetime.now().strftime("%Y-%m-%d %H:%M")),
+                    ],
+                )
+            except Exception:
+                pass
+
             flash("登録が完了しました。ログインしてください。", "success")
             return redirect(url_for("designer.login"))
 

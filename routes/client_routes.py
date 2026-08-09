@@ -251,6 +251,25 @@ def client_new():
 
         # ── 記事ネタを契約数分即時生成 ────────────────────────────────────────
         _idea_count = client.monthly_post_count or 4
+        # 管理者への通知
+        try:
+            from mailer import send_admin_notification
+            from datetime import datetime as _dt_notify
+            _platform_label = _PLATFORM_LABELS.get(client.platform_type or "wordpress", client.platform_type or "—")
+            send_admin_notification(
+                "新規企業が追加されました",
+                [
+                    ("企業名",         client.name),
+                    ("担当デザイナー", current_user.name),
+                    ("プラットフォーム", _platform_label),
+                    ("月額費用",       f"¥{client.monthly_fee:,}" if client.monthly_fee else "—"),
+                    ("月間記事数",     str(client.monthly_post_count or "—")),
+                    ("登録日時",       _dt_notify.now().strftime("%Y-%m-%d %H:%M")),
+                ],
+            )
+        except Exception:
+            pass
+
         if (client.themes or "").strip():
             try:
                 from batch_monthly import _generate_ideas
