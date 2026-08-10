@@ -322,10 +322,9 @@ def send_contact_email(
     phone: str,
     message: str,
 ) -> dict:
-    """LP お問い合わせフォームの内容を info@rk-rpa.com に転送する。"""
-    to_email = "info@rk-rpa.com"
+    """LP お問い合わせフォームの内容を複数の管理者宛に転送する。"""
+    to_emails = ["info@rk-rpa.com", "yamasaki@rk-rpa.com"]
     if not is_configured():
-        # SMTP 未設定でも受信アドレスへの通知を試みる（ベストエフォート）
         pass
 
     html_body = f"""
@@ -376,7 +375,7 @@ def send_contact_email(
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"【お問い合わせ】{name} 様 / {company or 'アカウント未記入'}"
     msg["From"] = f"Artivo LP <{MAIL_FROM}>"
-    msg["To"] = to_email
+    msg["To"] = ", ".join(to_emails)
     msg["Reply-To"] = email
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
@@ -385,7 +384,7 @@ def send_contact_email(
             smtp.ehlo()
             smtp.starttls()
             smtp.login(MAIL_USERNAME, MAIL_PASSWORD)
-            smtp.send_message(msg)
+            smtp.sendmail(MAIL_FROM, to_emails, msg.as_string())
         return {"success": True}
     except smtplib.SMTPAuthenticationError:
         return {"success": False, "reason": "メール認証失敗"}
