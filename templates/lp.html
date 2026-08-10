@@ -98,7 +98,9 @@
     /* ━━━ ヒーロー ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .hero {
       min-height: 100vh;
-      background: linear-gradient(140deg, var(--navy-deeper) 0%, var(--navy) 55%, #3a6fa0 100%);
+      background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1920&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center top;
       display: flex;
       align-items: center;
       padding: 100px 0 80px;
@@ -108,10 +110,19 @@
     .hero::before {
       content: '';
       position: absolute;
+      inset: 0;
+      background: linear-gradient(140deg, rgba(19,40,64,0.93) 0%, rgba(47,93,138,0.88) 55%, rgba(58,111,160,0.82) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
       top: -80px; right: -80px;
       width: 520px; height: 520px;
       background: radial-gradient(circle, rgba(214,87,47,0.18) 0%, transparent 70%);
       pointer-events: none;
+      z-index: 0;
     }
     .hero-inner {
       display: grid;
@@ -332,6 +343,41 @@
     section { padding: 88px 0; }
     section.bg-light { background: var(--bg-light); }
     section.bg-navy  { background: var(--navy-dark); }
+
+    /* 背景画像セクション */
+    .bg-image-problem {
+      position: relative;
+      background-image: url('https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?w=1920&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    .bg-image-problem::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(244, 247, 251, 0.93);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-image-problem .container { position: relative; z-index: 1; }
+
+    .bg-image-faq {
+      position: relative;
+      background-image: url('https://images.unsplash.com/photo-1552664730-d307ca884978?w=1920&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    .bg-image-faq::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(244, 247, 251, 0.94);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-image-faq .container { position: relative; z-index: 1; }
     .section-eyebrow {
       font-size: 12px;
       font-weight: 700;
@@ -778,6 +824,8 @@
       .hero-inner { grid-template-columns: 1fr; }
       .phone-wrap { display: none; }
       .risk-banner { grid-template-columns: 1fr; }
+      .bg-image-problem,
+      .bg-image-faq { background-attachment: scroll; }
     }
     @media (max-width: 768px) {
       section { padding: 64px 0; }
@@ -1002,7 +1050,7 @@
 </section>
 
 <!-- ══════════════════ 課題提起 ══════════════════ -->
-<section class="bg-light" id="problem">
+<section class="bg-light bg-image-problem" id="problem">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">The Problem</div>
@@ -1221,7 +1269,7 @@
 </section>
 
 <!-- ══════════════════ FAQ ══════════════════ -->
-<section class="bg-light" id="faq">
+<section class="bg-light bg-image-faq" id="faq">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">FAQ</div>
