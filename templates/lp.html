@@ -61,13 +61,19 @@
       padding: 0 24px;
     }
     .nav-logo {
-      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .nav-logo img { width: 32px; height: 32px; flex-shrink: 0; }
+    .nav-logo-text {
+      font-size: 20px;
       font-weight: 900;
       color: var(--navy);
-      text-decoration: none;
       letter-spacing: -0.02em;
     }
-    .nav-logo span { color: var(--orange); }
+    .nav-logo-text span { color: var(--orange); }
     .nav-actions { display: flex; gap: 10px; align-items: center; }
     .btn {
       display: inline-flex;
@@ -876,7 +882,10 @@
 <!-- ══════════════════ ナビゲーション ══════════════════ -->
 <nav class="nav">
   <div class="nav-inner">
-    <a href="#" class="nav-logo">Artiv<span>o</span></a>
+    <a href="#" class="nav-logo">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Artivo AI">
+      <span class="nav-logo-text">Artiv<span>o</span> AI</span>
+    </a>
     <div class="nav-actions">
       <a href="#contact" class="btn btn-outline-navy">無料で相談する</a>
       <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line">
