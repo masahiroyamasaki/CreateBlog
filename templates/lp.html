@@ -669,6 +669,22 @@
     .media-feature::before { content: '✓'; color: var(--navy); font-weight: 700; margin-top: 1px; flex-shrink: 0; }
 
     /* ━━━ 料金（LINE ゲート） ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .bg-image-pricing {
+      position: relative;
+      background-image: url('https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1920&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    .bg-image-pricing::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 12, 28, 0.82);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-image-pricing .container { position: relative; z-index: 1; }
     .pricing-cta-box {
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.2);
@@ -827,7 +843,8 @@
       .risk-banner { grid-template-columns: 1fr; }
       .hero,
       .bg-image-problem,
-      .bg-image-faq { background-attachment: scroll; }
+      .bg-image-faq,
+      .bg-image-pricing { background-attachment: scroll; }
     }
     @media (max-width: 768px) {
       section { padding: 64px 0; }
@@ -1211,7 +1228,7 @@
 </section>
 
 <!-- ══════════════════ 料金（LINE ゲート） ══════════════════ -->
-<section class="bg-navy" id="pricing">
+<section class="bg-image-pricing" id="pricing">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow" style="color:#f09070;">Pricing</div>
