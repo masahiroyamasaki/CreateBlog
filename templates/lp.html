@@ -98,9 +98,10 @@
     /* ━━━ ヒーロー ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .hero {
       min-height: 100vh;
-      background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1920&q=80&auto=format&fit=crop');
+      background-image: url('https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1920&q=80&auto=format&fit=crop');
       background-size: cover;
-      background-position: center top;
+      background-position: center;
+      background-attachment: fixed;
       display: flex;
       align-items: center;
       padding: 100px 0 80px;
@@ -824,6 +825,7 @@
       .hero-inner { grid-template-columns: 1fr; }
       .phone-wrap { display: none; }
       .risk-banner { grid-template-columns: 1fr; }
+      .hero,
       .bg-image-problem,
       .bg-image-faq { background-attachment: scroll; }
     }
