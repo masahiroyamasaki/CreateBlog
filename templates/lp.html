@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="デザイナー・フリーランス向けAI自動投稿システムの卸販売。月1〜2日の確認作業だけで、安定した収入の柱を。">
-  <title>Artivo — デザイナーに、安定した収入の柱を。</title>
+  <meta name="description" content="Instagram初心者でも月数時間の稼働で運用可能。AI自動投稿システムの卸販売パートナー募集。エンドユーザー獲得後からのお支払いでローリスク。1ヶ月無料。">
+  <title>Artivo — Instagram運用、AIにまかせよう。</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
@@ -23,6 +23,7 @@
       --text-body:   #374151;
       --text-muted:  #6b7280;
       --border:      #dde3ed;
+      --ig-grad:     linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
     }
 
     html { scroll-behavior: smooth; }
@@ -83,26 +84,13 @@
       transition: all 0.18s;
       white-space: nowrap;
     }
-    .btn-line {
-      background: #06C755;
-      color: var(--white);
-    }
+    .btn-line { background: #06C755; color: var(--white); }
     .btn-line:hover { background: #05a849; transform: translateY(-1px); }
-    .btn-navy {
-      background: var(--navy);
-      color: var(--white);
-    }
+    .btn-navy { background: var(--navy); color: var(--white); }
     .btn-navy:hover { background: var(--navy-dark); transform: translateY(-1px); }
-    .btn-orange {
-      background: var(--orange);
-      color: var(--white);
-    }
+    .btn-orange { background: var(--orange); color: var(--white); }
     .btn-orange:hover { background: #c04827; transform: translateY(-1px); }
-    .btn-outline-navy {
-      background: transparent;
-      color: var(--navy);
-      border: 2px solid var(--navy);
-    }
+    .btn-outline-navy { background: transparent; color: var(--navy); border: 2px solid var(--navy); }
     .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
     .btn-lg { padding: 16px 36px; font-size: 16px; border-radius: 10px; }
     .btn-xl { padding: 18px 48px; font-size: 18px; border-radius: 12px; }
@@ -125,15 +113,15 @@
       background: radial-gradient(circle, rgba(214,87,47,0.18) 0%, transparent 70%);
       pointer-events: none;
     }
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: -60px; left: -60px;
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-      pointer-events: none;
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 60px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
     }
-    .hero-content { position: relative; z-index: 1; max-width: 780px; }
+    .hero-content { max-width: 580px; }
     .hero-tag {
       display: inline-block;
       background: rgba(214,87,47,0.2);
@@ -147,7 +135,7 @@
       margin-bottom: 24px;
     }
     .hero h1 {
-      font-size: clamp(32px, 5vw, 56px);
+      font-size: clamp(30px, 4.5vw, 52px);
       font-weight: 900;
       color: var(--white);
       line-height: 1.2;
@@ -156,11 +144,10 @@
     }
     .hero h1 em { color: #f09070; font-style: normal; }
     .hero-sub {
-      font-size: clamp(15px, 2.2vw, 19px);
+      font-size: clamp(15px, 2vw, 18px);
       color: rgba(255,255,255,0.82);
-      line-height: 1.75;
+      line-height: 1.8;
       margin-bottom: 36px;
-      max-width: 620px;
     }
     .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 48px; }
     .hero-stats {
@@ -170,26 +157,175 @@
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 14px;
       overflow: hidden;
-      max-width: 560px;
     }
     .hero-stat {
       flex: 1;
-      padding: 18px 20px;
+      padding: 16px 14px;
       text-align: center;
       border-right: 1px solid rgba(255,255,255,0.12);
     }
     .hero-stat:last-child { border-right: none; }
     .hero-stat-num {
-      font-size: 26px;
+      font-size: 22px;
       font-weight: 900;
       color: #f09070;
       line-height: 1;
     }
     .hero-stat-label {
-      font-size: 12px;
+      font-size: 11px;
       color: rgba(255,255,255,0.65);
       margin-top: 4px;
       line-height: 1.4;
+    }
+
+    /* ━━━ スマホモック ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .phone-mock {
+      width: 260px;
+      background: #111;
+      border-radius: 36px;
+      padding: 12px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+      position: relative;
+    }
+    .phone-mock::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 10px;
+      background: #222;
+      border-radius: 8px;
+      z-index: 2;
+    }
+    .phone-screen {
+      background: #fafafa;
+      border-radius: 28px;
+      overflow: hidden;
+      min-height: 480px;
+    }
+    .ig-topbar {
+      background: var(--white);
+      padding: 28px 14px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #efefef;
+    }
+    .ig-topbar-logo {
+      font-size: 18px;
+      font-weight: 900;
+      background: var(--ig-grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.03em;
+    }
+    .ig-topbar-icons { display: flex; gap: 10px; font-size: 16px; color: #262626; }
+    .ig-stories {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      overflow: hidden;
+      background: var(--white);
+      border-bottom: 1px solid #efefef;
+    }
+    .ig-story-item { text-align: center; flex-shrink: 0; }
+    .ig-story-ring {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--ig-grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 4px;
+    }
+    .ig-story-inner {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: #ddd;
+      border: 2px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      overflow: hidden;
+    }
+    .ig-story-name { font-size: 9px; color: #262626; }
+    .ig-post-card {
+      background: var(--white);
+      border-bottom: 8px solid #fafafa;
+    }
+    .ig-post-head {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ig-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--ig-grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: white;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .ig-username { font-size: 11px; font-weight: 700; color: #262626; }
+    .ig-post-img {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      position: relative;
+    }
+    .ai-badge {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+    }
+    .ig-actions {
+      padding: 8px 12px 4px;
+      display: flex;
+      gap: 14px;
+      font-size: 20px;
+    }
+    .ig-likes { padding: 0 12px 4px; font-size: 10px; font-weight: 700; color: #262626; }
+    .ig-caption-text {
+      padding: 0 12px 8px;
+      font-size: 10px;
+      color: #262626;
+      line-height: 1.5;
+    }
+    .ig-caption-text strong { font-weight: 700; }
+    .ig-auto-label {
+      margin: 8px 12px;
+      padding: 6px 10px;
+      background: rgba(47,93,138,0.1);
+      border-radius: 8px;
+      font-size: 9px;
+      color: var(--navy);
+      font-weight: 700;
+      text-align: center;
     }
 
     /* ━━━ セクション共通 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -222,29 +358,139 @@
     .text-center { text-align: center; }
     .text-center .section-body { margin: 0 auto; }
 
-    /* ━━━ 課題セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    .problem-stat {
+    /* ━━━ 3大メリット ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .merit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 56px;
+    }
+    .merit-card {
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--white);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .merit-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    }
+    .merit-card-head {
+      padding: 36px 28px 24px;
       text-align: center;
-      margin: 48px 0;
     }
-    .problem-stat-num {
-      font-size: clamp(72px, 12vw, 120px);
+    .merit-icon-wrap {
+      width: 80px; height: 80px;
+      border-radius: 24px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+    }
+    .merit-icon-wrap.pink    { background: linear-gradient(135deg, #fff0f8, #ffe0f5); }
+    .merit-icon-wrap.blue    { background: linear-gradient(135deg, #f0f4ff, #e0eaff); }
+    .merit-icon-wrap.green   { background: linear-gradient(135deg, #f0fff4, #dcfce7); }
+    .merit-card h3 {
+      font-size: 20px;
       font-weight: 900;
-      color: var(--orange);
-      line-height: 1;
-      letter-spacing: -0.04em;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.3;
     }
-    .problem-stat-unit {
-      font-size: clamp(36px, 6vw, 60px);
-      font-weight: 900;
-      color: var(--orange);
-    }
-    .problem-stat-desc {
-      font-size: clamp(15px, 2.5vw, 20px);
+    .merit-card-body {
+      padding: 0 28px 32px;
+      font-size: 14px;
       color: var(--text-body);
-      margin-top: 8px;
+      line-height: 1.8;
+    }
+    .merit-point {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 14px;
+      border-bottom: 1px solid var(--bg-light);
+    }
+    .merit-point:last-child { border-bottom: none; }
+    .merit-point::before {
+      content: '✓';
+      color: var(--navy);
+      font-weight: 900;
+      flex-shrink: 0;
+      margin-top: 1px;
     }
 
+    /* ━━━ ローリスクバナー ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .risk-banner {
+      margin-top: 64px;
+      background: linear-gradient(135deg, var(--navy-deeper) 0%, var(--navy) 100%);
+      border-radius: 24px;
+      padding: 48px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .risk-banner-left {}
+    .risk-banner-tag {
+      display: inline-block;
+      background: rgba(214,87,47,0.25);
+      color: #f09070;
+      border: 1px solid rgba(214,87,47,0.4);
+      border-radius: 40px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+    .risk-banner h3 {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+    .risk-banner h3 em { color: #f09070; font-style: normal; }
+    .risk-banner p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.8;
+    }
+    .risk-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .risk-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .risk-card-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+    .risk-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+    .risk-card-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.6;
+    }
+
+    /* ━━━ 課題セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .pain-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -258,21 +504,9 @@
       padding: 28px 24px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     }
-    .pain-icon {
-      font-size: 32px;
-      margin-bottom: 14px;
-    }
-    .pain-card h3 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: var(--text);
-    }
-    .pain-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.7;
-    }
+    .pain-icon { font-size: 32px; margin-bottom: 14px; }
+    .pain-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .pain-card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
 
     /* ━━━ 解決策セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .solution-grid {
@@ -301,16 +535,8 @@
       font-weight: 900;
       margin: 0 auto 16px;
     }
-    .solution-card h3 {
-      font-size: 17px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-    .solution-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.7;
-    }
+    .solution-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .solution-card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
 
     /* ━━━ 収益シミュレーション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .sim-box {
@@ -374,46 +600,26 @@
       background: var(--white);
       box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     }
-    .media-card-head {
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
+    .media-card-head { padding: 24px; display: flex; align-items: center; gap: 16px; }
     .media-icon {
       width: 52px; height: 52px;
       border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0;
     }
-    .media-icon.wp   { background: #f0f0ff; }
-    .media-icon.ig   { background: #fff0f8; }
-    .media-icon.hp   { background: #f0fff4; }
+    .media-icon.wp  { background: #f0f0ff; }
+    .media-icon.ig  { background: #fff0f8; }
+    .media-icon.hp  { background: #f0fff4; }
     .media-card-head h3 { font-size: 16px; font-weight: 700; }
     .media-card-head p  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-    .media-card-body {
-      padding: 0 24px 24px;
-    }
+    .media-card-body { padding: 0 24px 24px; }
     .media-feature {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 7px 0;
-      font-size: 14px;
-      color: var(--text-body);
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 7px 0; font-size: 14px; color: var(--text-body);
       border-bottom: 1px solid var(--bg-light);
     }
     .media-feature:last-child { border-bottom: none; }
-    .media-feature::before {
-      content: '✓';
-      color: var(--navy);
-      font-weight: 700;
-      margin-top: 1px;
-      flex-shrink: 0;
-    }
+    .media-feature::before { content: '✓'; color: var(--navy); font-weight: 700; margin-top: 1px; flex-shrink: 0; }
 
     /* ━━━ 料金（LINE ゲート） ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .pricing-cta-box {
@@ -425,18 +631,8 @@
       max-width: 680px;
       margin: 48px auto 0;
     }
-    .pricing-cta-box h3 {
-      font-size: 22px;
-      font-weight: 900;
-      color: var(--white);
-      margin-bottom: 10px;
-    }
-    .pricing-cta-box p {
-      font-size: 15px;
-      color: rgba(255,255,255,0.72);
-      margin-bottom: 28px;
-      line-height: 1.75;
-    }
+    .pricing-cta-box h3 { font-size: 22px; font-weight: 900; color: var(--white); margin-bottom: 10px; }
+    .pricing-cta-box p { font-size: 15px; color: rgba(255,255,255,0.72); margin-bottom: 28px; line-height: 1.75; }
     .pricing-badge {
       display: inline-block;
       background: rgba(214,87,47,0.25);
@@ -468,40 +664,20 @@
       background: linear-gradient(90deg, var(--navy) 0%, var(--orange) 100%);
       z-index: 0;
     }
-    .flow-step {
-      text-align: center;
-      padding: 0 16px;
-      position: relative;
-      z-index: 1;
-    }
+    .flow-step { text-align: center; padding: 0 16px; position: relative; z-index: 1; }
     .flow-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-flex; align-items: center; justify-content: center;
       width: 64px; height: 64px;
       background: var(--white);
       border: 3px solid var(--navy);
       border-radius: 50%;
-      font-size: 22px;
-      font-weight: 900;
-      color: var(--navy);
+      font-size: 22px; font-weight: 900; color: var(--navy);
       margin: 0 auto 20px;
       box-shadow: 0 0 0 6px var(--bg-light);
     }
-    .flow-step:last-child .flow-num {
-      border-color: var(--orange);
-      color: var(--orange);
-    }
-    .flow-step h3 {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .flow-step p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.65;
-    }
+    .flow-step:last-child .flow-num { border-color: var(--orange); color: var(--orange); }
+    .flow-step h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .flow-step p { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
 
     /* ━━━ FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .faq-list { margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto; }
@@ -513,48 +689,24 @@
       background: var(--white);
     }
     .faq-q {
-      width: 100%;
-      background: none;
-      border: none;
-      text-align: left;
-      padding: 20px 24px;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      font-family: inherit;
-      line-height: 1.5;
+      width: 100%; background: none; border: none; text-align: left;
+      padding: 20px 24px; font-size: 15px; font-weight: 700; color: var(--text);
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; font-family: inherit; line-height: 1.5;
     }
     .faq-q:hover { background: var(--bg-light); }
-    .faq-q::before {
-      content: 'Q.';
-      color: var(--navy);
-      font-weight: 900;
-      flex-shrink: 0;
-    }
+    .faq-q::before { content: 'Q.'; color: var(--navy); font-weight: 900; flex-shrink: 0; }
     .faq-chevron {
-      flex-shrink: 0;
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      background: var(--bg-light);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: var(--navy);
-      transition: transform 0.25s;
+      flex-shrink: 0; width: 24px; height: 24px;
+      border-radius: 50%; background: var(--bg-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: var(--navy); transition: transform 0.25s;
     }
     .faq-item.open .faq-chevron { transform: rotate(180deg); }
     .faq-a {
       display: none;
       padding: 0 24px 20px 54px;
-      font-size: 14px;
-      color: var(--text-body);
-      line-height: 1.8;
+      font-size: 14px; color: var(--text-body); line-height: 1.8;
     }
     .faq-item.open .faq-a { display: block; }
 
@@ -573,142 +725,72 @@
       padding: 36px 32px;
       box-shadow: 0 2px 16px rgba(0,0,0,0.05);
     }
-    .contact-form-card h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 24px;
-    }
-    .form-group {
-      margin-bottom: 18px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
+    .contact-form-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
     .form-group label span { color: var(--orange); margin-left: 4px; }
     .form-control {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 15px;
-      font-family: inherit;
-      color: var(--text);
-      background: var(--white);
-      transition: border-color 0.15s;
-      appearance: none;
+      width: 100%; padding: 11px 14px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-family: inherit; color: var(--text); background: var(--white);
+      transition: border-color 0.15s; appearance: none;
     }
-    .form-control:focus {
-      outline: none;
-      border-color: var(--navy);
-      box-shadow: 0 0 0 3px rgba(47,93,138,0.12);
-    }
+    .form-control:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(47,93,138,0.12); }
     textarea.form-control { resize: vertical; min-height: 120px; }
     .form-submit { margin-top: 8px; }
     .form-submit .btn { width: 100%; justify-content: center; }
 
     .contact-other { display: flex; flex-direction: column; gap: 20px; }
     .contact-other-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      text-decoration: none;
-      color: var(--text);
-      transition: all 0.18s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+      display: flex; align-items: center; gap: 18px;
+      text-decoration: none; color: var(--text);
+      transition: all 0.18s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    .contact-other-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-      border-color: var(--navy);
-    }
+    .contact-other-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); border-color: var(--navy); }
     .contact-other-icon {
-      width: 52px; height: 52px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      flex-shrink: 0;
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; flex-shrink: 0;
     }
     .contact-other-icon.line { background: rgba(6,199,85,0.12); }
     .contact-other-icon.mail { background: rgba(47,93,138,0.1); }
     .contact-other-text h4 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
     .contact-other-text p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
-    .alert {
-      padding: 14px 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      font-weight: 700;
-    }
+    .alert { padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; font-weight: 700; }
     .alert-success { background: rgba(16,185,129,0.1); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
-    .alert-error   { background: rgba(239,68,68,0.1); color: #991b1b; border: 1px solid rgba(239,68,68,0.3); }
+    .alert-error   { background: rgba(239,68,68,0.1);  color: #991b1b; border: 1px solid rgba(239,68,68,0.3); }
 
     /* ━━━ フッター ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    .footer {
-      background: var(--navy-deeper);
-      color: rgba(255,255,255,0.65);
-      padding: 40px 0;
-    }
-    .footer-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .footer-logo {
-      font-size: 20px;
-      font-weight: 900;
-      color: var(--white);
-      text-decoration: none;
-    }
+    .footer { background: var(--navy-deeper); color: rgba(255,255,255,0.65); padding: 40px 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-logo { font-size: 20px; font-weight: 900; color: var(--white); text-decoration: none; }
     .footer-logo span { color: #f09070; }
-    .footer-links {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .footer-links a {
-      color: rgba(255,255,255,0.55);
-      text-decoration: none;
-      font-size: 13px;
-      transition: color 0.15s;
-    }
+    .footer-links { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .footer-links a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 13px; transition: color 0.15s; }
     .footer-links a:hover { color: var(--white); }
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
-      margin-top: 20px;
-      text-align: center;
-    }
+    .footer-copy { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; text-align: center; }
 
     /* ━━━ レスポンシブ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .phone-wrap { display: none; }
+      .risk-banner { grid-template-columns: 1fr; }
+    }
     @media (max-width: 768px) {
       section { padding: 64px 0; }
-      .pain-grid, .solution-grid, .media-grid { grid-template-columns: 1fr; }
-      .flow-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-      }
+      .merit-grid, .pain-grid, .solution-grid, .media-grid { grid-template-columns: 1fr; }
+      .flow-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
       .flow-grid::before { display: none; }
       .flow-step { padding: 0 8px; }
       .contact-grid { grid-template-columns: 1fr; }
       .sim-box { grid-template-columns: 1fr; padding: 28px 24px; gap: 24px; }
-      .hero-stats { max-width: 100%; }
-      .hero-stat-num { font-size: 22px; }
+      .hero-stats { flex-wrap: wrap; }
       .pricing-cta-box { padding: 36px 24px; }
       .nav-actions .btn-outline-navy { display: none; }
+      .risk-banner { padding: 32px 24px; }
     }
     @media (max-width: 480px) {
       .hero h1 { font-size: 28px; }
@@ -729,7 +811,7 @@
   <div class="nav-inner">
     <a href="#" class="nav-logo">Artiv<span>o</span></a>
     <div class="nav-actions">
-      <a href="#contact" class="btn btn-outline-navy">資料を受け取る</a>
+      <a href="#contact" class="btn btn-outline-navy">無料で相談する</a>
       <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line">
         LINE で相談する
       </a>
@@ -740,34 +822,179 @@
 <!-- ══════════════════ ヒーロー ══════════════════ -->
 <section class="hero" id="top">
   <div class="container">
-    <div class="hero-content">
-      <div class="hero-tag">デザイナー・フリーランス向け 卸販売パートナー募集</div>
-      <h1>デザイナーに、<br><em>安定した収入の柱</em>を。</h1>
-      <p class="hero-sub">
-        AIが記事もInstagramキャプションも自動生成。<br>
-        あなたは月1〜2日の確認だけで、クライアントへの<br>
-        コンテンツ運用サービスを完結できます。
-      </p>
-      <div class="hero-ctas">
-        <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line btn-xl">
-          LINE で気軽に相談する
-        </a>
-        <a href="#contact" class="btn btn-orange btn-xl">
-          資料を受け取る（無料）
-        </a>
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-tag">Instagram自動運用 × パートナー募集</div>
+        <h1>Instagram運用、<br><em>初心者でも</em><br>AIにまかせよう。</h1>
+        <p class="hero-sub">
+          文章の自動作成から自動投稿まで、すべてAIが担当。<br>
+          あなたの稼働は<strong style="color:#f09070;">月数時間</strong>だけ。<br>
+          エンドユーザーが見つかってからのお支払いだから、<strong style="color:#f09070;">ローリスク</strong>で始められます。
+        </p>
+        <div class="hero-ctas">
+          <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line btn-xl">
+            LINE で気軽に相談する
+          </a>
+          <a href="#contact" class="btn btn-orange btn-xl">
+            無料で資料を受け取る
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-num">月数時間</div>
+            <div class="hero-stat-label">必要な稼働時間</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">初心者OK</div>
+            <div class="hero-stat-label">Instagram知識不要</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">1ヶ月</div>
+            <div class="hero-stat-label">無料トライアル</div>
+          </div>
+        </div>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat">
-          <div class="hero-stat-num">87%</div>
-          <div class="hero-stat-label">粗利率の目安</div>
+
+      <!-- スマホモック -->
+      <div class="phone-wrap">
+        <div class="phone-mock">
+          <div class="phone-screen">
+            <div class="ig-topbar">
+              <div class="ig-topbar-logo">Instagram</div>
+              <div class="ig-topbar-icons">
+                <span>♡</span>
+                <span>✉</span>
+              </div>
+            </div>
+            <div class="ig-stories">
+              <div class="ig-story-item">
+                <div class="ig-story-ring">
+                  <div class="ig-story-inner">🏢</div>
+                </div>
+                <div class="ig-story-name">あなた</div>
+              </div>
+              <div class="ig-story-item">
+                <div class="ig-story-ring">
+                  <div class="ig-story-inner">🌸</div>
+                </div>
+                <div class="ig-story-name">Client A</div>
+              </div>
+              <div class="ig-story-item">
+                <div class="ig-story-ring">
+                  <div class="ig-story-inner">☕</div>
+                </div>
+                <div class="ig-story-name">Client B</div>
+              </div>
+            </div>
+            <div class="ig-post-card">
+              <div class="ig-post-head">
+                <div class="ig-avatar">A</div>
+                <div>
+                  <div class="ig-username">client_account</div>
+                </div>
+              </div>
+              <div class="ig-post-img">
+                🌿
+                <div class="ai-badge">✨ AI生成</div>
+              </div>
+              <div class="ig-actions">❤ 💬 ↗</div>
+              <div class="ig-likes">いいね！ 128件</div>
+              <div class="ig-caption-text">
+                <strong>client_account</strong> 今日のポイントは、
+                習慣の積み重ねです。毎日少しずつ続けることが
+                大切です✨
+              </div>
+              <div class="ig-auto-label">🤖 AIが自動投稿しました</div>
+            </div>
+          </div>
         </div>
-        <div class="hero-stat">
-          <div class="hero-stat-num">月1〜2日</div>
-          <div class="hero-stat-label">必要な確認作業</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 3大メリット ══════════════════ -->
+<section id="merits">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">Why Artivo</div>
+      <h2 class="section-title">3つの理由で選ばれています</h2>
+      <p class="section-body">Instagram運用の知識がなくても大丈夫。仕組みがすべてを代わりにやってくれます。</p>
+    </div>
+
+    <div class="merit-grid">
+      <div class="merit-card">
+        <div class="merit-card-head">
+          <div class="merit-icon-wrap pink">📱</div>
+          <h3>Instagram初心者でも<br>すぐ運用できる</h3>
         </div>
-        <div class="hero-stat">
-          <div class="hero-stat-num">3媒体</div>
-          <div class="hero-stat-label">WordPress / IG / 独自HP</div>
+        <div class="merit-card-body">
+          <div class="merit-point">投稿文をAIが自動で作成</div>
+          <div class="merit-point">ハッシュタグも自動付与</div>
+          <div class="merit-point">設定すれば自動で投稿</div>
+          <div class="merit-point">運用知識・センス不要</div>
+        </div>
+      </div>
+
+      <div class="merit-card">
+        <div class="merit-card-head">
+          <div class="merit-icon-wrap blue">⏱</div>
+          <h3>稼働は<br>月数時間だけ</h3>
+        </div>
+        <div class="merit-card-body">
+          <div class="merit-point">AIが記事ネタを自動生成</div>
+          <div class="merit-point">文章作成もすべて自動</div>
+          <div class="merit-point">あなたは内容確認のみ</div>
+          <div class="merit-point">投稿は予約して自動実行</div>
+        </div>
+      </div>
+
+      <div class="merit-card">
+        <div class="merit-card-head">
+          <div class="merit-icon-wrap green">🛡</div>
+          <h3>ローリスクで<br>始められる</h3>
+        </div>
+        <div class="merit-card-body">
+          <div class="merit-point">1ヶ月無料トライアル</div>
+          <div class="merit-point">エンドユーザー獲得後に支払い開始</div>
+          <div class="merit-point">縛りなし・月単位で解約可</div>
+          <div class="merit-point">初期費用ゼロ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ローリスクバナー -->
+    <div class="risk-banner">
+      <div class="risk-banner-left">
+        <div class="risk-banner-tag">ローリスクの理由</div>
+        <h3>エンドユーザーが<br>見つかってから<br><em>お支払い開始</em></h3>
+        <p>
+          クライアント（エンドユーザー）を獲得できてから
+          Artivoへの費用が発生します。先払い・初期費用は一切なし。
+          最初の1ヶ月は完全無料でお試しいただけます。
+        </p>
+      </div>
+      <div class="risk-cards">
+        <div class="risk-card">
+          <div class="risk-card-icon">🎁</div>
+          <div>
+            <div class="risk-card-title">1ヶ月無料トライアル</div>
+            <div class="risk-card-desc">まず試してみてください。費用は一切かかりません。</div>
+          </div>
+        </div>
+        <div class="risk-card">
+          <div class="risk-card-icon">👥</div>
+          <div>
+            <div class="risk-card-title">クライアント獲得後から課金</div>
+            <div class="risk-card-desc">エンドユーザーを見つけてから支払いが始まるので安心。</div>
+          </div>
+        </div>
+        <div class="risk-card">
+          <div class="risk-card-icon">🔓</div>
+          <div>
+            <div class="risk-card-title">縛りなし・いつでも解約</div>
+            <div class="risk-card-desc">最低利用期間なし。月単位でいつでも止められます。</div>
+          </div>
         </div>
       </div>
     </div>
@@ -775,73 +1002,64 @@
 </section>
 
 <!-- ══════════════════ 課題提起 ══════════════════ -->
-<section id="problem">
+<section class="bg-light" id="problem">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">The Problem</div>
-      <h2 class="section-title">SNS運用代行の、<br>正直な話をします</h2>
+      <h2 class="section-title">Instagram運用、<br>こんな悩みはありませんか？</h2>
       <p class="section-body">
-        サービスの単価が低い。作業量が多い。そして、継続されない。<br>
-        デザイナーがSNS運用を受けるとき、必ず直面するこの壁について話します。
-      </p>
-    </div>
-
-    <div class="problem-stat">
-      <div>
-        <span class="problem-stat-num">65</span><span class="problem-stat-unit">%</span>
-      </div>
-      <p class="problem-stat-desc">
-        SNS運用代行の契約のうち、<strong>約65%が3〜6ヶ月以内に解約</strong>されます。
+        「やらなきゃ」とわかっていても、なかなか続かない。<br>
+        クライアントから依頼されても、自分でやるには時間も知識も足りない。
       </p>
     </div>
 
     <div class="pain-grid">
       <div class="pain-card">
-        <div class="pain-icon">📝</div>
-        <h3>毎月の更新作業が重い</h3>
-        <p>記事作成・画像編集・投稿まで、毎月クライアントごとに繰り返す。本業の時間が削られていく。</p>
+        <div class="pain-icon">✏️</div>
+        <h3>毎回の投稿文が思いつかない</h3>
+        <p>何を書けばいいかわからない。ネタ切れ・文章力に自信がない。毎月の更新作業が重い。</p>
       </div>
       <div class="pain-card">
-        <div class="pain-icon">💸</div>
-        <h3>低単価でも断れない</h3>
-        <p>「月5,000円でSNSやってほしい」という依頼でも、関係上断れない。作業コストが見合わない。</p>
+        <div class="pain-icon">⏰</div>
+        <h3>運用に時間が取られすぎる</h3>
+        <p>本業の合間にSNS更新まで手が回らない。依頼を受けても作業コストが見合わない。</p>
       </div>
       <div class="pain-card">
-        <div class="pain-icon">😮‍💨</div>
-        <h3>1人で抱えるとキャパオーバー</h3>
-        <p>デザイン案件と並行して更新作業が続くと、スケジュールが崩れ、品質も下がっていく。</p>
+        <div class="pain-icon">😰</div>
+        <h3>Instagram運用の知識がない</h3>
+        <p>ハッシュタグの選び方、投稿頻度、文章のコツ。覚えることが多すぎて踏み出せない。</p>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ══════════════════ 解決策 ══════════════════ -->
-<section class="bg-light" id="solution">
+<section id="solution">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">The Solution</div>
-      <h2 class="section-title">解決策は、<br>"仕組みで回す"こと</h2>
+      <h2 class="section-title">解決策は、<br>AIに全部まかせること</h2>
       <p class="section-body">
-        Artivoは、記事ネタ生成・記事執筆・投稿予約まですべてをAIが担当します。
-        あなたは月1〜2回、内容を確認して承認するだけ。
+        Artivoは、ネタ出し・文章作成・投稿予約まで一気通貫でAIが担当。
+        あなたは月数時間の確認だけで、クライアントのInstagramを動かし続けられます。
       </p>
     </div>
 
     <div class="solution-grid">
       <div class="solution-card">
         <div class="solution-num">1</div>
-        <h3>AIが毎月ネタを自動生成</h3>
-        <p>クライアントのテーマ・業種・ペルソナに合わせて、AIが月次で記事ネタを複数生成。あなたは初期設定をするだけです。</p>
+        <h3>AIが投稿ネタを<br>自動生成</h3>
+        <p>業種・テーマ・ターゲットに合わせて、AIが毎月の投稿ネタを複数提案。ゼロから考える必要なし。</p>
       </div>
       <div class="solution-card">
         <div class="solution-num">2</div>
-        <h3>記事・キャプションを一括作成</h3>
-        <p>SEOブログ記事・Instagram用キャプション・Threadsテキストを一括生成。ブランドのトーンに合わせた文体設定も可能です。</p>
+        <h3>キャプションを<br>自動作成</h3>
+        <p>Instagram用の投稿文をAIが自動で生成。ブランドのトーンに合わせた文体設定も可能。あなたは確認するだけ。</p>
       </div>
       <div class="solution-card">
         <div class="solution-num">3</div>
-        <h3>予約して自動投稿</h3>
-        <p>曜日・時刻を設定すれば、あとは自動投稿。あなたが確認した記事が、決まったタイミングで公開されます。</p>
+        <h3>日時を指定して<br>自動投稿</h3>
+        <p>投稿する曜日・時刻を設定すれば自動でInstagramに投稿。承認した記事がそのまま公開されます。</p>
       </div>
     </div>
 
@@ -858,22 +1076,18 @@
           <span class="sim-row-val">¥30,000〜50,000 / 社</span>
         </div>
         <div class="sim-row">
-          <span class="sim-row-label">月額収入（合計）</span>
+          <span class="sim-row-label">月間売上（合計）</span>
           <span class="sim-row-val">¥300,000〜500,000</span>
         </div>
         <div class="sim-row">
-          <span class="sim-row-label">粗利率の目安</span>
-          <span class="sim-row-val" style="color:var(--navy);">約 87%</span>
-        </div>
-        <div class="sim-row">
-          <span class="sim-row-label">毎月の作業時間</span>
-          <span class="sim-row-val">月1〜2日（確認のみ）</span>
+          <span class="sim-row-label">毎月の稼働時間</span>
+          <span class="sim-row-val" style="color:var(--navy);">月数時間（確認のみ）</span>
         </div>
       </div>
       <div class="sim-highlight">
-        <div class="sim-highlight-label">月間粗利（10社想定）</div>
+        <div class="sim-highlight-label">月間売上（10社想定）</div>
         <div>
-          <span class="sim-highlight-num">26〜43</span>
+          <span class="sim-highlight-num">30〜50</span>
           <span class="sim-highlight-unit">万円</span>
         </div>
         <div class="sim-note">※あくまで目安の試算です</div>
@@ -883,15 +1097,32 @@
 </section>
 
 <!-- ══════════════════ 対応媒体・機能 ══════════════════ -->
-<section id="plans">
+<section class="bg-light" id="plans">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">Supported Platforms</div>
       <h2 class="section-title">3つの媒体に対応</h2>
-      <p class="section-body">クライアントの業種・目的に合わせて媒体を選べます。複数媒体の組み合わせにも対応予定。</p>
+      <p class="section-body">クライアントの業種・目的に合わせて媒体を選べます。</p>
     </div>
 
     <div class="media-grid">
+      <div class="media-card">
+        <div class="media-card-head">
+          <div class="media-icon ig">📸</div>
+          <div>
+            <h3>Instagram</h3>
+            <p>キャプション自動生成＋自動投稿</p>
+          </div>
+        </div>
+        <div class="media-card-body">
+          <div class="media-feature">AIが投稿文を自動生成</div>
+          <div class="media-feature">固定ハッシュタグを自動付与</div>
+          <div class="media-feature">カルーセル・単体画像に対応</div>
+          <div class="media-feature">Threadsへの同時投稿も可能</div>
+          <div class="media-feature">予約日時に自動でIG投稿</div>
+        </div>
+      </div>
+
       <div class="media-card">
         <div class="media-card-head">
           <div class="media-icon wp">📝</div>
@@ -904,25 +1135,8 @@
           <div class="media-feature">AIが月間記事ネタを自動生成</div>
           <div class="media-feature">SEOを意識した長文記事を生成</div>
           <div class="media-feature">指定日時に自動でWP投稿</div>
-          <div class="media-feature">文体・テイストのカスタマイズ可能</div>
+          <div class="media-feature">文体・テイストのカスタマイズ可</div>
           <div class="media-feature">既存記事の文体を学習して生成</div>
-        </div>
-      </div>
-
-      <div class="media-card">
-        <div class="media-card-head">
-          <div class="media-icon ig">📸</div>
-          <div>
-            <h3>Instagram</h3>
-            <p>キャプション＋自動投稿</p>
-          </div>
-        </div>
-        <div class="media-card-body">
-          <div class="media-feature">ブランドに合ったキャプション生成</div>
-          <div class="media-feature">固定ハッシュタグを自動付与</div>
-          <div class="media-feature">カルーセル・単体画像に対応</div>
-          <div class="media-feature">Threadsへの同時投稿も可能</div>
-          <div class="media-feature">予約日時に自動でIG投稿</div>
         </div>
       </div>
 
@@ -930,7 +1144,7 @@
         <div class="media-card-head">
           <div class="media-icon hp">🌐</div>
           <div>
-            <h3>独自HP</h3>
+            <h3>独自HP・メール</h3>
             <p>コーポレートサイトへの配信</p>
           </div>
         </div>
@@ -939,7 +1153,7 @@
           <div class="media-feature">ブランドトーンに合わせた記事生成</div>
           <div class="media-feature">HTML形式での出力に対応</div>
           <div class="media-feature">メール送信のみプランも選択可</div>
-          <div class="media-feature">Notionなどとの連携も検討中</div>
+          <div class="media-feature">複数媒体の組み合わせにも対応</div>
         </div>
       </div>
     </div>
@@ -951,19 +1165,19 @@
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow" style="color:#f09070;">Pricing</div>
-      <h2 class="section-title white">料金プランは<br>LINEで公開しています</h2>
+      <h2 class="section-title white">まずは1ヶ月、<br>無料で試せます</h2>
       <p class="section-body white">
-        ビジネスモデルの詳細・価格表・粗利シミュレーションをPDFでご案内しています。
-        下のボタンからLINEに追加してメッセージを送ってください。
+        初月は完全無料。クライアントを見つけてから費用が発生するので、
+        リスクゼロでスタートできます。詳細な料金はLINEにてご案内します。
       </p>
     </div>
 
     <div class="pricing-cta-box">
-      <div class="pricing-badge">料金PDF 無料配布中</div>
-      <h3>パートナー向け料金表をLINEで受け取る</h3>
+      <div class="pricing-badge">🎁 1ヶ月無料 ／ 初期費用ゼロ</div>
+      <h3>料金・導入の詳細をLINEで受け取る</h3>
       <p>
-        クライアントへの提案価格・Artivoへの支払い価格・<br>
-        粗利率の目安をまとめたPDFを無料でお送りします。
+        クライアントへの提案価格・Artivoへの支払い開始タイミング・<br>
+        プランの詳細をまとめたPDFを無料でお送りします。
       </p>
       <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener" class="btn btn-line btn-xl">
         LINE で料金表を受け取る（無料）
@@ -973,7 +1187,7 @@
 </section>
 
 <!-- ══════════════════ 導入フロー ══════════════════ -->
-<section class="bg-light" id="flow">
+<section id="flow">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">How to Start</div>
@@ -989,25 +1203,25 @@
       </div>
       <div class="flow-step">
         <div class="flow-num">2</div>
-        <h3>ヒアリング・初期設定</h3>
-        <p>クライアント情報・テーマ・文体設定をヒアリング。初期設定はRKパートナーズがサポートします。</p>
+        <h3>1ヶ月無料トライアル</h3>
+        <p>クライアント情報を設定してAIを試してみてください。費用はかかりません。</p>
       </div>
       <div class="flow-step">
         <div class="flow-num">3</div>
-        <h3>テスト投稿・確認</h3>
-        <p>実際にAIが記事を生成してお見せします。内容・文体を確認して、OKなら本格運用へ。</p>
+        <h3>クライアント獲得</h3>
+        <p>エンドユーザーが見つかったタイミングで費用が発生。それまでは完全無料です。</p>
       </div>
       <div class="flow-step">
         <div class="flow-num">4</div>
-        <h3>本格運用スタート</h3>
-        <p>あとはAIと自動投稿に任せて、あなたは月1〜2日の確認だけ。安定収入がはじまります。</p>
+        <h3>自動運用スタート</h3>
+        <p>あとはAIと自動投稿に任せて、月数時間の確認作業だけ。安定収入がはじまります。</p>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ══════════════════ FAQ ══════════════════ -->
-<section id="faq">
+<section class="bg-light" id="faq">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">FAQ</div>
@@ -1017,11 +1231,41 @@
     <div class="faq-list">
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">
-          デザインや技術の知識がなくても使えますか？
+          Instagram運用の知識がなくても大丈夫ですか？
           <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-a">
-          はい、使えます。WordPress・Instagramの連携設定（アクセストークンの取得など）は、初回にRKパートナーズがサポートします。その後の運用は管理画面から行うため、技術的な知識は不要です。
+          はい、大丈夫です。投稿文はAIが自動生成し、ハッシュタグも自動付与、投稿も自動で行います。Instagram初心者でも、初期設定さえ完了すれば運用を始められます。初期設定はRKパートナーズがサポートします。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          本当に月数時間で運用できますか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          はい。AIが投稿ネタの生成・文章作成・投稿予約まで自動で行うため、あなたがやることは「生成された投稿文を確認してOKを出す」作業のみです。クライアント数にもよりますが、月数時間での運用が十分可能です。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          1ヶ月無料とは、どういう内容ですか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          登録後、最初の1ヶ月はArtivoへの費用が発生しません。AIによる記事生成・投稿管理など、すべての機能をお試しいただけます。またエンドユーザーが見つかるまでは費用が発生しない仕組みのため、実質ローリスクでのスタートが可能です。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          「エンドユーザーが見つかってから支払い」とはどういう意味ですか？
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">
+          あなたがInstagramの運用代行をするクライアント（エンドユーザー）を獲得できた時点でArtivoへの費用が発生します。クライアントを見つける前に先払いする必要はありません。詳細はLINEにてご案内しています。
         </div>
       </div>
 
@@ -1037,31 +1281,11 @@
 
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">
-          AIが生成する記事の品質はどうですか？
-          <span class="faq-chevron">▼</span>
-        </button>
-        <div class="faq-a">
-          Claude AI（Anthropic社）が記事を生成します。クライアントのテーマ・ペルソナ・既存記事の文体を学習して生成するため、精度は高いですが、あなたが月1〜2回内容を確認・承認するフローで品質を担保します。
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
           契約・解約はいつでもできますか？
           <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-a">
           月単位での契約・解約が可能です。最低利用期間の縛りはありません。詳細はLINEにてご案内しています。
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          何社まで管理できますか？
-          <span class="faq-chevron">▼</span>
-        </button>
-        <div class="faq-a">
-          プランによって異なります。料金PDFに詳細を記載していますので、LINEからお受け取りください。複数社を一元管理できる設計になっており、10社以上でも問題なく運用できます。
         </div>
       </div>
 
@@ -1079,7 +1303,7 @@
 </section>
 
 <!-- ══════════════════ お問い合わせ ══════════════════ -->
-<section class="bg-light" id="contact">
+<section id="contact">
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">Contact</div>
@@ -1154,9 +1378,9 @@
           <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--navy);">こんな方にご連絡ください</h4>
           <ul style="list-style: none; font-size: 13px; color: var(--text-body); line-height: 2;">
             <li>✓ フリーランスデザイナー・Web制作会社</li>
-            <li>✓ 既存クライアントに継続収益を追加したい方</li>
-            <li>✓ SNS運用を受けているが作業が重い方</li>
-            <li>✓ AI × コンテンツ運用に興味がある方</li>
+            <li>✓ Instagram運用をクライアントに提案したい方</li>
+            <li>✓ 副業・ストック収益を作りたい方</li>
+            <li>✓ ローリスクで新サービスを始めたい方</li>
           </ul>
         </div>
       </div>
@@ -1183,13 +1407,10 @@
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  // 全部閉じる
   document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
-  // 今開いていなかったら開く
   if (!isOpen) item.classList.add('open');
 }
 
-// ページ読み込み時、#contact に sent/error があればスクロール
 (function() {
   const params = new URLSearchParams(location.search);
   if (params.get('sent') === '1' || params.get('error') === '1') {
