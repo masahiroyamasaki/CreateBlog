@@ -1,6 +1,7 @@
-"""ai_image_gen.py — Claude でプロンプト生成 → DALL-E 3 で画像生成"""
+"""ai_image_gen.py — Claude でプロンプト生成 → gpt-image-1 で背景生成 → Playwright でテキスト合成"""
 import base64
 import io
+import json
 import os
 import re
 import uuid
@@ -10,19 +11,23 @@ import requests as _requests
 
 logger = logging.getLogger(__name__)
 
-# アスペクト比 → gpt-image-1 サイズマッピング（API サポート値）
+# ── アスペクト比マッピング ──────────────────────────────────────────────────
 _ASPECT_TO_SIZE = {
     "1:1":  "1024x1024",
-    "4:5":  "1024x1536",   # 生成後に 1024x1280 へクロップして正確な 4:5 を実現
-    "16:9": "1536x1024",   # 生成後に 1536x864 へクロップして正確な 16:9 を実現
+    "4:5":  "1024x1536",   # 生成後に 4:5 クロップ
+    "16:9": "1536x1024",   # 生成後に 16:9 クロップ
 }
-# 生成後センタークロップ比率 (w, h) — None のサイズはクロップ不要
 _ASPECT_TO_CROP = {
     "4:5":  (4, 5),
     "16:9": (16, 9),
 }
+_ASPECT_TO_PLAYWRIGHT_SIZE = {
+    "1:1":  (1080, 1080),
+    "4:5":  (1080, 1350),
+    "16:9": (1920, 1080),
+}
 
-# Claude 失敗時フォールバック用
+# ── テイスト / バランス / アスペクトのラベル・ヒント ──────────────────────
 _TASTE_HINTS = {
     "business_clean":   "clean professional business style, white and light gray tones, corporate minimalist",
     "photo_real":       "realistic photographic style, natural lighting, vivid sharp details",
@@ -41,7 +46,6 @@ _ASPECT_HINTS = {
     "4:5":  "portrait 4:5 format",
     "16:9": "widescreen 16:9 landscape format",
 }
-
 _TASTE_LABELS = {
     "business_clean":   "ビジネス・清潔感（白・グレー基調、プロフェッショナルでシンプル）",
     "photo_real":       "写真・リアル（本格的な写真スタイル、自然な光、鮮明）",
@@ -61,18 +65,82 @@ _ASPECT_LABELS = {
     "16:9": "横長 16:9（WordPressヘッダー・OGP）",
 }
 
+# ── 除外指示（全生成に適用する必須ネガティブプロンプト） ─────────────────
+_UNIVERSAL_NEGATIVES = (
+    "no text, no typography, no logos, no watermarks, "
+    "no human figures, no people, no faces, no hands, "
+    "no unrequested objects, clean composition"
+)
 
-# ─── Claude によるプロンプト生成 ──────────────────────────────────────────────
+# ── ジャンル別ネガティブプロンプト ────────────────────────────────────────
+_GENRE_NEGATIVE_MAP = [
+    (["料理", "レシピ", "食材", "飲食", "グルメ"],
+     "no cutlery close-up, no food labels, no menu text"),
+    (["不動産", "物件", "マンション", "賃貸", "住宅"],
+     "no signage text, no price tags, no address plaques"),
+    (["美容", "コスメ", "スキンケア", "化粧", "ヘア"],
+     "no product labels, no ingredient lists, no price stickers"),
+    (["健康", "医療", "ダイエット", "病院", "クリニック"],
+     "no medical charts, no prescription labels, no calorie counts"),
+    (["IT", "テクノロジー", "プログラム", "エンジニア", "システム"],
+     "no code screens, no terminal text, no error messages"),
+    (["旅行", "観光", "ホテル", "海外", "トラベル"],
+     "no travel brochure text, no price boards, no destination signs"),
+    (["ビジネス", "投資", "副業", "起業", "経営"],
+     "no financial charts with numbers, no contract text, no stock tickers"),
+]
+
+# ── レイアウト別の余白指示 ────────────────────────────────────────────────
+_LAYOUT_SPACE_HINTS = {
+    "top":    "leave clean, low-detail empty space in the upper 30% of the image",
+    "bottom": "leave clean, low-detail empty space in the lower 30% of the image",
+    "center": "keep a soft, low-detail area in the center for text overlay",
+}
 
 _DEFAULT_BASE_PROMPT = (
     "flat vector illustration style, warm pastel palette, "
     "no people, no persons, no human figures, no characters, no faces"
 )
-
 _NEGATIVE_GUIDANCE = (
     "Avoid: text, watermark, photorealistic rendering, low quality."
 )
 
+
+# ─── ユーティリティ ──────────────────────────────────────────────────────────
+
+def _strip_html(html: str) -> str:
+    text = re.sub(r'<[^>]+>', ' ', html)
+    text = re.sub(r'&[a-zA-Z#0-9]+;', ' ', text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def _compress_to_5mb(data: bytes, ext: str = "png",
+                     max_bytes: int = 5 * 1024 * 1024) -> bytes:
+    if len(data) <= max_bytes:
+        return data
+
+    from PIL import Image
+    img = Image.open(io.BytesIO(data))
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+
+    fmt = "JPEG"
+    quality = 85
+    while quality >= 30:
+        buf = io.BytesIO()
+        img.save(buf, format=fmt, quality=quality)
+        if buf.tell() <= max_bytes:
+            return buf.getvalue()
+        quality -= 10
+
+    w, h = img.size
+    img = img.resize((w // 2, h // 2), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format=fmt, quality=70)
+    return buf.getvalue()
+
+
+# ─── 画像読み込みユーティリティ ──────────────────────────────────────────────
 
 def _load_image_blocks(paths: list) -> list:
     """ファイルパスリストから Claude 用画像コンテンツブロックを生成する。"""
@@ -96,6 +164,20 @@ def _load_image_blocks(paths: list) -> list:
         except Exception as e:
             logger.warning(f"サンプル画像読み込み失敗: {p} — {e}")
     return blocks
+
+
+def _load_sample_image_bytes(path: str) -> bytes | None:
+    """static 相対パスから画像バイト列を返す。失敗時は None。"""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        abs_path = os.path.join(base_dir, "static", path)
+        if not os.path.exists(abs_path):
+            return None
+        with open(abs_path, "rb") as f:
+            return f.read()
+    except Exception as e:
+        logger.warning(f"サンプル画像バイト読み込み失敗: {path} — {e}")
+        return None
 
 
 def _get_past_post_image_paths(client_id: int, limit: int = 3) -> list:
@@ -124,6 +206,8 @@ def _get_past_post_image_paths(client_id: int, limit: int = 3) -> list:
         logger.warning(f"過去投稿画像取得失敗: {e}")
         return []
 
+
+# ─── サンプル画像分析 ────────────────────────────────────────────────────────
 
 def _analyze_sample_images(image_paths: list) -> dict:
     """サンプル画像を Claude で事前分析し、背景・テキスト・デザイン情報を詳細に返す。"""
@@ -225,6 +309,20 @@ DESCRIPTION: [上記を踏まえた画像全体の詳細な説明を3〜4文で�
         return {"has_text": False, "has_people": False, "description": ""}
 
 
+# ─── ジャンル別ネガティブプロンプト ─────────────────────────────────────────
+
+def _get_genre_extra_negatives(title: str, body_html: str) -> str:
+    """記事のジャンルキーワードを判定し、追加のネガティブプロンプト文字列を返す。"""
+    combined = title + " " + _strip_html(body_html or "")[:500]
+    extras = []
+    for keywords, negative in _GENRE_NEGATIVE_MAP:
+        if any(kw in combined for kw in keywords):
+            extras.append(negative)
+    return ", ".join(extras)
+
+
+# ─── Claude によるプロンプト・メタデータ生成 ──────────────────────────────────
+
 def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                                   balance: str, aspect_ratio: str,
                                   client_name: str = "",
@@ -248,13 +346,15 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     body_text = _strip_html(body_html or "")[:1500]
     raw_base = base_prompt.strip() if base_prompt and base_prompt.strip() else ""
     effective_base = raw_base if raw_base else _DEFAULT_BASE_PROMPT
-    # 日本語が含まれている場合は Claude に翻訳させる
     _has_japanese = bool(re.search(r'[぀-鿿]', effective_base))
+
+    # ジャンル別ネガティブプロンプト
+    genre_neg = _get_genre_extra_negatives(title, body_html)
 
     if balance == "text_focus":
         text_section = """
 ## テキストオーバーレイ対応（最重要）
-この画像はPILで後からテキストを重ねるため、画像自体にはテキスト・文字を一切描画しないこと。
+この画像はPlaywrightで後からテキストを重ねるため、画像自体にはテキスト・文字を一切描画しないこと。
 【必須制約】
 - 画像内に文字・テキスト・数字・ロゴを含めないこと（英語・日本語・記号すべて禁止）
 - 下部1/3エリアをやや暗め・シンプルに仕上げること（テキストが読みやすい領域を確保するため）
@@ -265,16 +365,19 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
             "lower third area with subtle darker tone or gradient for text readability, "
             "no people, no persons, no human figures, no characters, no faces, "
             "no text, no letters, no words, no numbers, no watermarks, "
+            + (_UNIVERSAL_NEGATIVES + ", ") +
+            ("" if not genre_neg else genre_neg + ", ") +
             "high quality"
         )
-        no_text_rule = '- text_focusモードのため「no text, no letters, no words, no numbers」を必ず含めること（PILでテキストを後から重ねるため画像自体には文字不要）'
+        no_text_rule = '- text_focusモードのため「no text, no letters, no words, no numbers」を必ず含めること（Playwrightでテキストを後から重ねるため画像自体には文字不要）'
     else:
         text_section = ""
-        output_suffix = "high quality, no text, no letters, no words, no japanese characters"
+        output_suffix = (
+            "high quality, " + _UNIVERSAL_NEGATIVES +
+            (", " + genre_neg if genre_neg else "")
+        )
         no_text_rule = '- 必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること（絶対省略禁止）'
 
-    # --- base_instruction / output_format を balance × base_prompt × sample の組み合わせで決定 ---
-    # まず素直に設定し、後段で上書きする
     if _has_japanese:
         base_instruction = (
             f"## ベースプロンプト（日本語→英語に翻訳して必ず先頭に付加すること）\n"
@@ -289,7 +392,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
         )
         output_format = f'"{effective_base}, [主題], [構図], [スタイル補足], [照明], [色調補足], [雰囲気], {output_suffix}"'
 
-    # text_focus の場合: キャラクター指定を含むデフォルトbase_promptを使わない
     if balance == "text_focus":
         if raw_base:
             no_char_note = "※ 人物・キャラクターの記述は無視し、背景スタイルのみを参照すること"
@@ -306,7 +408,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
                     f"※ {no_char_note}"
                 )
         else:
-            # カスタムbase_promptなし → デフォルトキャラクター定義を一切使わない
             base_instruction = (
                 "## スタイル指定\n"
                 "抽象的・グラフィカルな背景スタイルで生成すること。\n"
@@ -315,10 +416,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
             )
         output_format = '"[人物なし・抽象グラフィック背景], [構図], [照明], [色調], [雰囲気], ' + output_suffix + '"'
 
-    # ── 画像参照の優先度ロジック ──────────────────────────────────────────────
-    # 1. 企業設定サンプル画像: 最優先。テイスト/ベースプロンプト設定を完全上書き。
-    # 2. 過去投稿画像: 補助参照。テイスト/バランス設定と併用（上書きしない）。
-    # 3. なし: テイスト/バランス/ベースプロンプトのみ。
     company_blocks = _load_image_blocks(sample_image_paths or [])
     past_blocks    = _load_image_blocks(past_image_paths or [])
 
@@ -332,31 +429,23 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     sample_section = ""
     image_blocks = []
 
-    # サンプル画像を事前分析（APIコール1回）→ 文字/人物有無を確定させてから分岐
     sample_analysis = _analyze_sample_images(sample_image_paths or []) if company_blocks else {}
     has_text_in_sample   = sample_analysis.get("has_text", False)
     has_people_in_sample = sample_analysis.get("has_people", False)
     analysis_desc        = sample_analysis.get("description", "")
 
-    # text/人物禁止フラグの初期値（後段で上書き可）
-    allow_text_in_image   = False   # True = サンプルに文字あり → 生成画像にも文字を入れる
-    allow_people_in_image = False   # True = サンプルに人物あり → 生成画像にも人物を入れてよい
+    allow_text_in_image   = False
+    allow_people_in_image = False
 
     if company_blocks:
-        # ── パターン1: 企業設定サンプル画像あり（事前分析済み）──
-        # テイスト・ベースプロンプトを完全無視し、分析結果のスタイルのみで生成する
         image_blocks = company_blocks
 
         allow_text_in_image   = has_text_in_sample and balance != "text_focus"
         allow_people_in_image = has_people_in_sample and balance != "text_focus"
 
-        # 分析結果から詳細なデザイン仕様を組み立てる
-        a = sample_analysis  # 短縮エイリアス
-
-        # 背景仕様
+        a = sample_analysis
         bg_spec = f"背景タイプ: {a.get('bg_type','')}, 背景色: {a.get('bg_color','')}, 背景要素: {a.get('bg_elements','')}"
 
-        # テキスト仕様（文字ありの場合のみ）
         if allow_text_in_image:
             text_spec = (
                 f"文字サイズ: {a.get('text_size','')}\n"
@@ -445,8 +534,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
             )
 
     elif past_blocks:
-        # ── パターン2: 過去投稿画像あり（サンプル画像なし）──
-        # テイスト/バランス設定は維持しつつ、過去画像のスタイルを補助参照する
         image_blocks = past_blocks
         sample_section = """
 ## 過去投稿画像（スタイル参考・テイスト設定と併用）
@@ -455,9 +542,7 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - テイスト設定（下記）が最優先だが、過去画像のスタイルと整合するよう努めること
 - 過去画像内のテキスト・ロゴ・文字は生成画像に含めないこと
 """
-        # base_instruction / output_format はそのまま（テイスト設定を維持）
 
-    # no_text_critical: サンプル画像に文字がある場合はテキスト禁止を解除
     if allow_text_in_image:
         no_text_critical = ""
     elif balance == "text_focus":
@@ -469,7 +554,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 プロンプトには必ず "no text, no letters, no words, no numbers, no japanese characters, no logos, no signs" を含めること。
 """
 
-    # text_focus かつ人物禁止の追加注意
     people_avoid_note = (
         "Absolutely avoid: people, persons, human figures, faces, characters, portraits. Background and typography only."
         if balance == "text_focus" and not allow_people_in_image else ""
@@ -513,7 +597,6 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 - gpt-image-1 向けに自然な英語の描写文として書くこと（カンマ区切りタグではなく文章調）
 {no_text_rule}"""
 
-    # マルチモーダル対応: サンプル画像がある場合は画像ブロックを先頭に追加
     content = image_blocks + [{"type": "text", "text": text_body}] if image_blocks else text_body
 
     client_obj = anthropic.Anthropic(api_key=api_key)
@@ -526,17 +609,13 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     if raw.startswith('"') and raw.endswith('"'):
         raw = raw[1:-1]
 
-    # ── 最終プロンプトへの強制付与（Claude Haiku が忘れた場合の保険）──
-    # 人物禁止: サンプル画像に人物がいる場合のみ人物を許可し、それ以外は先頭に禁止ワードを追加
     _no_people_str = "no people, no persons, no human figures, no characters, no faces"
     if not allow_people_in_image:
         if not any(kw in raw.lower() for kw in ["no people", "no person", "no human", "no character", "no face"]):
             raw = _no_people_str + ", " + raw
-        # text_focus は常に先頭に付与（後段のオーバーレイと組み合わせた安全策）
         if balance == "text_focus" and not raw.startswith(_no_people_str):
             raw = _no_people_str + ", " + raw
 
-    # 文字禁止: text_focus も含めて必ず文字禁止ワードを付与（PILオーバーレイで文字は後付け）
     _no_text_str = "no text, no letters, no words, no numbers, no japanese characters, no logos"
     if not allow_text_in_image or balance == "text_focus":
         if not any(kw in raw.lower() for kw in ["no text", "no letter", "no word", "no number", "no sign"]):
@@ -545,6 +624,106 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
     logger.info(f"[Claude] 生成プロンプト: {raw[:150]}...")
     return raw
 
+
+def _generate_copy_metadata(
+    title: str,
+    body_html: str,
+    taste: str,
+    balance: str,
+) -> dict:
+    """Claude Haiku でキャッチコピー・レイアウトタイプ・トーンを生成する。
+
+    Returns:
+        {"catch_copy": str, "layout_type": str, "tone": str}
+    """
+    import anthropic
+    from config import Config
+
+    api_key = Config.ANTHROPIC_API_KEY
+    if not api_key:
+        return {"catch_copy": title[:20], "layout_type": "bottom", "tone": "professional"}
+
+    body_text = _strip_html(body_html or "")[:300]
+
+    prompt = f"""以下の記事情報をもとに、画像に重ねるキャッチコピーとレイアウト情報をJSONで生成してください。
+
+記事タイトル: {title}
+本文抜粋: {body_text}
+テイスト: {_TASTE_LABELS.get(taste, taste)}
+バランス設定: {_BALANCE_LABELS.get(balance, balance)}
+
+出力（JSONのみ・説明文不要）:
+{{
+  "catch_copy": "記事の魅力を伝える20文字以内の日本語キャッチコピー",
+  "layout_type": "top または bottom または center のいずれか",
+  "tone": "bright または calm または professional のいずれか"
+}}"""
+
+    try:
+        client_obj = anthropic.Anthropic(api_key=api_key)
+        message = client_obj.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=150,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        m = re.search(r'\{.*?\}', raw, re.DOTALL)
+        if m:
+            data = json.loads(m.group())
+            layout = data.get("layout_type", "bottom")
+            tone   = data.get("tone", "professional")
+            return {
+                "catch_copy":  str(data.get("catch_copy", title[:20]))[:20],
+                "layout_type": layout  if layout  in ("top", "bottom", "center")       else "bottom",
+                "tone":        tone    if tone     in ("bright", "calm", "professional") else "professional",
+            }
+    except Exception as e:
+        logger.warning(f"[Claude] コピーメタデータ生成失敗: {e}")
+
+    return {"catch_copy": title[:20], "layout_type": "bottom", "tone": "professional"}
+
+
+def _generate_claude_metadata(
+    title: str, body_html: str, taste: str,
+    balance: str, aspect_ratio: str,
+    client_name: str = "", base_prompt: str = "",
+    sample_image_paths: list = None,
+    past_image_paths: list = None,
+) -> dict:
+    """image_prompt / catch_copy / layout_type / tone を取得する。
+
+    Returns:
+        {
+            "image_prompt": str,   # gpt-image-1 向け英語プロンプト
+            "catch_copy":   str,   # 画像に重ねる日本語キャッチコピー（20文字以内）
+            "layout_type":  str,   # "top" | "bottom" | "center"
+            "tone":         str,   # "bright" | "calm" | "professional"
+        }
+    """
+    # 背景画像プロンプト生成
+    image_prompt = _generate_prompt_with_claude(
+        title=title, body_html=body_html,
+        taste=taste, balance=balance, aspect_ratio=aspect_ratio,
+        client_name=client_name, base_prompt=base_prompt,
+        sample_image_paths=sample_image_paths,
+        past_image_paths=past_image_paths,
+    )
+
+    # キャッチコピー・レイアウト情報（text_focus 時のみ生成）
+    if balance == "text_focus":
+        copy_meta = _generate_copy_metadata(title, body_html, taste, balance)
+    else:
+        copy_meta = {"catch_copy": "", "layout_type": "bottom", "tone": "professional"}
+
+    return {
+        "image_prompt": image_prompt,
+        "catch_copy":   copy_meta["catch_copy"],
+        "layout_type":  copy_meta["layout_type"],
+        "tone":         copy_meta["tone"],
+    }
+
+
+# ─── 修正指示処理（refine_image 用） ─────────────────────────────────────────
 
 _TEXT_REQUEST_KEYWORDS = [
     "タイトル", "文字", "テキスト", "title", "text", "letter", "words",
@@ -634,17 +813,379 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
     return prompt
 
 
-# ─── DALL-E 3 画像生成 ────────────────────────────────────────────────────────
+# ─── Playwright テキスト合成 ─────────────────────────────────────────────────
+
+def _build_playwright_html(
+    bg_path: str,
+    catch_copy: str,
+    layout_type: str,
+    tone: str,
+    width: int,
+    height: int,
+) -> str:
+    """Playwright レンダリング用 HTML 文字列を生成する。"""
+    from pathlib import Path
+
+    bg_uri = Path(bg_path).as_uri()
+
+    # トーン別スタイル: (band_bg, text_color, text_shadow)
+    _tone_map = {
+        "bright":       ("rgba(0,0,0,0.35)",  "#FFFFFF",  "2px 2px 6px rgba(0,0,0,0.7)"),
+        "calm":         ("rgba(20,15,10,0.55)", "#FFF8E7", "2px 2px 10px rgba(0,0,0,0.85)"),
+        "professional": ("rgba(0,0,0,0.65)",  "#FFFFFF",  "1px 1px 4px rgba(0,0,0,0.95)"),
+    }
+    band_bg, text_color, text_shadow = _tone_map.get(tone, _tone_map["professional"])
+
+    # フォントサイズ（文字数ベース）
+    n = len(catch_copy)
+    if n <= 8:    fs = width // 10
+    elif n <= 12: fs = width // 13
+    elif n <= 16: fs = width // 16
+    elif n <= 20: fs = width // 20
+    else:         fs = width // 24
+
+    pad   = max(24, height // 22)
+    pad_x = max(40, width  // 14)
+
+    # レイアウト別 CSS position
+    _pos_map = {
+        "top":    "top: 0; left: 0; right: 0;",
+        "bottom": "bottom: 0; left: 0; right: 0;",
+        "center": "top: 50%; left: 0; right: 0; transform: translateY(-50%);",
+    }
+    band_pos = _pos_map.get(layout_type, _pos_map["bottom"])
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+html, body {{ width: {width}px; height: {height}px; overflow: hidden; background: #000; }}
+.canvas {{
+  width: {width}px;
+  height: {height}px;
+  background: url('{bg_uri}') center / cover no-repeat;
+  position: relative;
+}}
+.band {{
+  position: absolute;
+  {band_pos}
+  padding: {pad}px {pad_x}px;
+  background: {band_bg};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}}
+.copy {{
+  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Meiryo', 'Yu Gothic', sans-serif;
+  font-size: {fs}px;
+  font-weight: 900;
+  color: {text_color};
+  text-shadow: {text_shadow};
+  text-align: center;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  max-width: {width - pad_x * 2}px;
+  word-break: break-all;
+}}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="band">
+    <span class="copy">{catch_copy}</span>
+  </div>
+</div>
+</body>
+</html>"""
+
+
+def _compose_with_playwright(
+    bg_image_bytes: bytes,
+    catch_copy: str,
+    layout_type: str,
+    tone: str,
+    aspect_ratio: str,
+    client_id: int,
+) -> bytes:
+    """HTML/CSS + Playwright で背景画像にキャッチコピーを合成してPNG bytesを返す。"""
+    import tempfile
+    from pathlib import Path
+
+    width, height = _ASPECT_TO_PLAYWRIGHT_SIZE.get(aspect_ratio, (1080, 1080))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bg_path = os.path.join(tmpdir, "bg.png")
+        with open(bg_path, "wb") as f:
+            f.write(bg_image_bytes)
+
+        html = _build_playwright_html(bg_path, catch_copy, layout_type, tone, width, height)
+        html_path = os.path.join(tmpdir, "card.html")
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html)
+
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(viewport={"width": width, "height": height})
+                page.goto(Path(html_path).as_uri())
+                try:
+                    page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    page.wait_for_timeout(1500)
+                screenshot = page.screenshot(type="png", full_page=False)
+            finally:
+                browser.close()
+
+    logger.info(f"[Playwright] 合成完了: layout={layout_type}, tone={tone}, {width}x{height}, copy='{catch_copy}'")
+    return screenshot
+
+
+# ─── 画像検証 ────────────────────────────────────────────────────────────────
+
+def _validate_image(img_bytes: bytes) -> bool:
+    """生成画像の簡易チェック: 最低1KB以上かつPILで開けること。"""
+    if len(img_bytes) < 1024:
+        logger.warning(f"[検証] 画像サイズが小さすぎます: {len(img_bytes)} bytes")
+        return False
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(img_bytes))
+        img.verify()
+        return True
+    except Exception as e:
+        logger.warning(f"[検証] 画像破損: {e}")
+        return False
+
+
+# ─── 画像処理ユーティリティ ──────────────────────────────────────────────────
+
+def _crop_to_ratio(img_bytes: bytes, w_ratio: int, h_ratio: int) -> bytes:
+    """生成画像をセンタークロップして正確なアスペクト比に調整する。"""
+    from PIL import Image
+    img = Image.open(io.BytesIO(img_bytes))
+    w, h = img.size
+    target = w_ratio / h_ratio
+    current = w / h
+    if abs(current - target) < 0.01:
+        return img_bytes
+    if current > target:
+        new_w = int(h * target)
+        left = (w - new_w) // 2
+        img = img.crop((left, 0, left + new_w, h))
+    else:
+        new_h = int(w / target)
+        top = (h - new_h) // 2
+        img = img.crop((0, top, w, top + new_h))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    logger.info(f"画像クロップ完了: {w}x{h} → {img.size[0]}x{img.size[1]} ({w_ratio}:{h_ratio})")
+    return buf.getvalue()
+
+
+def _overlay_title_text(img_bytes: bytes, title: str) -> bytes:
+    """PIL フォールバック: 画像下部にタイトルテキストを重ねて返す。"""
+    from PIL import Image, ImageDraw, ImageFont
+
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    w, h = img.size
+
+    font_candidates = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/meiryob.ttc",
+        "C:/Windows/Fonts/YuGothB.ttc",
+        "C:/Windows/Fonts/msgothic.ttc",
+    ]
+
+    font_size = max(28, w // 18)
+    font = None
+    for fp in font_candidates:
+        if os.path.exists(fp):
+            try:
+                font = ImageFont.truetype(fp, font_size)
+                break
+            except Exception:
+                continue
+    if font is None:
+        try:
+            font = ImageFont.load_default(size=font_size)
+        except Exception:
+            font = ImageFont.load_default()
+
+    margin_x = int(w * 0.06)
+    max_text_w = w - margin_x * 2
+    draw_dummy = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+
+    def _text_width(t):
+        try:
+            return draw_dummy.textlength(t, font=font)
+        except Exception:
+            return len(t) * font_size * 0.6
+
+    lines = []
+    current = ""
+    for ch in title:
+        test = current + ch
+        if _text_width(test) > max_text_w and current:
+            lines.append(current)
+            current = ch
+        else:
+            current = test
+    if current:
+        lines.append(current)
+
+    line_h = int(font_size * 1.4)
+    text_block_h = line_h * len(lines)
+    pad = int(h * 0.03)
+    overlay_h = text_block_h + pad * 2
+
+    overlay_y = h - overlay_h
+    overlay = Image.new("RGBA", (w, overlay_h), (0, 0, 0, 170))
+    img.paste(overlay, (0, overlay_y), overlay)
+
+    draw = ImageDraw.Draw(img)
+    for i, line in enumerate(lines):
+        lw = _text_width(line)
+        x = (w - lw) / 2
+        y = overlay_y + pad + i * line_h
+        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, 200))
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="PNG")
+    logger.info(f"[PIL fallback] テキストオーバーレイ完了: '{title}' ({len(lines)}行)")
+    return buf.getvalue()
+
+
+# ─── gpt-image-1 API 呼び出し ────────────────────────────────────────────────
+
+def _call_dalle_bytes(prompt: str, size: str, api_key: str) -> bytes:
+    """gpt-image-1 text-to-image を呼び出して画像バイト列を返す。"""
+    if len(prompt) > 4000:
+        prompt = prompt[:4000]
+
+    resp = _requests.post(
+        "https://api.openai.com/v1/images/generations",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "gpt-image-1",
+            "prompt": prompt,
+            "n": 1,
+            "size": size,
+            "quality": "high",
+        },
+        timeout=180,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"gpt-image-1 API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
+
+    data = resp.json()
+    b64 = data["data"][0]["b64_json"]
+    return base64.b64decode(b64)
+
+
+def _call_dalle_edit_bytes(prompt: str, image_bytes: bytes, size: str, api_key: str) -> bytes:
+    """gpt-image-1 image-to-image 編集を呼び出して画像バイト列を返す。"""
+    from PIL import Image
+
+    if len(prompt) > 4000:
+        prompt = prompt[:4000]
+
+    # edit API は PNG RGBA 推奨
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    if img.size != (1024, 1024):
+        img = img.resize((1024, 1024), Image.LANCZOS)
+    png_buf = io.BytesIO()
+    img.save(png_buf, format="PNG")
+    png_bytes = png_buf.getvalue()
+
+    resp = _requests.post(
+        "https://api.openai.com/v1/images/edits",
+        headers={"Authorization": f"Bearer {api_key}"},
+        files={"image": ("image.png", png_bytes, "image/png")},
+        data={
+            "model": "gpt-image-1",
+            "prompt": prompt,
+            "n": "1",
+            "size": size,
+            "quality": "high",
+        },
+        timeout=180,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"gpt-image-1 edit API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
+
+    data = resp.json()
+    b64 = data["data"][0]["b64_json"]
+    return base64.b64decode(b64)
+
+
+def _call_dalle(prompt: str, size: str, client_id: int, api_key: str,
+                crop_ratio: tuple = None, overlay_title: str = None) -> str:
+    """gpt-image-1 API を呼び出して画像を生成・保存し、絶対 URL を返す（後方互換）。"""
+    img_bytes = _call_dalle_bytes(prompt, size, api_key)
+    if crop_ratio:
+        try:
+            img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
+        except Exception as e:
+            logger.warning(f"クロップ失敗、元画像を使用: {e}")
+    if overlay_title:
+        try:
+            img_bytes = _overlay_title_text(img_bytes, overlay_title)
+        except Exception as e:
+            logger.warning(f"テキストオーバーレイ失敗、元画像を使用: {e}")
+    return _save_image(img_bytes, "png", client_id)
+
+
+def _call_dalle_edit(prompt: str, image_bytes: bytes, size: str, client_id: int, api_key: str) -> str:
+    """gpt-image-1 画像編集 API で元画像ベースの修正を行い、絶対 URL を返す（後方互換）。"""
+    img_bytes = _call_dalle_edit_bytes(prompt, image_bytes, size, api_key)
+    return _save_image(img_bytes, "png", client_id)
+
+
+def _save_image(img_bytes: bytes, ext: str, client_id: int) -> str:
+    """画像バイト列をディスクに保存して絶対 URL を返す。"""
+    compressed = _compress_to_5mb(img_bytes, ext)
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(base_dir, "static", "uploads", "companies", str(client_id), "images")
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(save_dir, filename)
+    with open(save_path, "wb") as f:
+        f.write(compressed)
+
+    logger.info(f"AI画像保存完了: {save_path}")
+    base_url = os.getenv("BASE_URL", "").rstrip("/")
+    return f"{base_url}/static/uploads/companies/{client_id}/images/{filename}"
+
+
+# ─── 公開 API ────────────────────────────────────────────────────────────────
 
 def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                    balance: str = "balanced", body_html: str = "",
                    client_name: str = "", base_prompt: str = "",
                    sample_image_paths: list = None,
                    past_image_paths: list = None) -> str:
-    """Claude でプロンプトを生成し、DALL-E 3 で画像を生成して保存する。
+    """背景画像を gpt-image-1 で生成し、text_focus モードでは Playwright でキャッチコピーを合成する。
 
-    sample_image_paths が未設定の場合は自動で過去投稿画像を取得してスタイル参照に使う。
-    past_image_paths=[] を明示的に渡すと自動取得をスキップする。
+    フロー:
+    [1] サンプル画像の有無を判定
+    [2] Claude: image_prompt / catch_copy / layout_type / tone を生成
+    [3] gpt-image-1: 背景画像生成（サンプルあり→image-to-image, なし→text-to-image）
+    [4] 簡易検証（破損・極小ファイル検知）
+    [5] text_focus: Playwright でキャッチコピーを合成（失敗時は PIL フォールバック）
+    [6] 保存して URL を返す
     """
     from config import Config
 
@@ -652,58 +1193,112 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     if not api_key:
         raise ValueError("OPENAI_API_KEY が設定されていません")
 
-    # サンプル画像未設定の場合、過去投稿画像を自動取得
+    # [1] サンプル画像未設定の場合、過去投稿画像を自動取得
     if not sample_image_paths and past_image_paths is None:
         past_image_paths = _get_past_post_image_paths(client_id)
 
+    # [2] Claude: メタデータ生成
     try:
-        prompt = _generate_prompt_with_claude(
-            title=title,
-            body_html=body_html,
-            taste=taste,
-            balance=balance,
-            aspect_ratio=aspect_ratio,
-            client_name=client_name,
-            base_prompt=base_prompt,
+        metadata = _generate_claude_metadata(
+            title=title, body_html=body_html,
+            taste=taste, balance=balance, aspect_ratio=aspect_ratio,
+            client_name=client_name, base_prompt=base_prompt,
             sample_image_paths=sample_image_paths,
             past_image_paths=past_image_paths,
         )
     except Exception as e:
-        logger.warning(f"[Claude] プロンプト生成失敗、フォールバック使用: {e}")
+        logger.warning(f"メタデータ生成失敗、フォールバック使用: {e}")
         taste_hint   = _TASTE_HINTS.get(taste, _TASTE_HINTS["business_clean"])
         balance_hint = _BALANCE_HINTS.get(balance, _BALANCE_HINTS["balanced"])
         aspect_hint  = _ASPECT_HINTS.get(aspect_ratio, _ASPECT_HINTS["1:1"])
         if balance == "text_focus":
-            prompt = (
-                f"Professional blog article thumbnail, {taste_hint}, {aspect_hint}, "
-                f"clean abstract background optimized for text overlay, "
-                f"lower third area with subtle darker tone for text readability, "
-                f"no people, no persons, no human figures, no characters, no faces, "
-                f"no text, no letters, no words, no numbers, high quality."
+            fb_prompt = (
+                f"Professional blog thumbnail, {taste_hint}, {aspect_hint}, "
+                f"clean abstract background for text overlay, "
+                f"lower third area with darker tone, {_UNIVERSAL_NEGATIVES}, high quality."
             )
         else:
-            prompt = (
-                f"Professional blog article thumbnail about: {title}. "
+            fb_prompt = (
+                f"Professional blog thumbnail about: {title}. "
                 f"{taste_hint}, {balance_hint}, {aspect_hint}, "
-                f"high quality, no text, no letters, no japanese characters."
+                f"high quality, {_UNIVERSAL_NEGATIVES}."
             )
+        metadata = {
+            "image_prompt": fb_prompt,
+            "catch_copy":   title[:20] if balance == "text_focus" else "",
+            "layout_type":  "bottom",
+            "tone":         "professional",
+        }
 
-    size = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
+    size       = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
     crop_ratio = _ASPECT_TO_CROP.get(aspect_ratio)
-    overlay_title = title if balance == "text_focus" else None
-    return _call_dalle(prompt, size, client_id, api_key, crop_ratio=crop_ratio, overlay_title=overlay_title)
+
+    # [3] 背景画像生成
+    img_bytes = None
+    if sample_image_paths:
+        # 添付画像あり → image-to-image を試みる
+        base_bytes = _load_sample_image_bytes(sample_image_paths[0])
+        if base_bytes:
+            try:
+                img_bytes = _call_dalle_edit_bytes(metadata["image_prompt"], base_bytes, size, api_key)
+                logger.info("[gpt-image-1] image-to-image 生成完了")
+            except Exception as e:
+                logger.warning(f"image-to-image 失敗、text-to-image にフォールバック: {e}")
+
+    if img_bytes is None:
+        img_bytes = _call_dalle_bytes(metadata["image_prompt"], size, api_key)
+
+    # アスペクト比クロップ
+    if crop_ratio:
+        try:
+            img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
+        except Exception as e:
+            logger.warning(f"クロップ失敗: {e}")
+
+    # [4] 簡易検証
+    if not _validate_image(img_bytes):
+        logger.warning("[検証失敗] 再生成を試みます")
+        try:
+            img_bytes = _call_dalle_bytes(metadata["image_prompt"], size, api_key)
+            if crop_ratio:
+                try:
+                    img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.error(f"再生成も失敗: {e}")
+
+    # [5] text_focus: Playwright でキャッチコピーを合成
+    if balance == "text_focus" and metadata.get("catch_copy"):
+        try:
+            img_bytes = _compose_with_playwright(
+                bg_image_bytes=img_bytes,
+                catch_copy=metadata["catch_copy"],
+                layout_type=metadata["layout_type"],
+                tone=metadata["tone"],
+                aspect_ratio=aspect_ratio,
+                client_id=client_id,
+            )
+        except Exception as e:
+            logger.warning(f"[Playwright] 合成失敗、PILフォールバック: {e}")
+            try:
+                img_bytes = _overlay_title_text(img_bytes, metadata["catch_copy"])
+            except Exception as e2:
+                logger.warning(f"[PIL fallback] テキスト合成も失敗: {e2}")
+
+    # [6] 保存
+    return _save_image(img_bytes, "png", client_id)
 
 
 def refine_image(original_url: str, instruction: str, client_id: int,
                  title: str = "", body_html: str = "") -> str:
-    """元画像を gpt-image-1 edit API に渡してimage-to-image修正を行う。"""
+    """元画像を gpt-image-1 edit API に渡して image-to-image 修正を行う。"""
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
     if not api_key:
         raise ValueError("OPENAI_API_KEY が設定されていません")
 
-    # 元画像をダウンロード
     original_bytes = None
     try:
         img_resp = _requests.get(original_url, timeout=30)
@@ -739,208 +1334,6 @@ def refine_image(original_url: str, instruction: str, client_id: int,
 
     return _call_dalle(prompt, size, client_id, api_key)
 
-
-def _crop_to_ratio(img_bytes: bytes, w_ratio: int, h_ratio: int) -> bytes:
-    """生成画像をセンタークロップして正確なアスペクト比に調整する。"""
-    from PIL import Image
-    img = Image.open(io.BytesIO(img_bytes))
-    w, h = img.size
-    target = w_ratio / h_ratio
-    current = w / h
-    if abs(current - target) < 0.01:
-        return img_bytes
-    if current > target:
-        new_w = int(h * target)
-        left = (w - new_w) // 2
-        img = img.crop((left, 0, left + new_w, h))
-    else:
-        new_h = int(w / target)
-        top = (h - new_h) // 2
-        img = img.crop((0, top, w, top + new_h))
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    logger.info(f"画像クロップ完了: {w}x{h} → {img.size[0]}x{img.size[1]} ({w_ratio}:{h_ratio})")
-    return buf.getvalue()
-
-
-def _overlay_title_text(img_bytes: bytes, title: str) -> bytes:
-    """画像の下部にタイトルテキストをPILで重ねて返す。日本語フォントを自動検索。"""
-    from PIL import Image, ImageDraw, ImageFont
-
-    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    w, h = img.size
-
-    # 日本語フォントの候補パス（Linux/ConoHa → Windows の順に試す）
-    font_candidates = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
-        "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/meiryob.ttc",
-        "C:/Windows/Fonts/YuGothB.ttc",
-        "C:/Windows/Fonts/msgothic.ttc",
-    ]
-
-    font_size = max(28, w // 18)
-    font = None
-    for fp in font_candidates:
-        if os.path.exists(fp):
-            try:
-                font = ImageFont.truetype(fp, font_size)
-                break
-            except Exception:
-                continue
-    if font is None:
-        try:
-            font = ImageFont.load_default(size=font_size)
-        except Exception:
-            font = ImageFont.load_default()
-
-    # テキストを折り返す（最大幅 = 画像幅 - 両端マージン）
-    margin_x = int(w * 0.06)
-    max_text_w = w - margin_x * 2
-    draw_dummy = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-
-    def _text_width(t):
-        try:
-            return draw_dummy.textlength(t, font=font)
-        except Exception:
-            return len(t) * font_size * 0.6
-
-    lines = []
-    current = ""
-    for ch in title:
-        test = current + ch
-        if _text_width(test) > max_text_w and current:
-            lines.append(current)
-            current = ch
-        else:
-            current = test
-    if current:
-        lines.append(current)
-
-    line_h = int(font_size * 1.4)
-    text_block_h = line_h * len(lines)
-    pad = int(h * 0.03)
-    overlay_h = text_block_h + pad * 2
-
-    # 半透明の黒帯を下部に描画（高速な単色オーバーレイ）
-    overlay_y = h - overlay_h
-    overlay = Image.new("RGBA", (w, overlay_h), (0, 0, 0, 170))
-    img.paste(overlay, (0, overlay_y), overlay)
-
-    draw = ImageDraw.Draw(img)
-    for i, line in enumerate(lines):
-        lw = _text_width(line)
-        x = (w - lw) / 2
-        y = overlay_y + pad + i * line_h
-        # 影
-        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, 200))
-        # 本文
-        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
-
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, format="PNG")
-    logger.info(f"テキストオーバーレイ完了: '{title}' ({len(lines)}行)")
-    return buf.getvalue()
-
-
-def _call_dalle(prompt: str, size: str, client_id: int, api_key: str,
-                crop_ratio: tuple = None, overlay_title: str = None) -> str:
-    """gpt-image-1 API を呼び出して画像を生成・保存し、絶対 URL を返す。"""
-    if len(prompt) > 4000:
-        prompt = prompt[:4000]
-
-    resp = _requests.post(
-        "https://api.openai.com/v1/images/generations",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-image-1",
-            "prompt": prompt,
-            "n": 1,
-            "size": size,
-            "quality": "high",
-        },
-        timeout=180,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(f"gpt-image-1 API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
-
-    data = resp.json()
-    b64 = data["data"][0]["b64_json"]
-    img_bytes = base64.b64decode(b64)
-    if crop_ratio:
-        try:
-            img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
-        except Exception as e:
-            logger.warning(f"クロップ失敗、元画像を使用: {e}")
-    if overlay_title:
-        try:
-            img_bytes = _overlay_title_text(img_bytes, overlay_title)
-        except Exception as e:
-            logger.warning(f"テキストオーバーレイ失敗、元画像を使用: {e}")
-    return _save_image(img_bytes, "png", client_id)
-
-
-def _call_dalle_edit(prompt: str, image_bytes: bytes, size: str, client_id: int, api_key: str) -> str:
-    """gpt-image-1 の画像編集 API で元画像ベースの修正を行い、絶対 URL を返す。"""
-    from PIL import Image
-
-    if len(prompt) > 4000:
-        prompt = prompt[:4000]
-
-    # edit API は PNG RGBA・1024x1024 を推奨
-    img = Image.open(io.BytesIO(image_bytes))
-    img = img.convert("RGBA")
-    if img.size != (1024, 1024):
-        img = img.resize((1024, 1024), Image.LANCZOS)
-    png_buf = io.BytesIO()
-    img.save(png_buf, format="PNG")
-    png_bytes = png_buf.getvalue()
-
-    resp = _requests.post(
-        "https://api.openai.com/v1/images/edits",
-        headers={"Authorization": f"Bearer {api_key}"},
-        files={"image": ("image.png", png_bytes, "image/png")},
-        data={
-            "model": "gpt-image-1",
-            "prompt": prompt,
-            "n": "1",
-            "size": size,
-            "quality": "high",
-        },
-        timeout=180,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(f"gpt-image-1 edit API エラー (HTTP {resp.status_code}): {resp.text[:300]}")
-
-    data = resp.json()
-    b64 = data["data"][0]["b64_json"]
-    return _save_image(base64.b64decode(b64), "png", client_id)
-
-
-def _save_image(img_bytes: bytes, ext: str, client_id: int) -> str:
-    """画像バイト列をディスクに保存して絶対 URL を返す。"""
-    compressed = _compress_to_5mb(img_bytes, ext)
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    save_dir = os.path.join(base_dir, "static", "uploads", "companies", str(client_id), "images")
-    os.makedirs(save_dir, exist_ok=True)
-
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    save_path = os.path.join(save_dir, filename)
-    with open(save_path, "wb") as f:
-        f.write(compressed)
-
-    logger.info(f"AI画像保存完了: {save_path}")
-    base_url = os.getenv("BASE_URL", "").rstrip("/")
-    return f"{base_url}/static/uploads/companies/{client_id}/images/{filename}"
-
-
-# ─── ユーティリティ ──────────────────────────────────────────────────────────
 
 def _extract_key_points(body_html: str, count: int, title: str) -> list:
     """本文から画像生成テーマとなる要点を count 個抽出する（Claude Haiku 使用）。"""
@@ -997,7 +1390,6 @@ def generate_images_for_post(
 
     サンプル画像未設定の場合は過去投稿画像を一度だけ取得して全枚数に使いまわす。
     """
-    # 過去投稿画像を一度だけ取得（サンプル画像がある場合は不要）
     past_image_paths = None
     if not sample_image_paths:
         past_image_paths = _get_past_post_image_paths(client_id)
@@ -1014,21 +1406,18 @@ def generate_images_for_post(
 
     urls = []
 
-    # 1枚目: タイトルイメージ（body_html は渡さず title のみに集中）
     try:
         url1 = generate_image(title=title, body_html="", **_common)
         urls.append(url1)
     except Exception as e:
         logger.warning(f"[画像1枚目生成エラー] {e}")
 
-    # 要点を count-1 個抽出
     try:
         key_points = _extract_key_points(body_html, count - 1, title)
     except Exception as e:
         logger.warning(f"[要点抽出エラー] {e}")
         key_points = [f"{title} — ポイント{i + 1}" for i in range(count - 1)]
 
-    # 2枚目以降: 各要点ベースの画像
     for kp in key_points:
         try:
             url = generate_image(title=f"{title}: {kp}", body_html=body_html, **_common)
@@ -1037,35 +1426,3 @@ def generate_images_for_post(
             logger.warning(f"[画像生成エラー: {kp[:30]}] {e}")
 
     return urls
-
-
-def _strip_html(html: str) -> str:
-    text = re.sub(r'<[^>]+>', ' ', html)
-    text = re.sub(r'&[a-zA-Z#0-9]+;', ' ', text)
-    return re.sub(r'\s+', ' ', text).strip()
-
-
-def _compress_to_5mb(data: bytes, ext: str = "png",
-                     max_bytes: int = 5 * 1024 * 1024) -> bytes:
-    if len(data) <= max_bytes:
-        return data
-
-    from PIL import Image
-    img = Image.open(io.BytesIO(data))
-    if img.mode in ("RGBA", "P"):
-        img = img.convert("RGB")
-
-    fmt = "JPEG"
-    quality = 85
-    while quality >= 30:
-        buf = io.BytesIO()
-        img.save(buf, format=fmt, quality=quality)
-        if buf.tell() <= max_bytes:
-            return buf.getvalue()
-        quality -= 10
-
-    w, h = img.size
-    img = img.resize((w // 2, h // 2), Image.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format=fmt, quality=70)
-    return buf.getvalue()
