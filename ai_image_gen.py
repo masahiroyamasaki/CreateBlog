@@ -1191,6 +1191,9 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     [5] text_focus: Playwright でキャッチコピーを合成（失敗時は PIL フォールバック）
     [6] 保存して URL を返す
     """
+    import sys as _sys
+    print(f"[DBG generate_image] balance={balance!r} sample_paths={sample_image_paths} taste={taste!r}", file=_sys.stderr, flush=True)
+
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
@@ -1241,10 +1244,12 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     img_bytes = None
     if sample_image_paths:
         base_bytes = _load_sample_image_bytes(sample_image_paths[0])
+        print(f"[DBG] sample_path={sample_image_paths[0]!r} base_bytes={'OK' if base_bytes else 'None'}", file=_sys.stderr, flush=True)
         if base_bytes:
             if balance == "text_focus":
                 # text_focus: サンプル画像をそのまま背景として使用（編集APIを通さない）
                 img_bytes = base_bytes
+                print(f"[DBG] text_focus: using sample image directly", file=_sys.stderr, flush=True)
                 logger.info("[背景] text_focus: サンプル画像を直接背景として使用")
             else:
                 # balanced/image_focus: image-to-image で加工
@@ -1278,6 +1283,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             logger.error(f"再生成も失敗: {e}")
 
     # [5] text_focus: Playwright でキャッチコピーを合成
+    print(f"[DBG] before playwright: balance={balance!r} catch_copy={metadata.get('catch_copy')!r} layout={metadata.get('layout_type')!r}", file=_sys.stderr, flush=True)
     if balance == "text_focus" and metadata.get("catch_copy"):
         try:
             img_bytes = _compose_with_playwright(
@@ -1288,7 +1294,9 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                 aspect_ratio=aspect_ratio,
                 client_id=client_id,
             )
+            print(f"[DBG] Playwright OK", file=_sys.stderr, flush=True)
         except Exception as e:
+            print(f"[DBG] Playwright FAILED: {e}", file=_sys.stderr, flush=True)
             logger.warning(f"[Playwright] 合成失敗、PILフォールバック: {e}")
             try:
                 img_bytes = _overlay_title_text(img_bytes, metadata["catch_copy"])
