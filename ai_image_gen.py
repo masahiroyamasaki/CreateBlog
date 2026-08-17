@@ -816,7 +816,7 @@ def _enhance_refinement_with_claude(instruction: str, title: str = "",
 # ─── Playwright テキスト合成 ─────────────────────────────────────────────────
 
 def _build_playwright_html(
-    bg_path: str,
+    bg_image_bytes: bytes,
     catch_copy: str,
     layout_type: str,
     tone: str,
@@ -824,9 +824,10 @@ def _build_playwright_html(
     height: int,
 ) -> str:
     """Playwright レンダリング用 HTML 文字列を生成する。"""
-    from pathlib import Path
+    import base64 as _b64
 
-    bg_uri = Path(bg_path).as_uri()
+    bg_data = _b64.b64encode(bg_image_bytes).decode("utf-8")
+    bg_uri = f"data:image/png;base64,{bg_data}"
 
     # トーン別スタイル: (band_bg, text_color, text_shadow)
     _tone_map = {
@@ -916,12 +917,10 @@ def _compose_with_playwright(
 
     width, height = _ASPECT_TO_PLAYWRIGHT_SIZE.get(aspect_ratio, (1080, 1080))
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        bg_path = os.path.join(tmpdir, "bg.png")
-        with open(bg_path, "wb") as f:
-            f.write(bg_image_bytes)
+    # 背景画像は base64 インラインで HTML に埋め込むため、tmpdir への書き出し不要
+    html = _build_playwright_html(bg_image_bytes, catch_copy, layout_type, tone, width, height)
 
-        html = _build_playwright_html(bg_path, catch_copy, layout_type, tone, width, height)
+    with tempfile.TemporaryDirectory() as tmpdir:
         html_path = os.path.join(tmpdir, "card.html")
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
