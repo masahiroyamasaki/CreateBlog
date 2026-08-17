@@ -1191,9 +1191,6 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     [5] text_focus: Playwright でキャッチコピーを合成（失敗時は PIL フォールバック）
     [6] 保存して URL を返す
     """
-    import sys as _sys
-    print(f"[DBG generate_image] balance={balance!r} sample_paths={sample_image_paths} taste={taste!r}", file=_sys.stderr, flush=True)
-
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
@@ -1244,13 +1241,16 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     img_bytes = None
     if sample_image_paths:
         base_bytes = _load_sample_image_bytes(sample_image_paths[0])
-        print(f"[DBG] sample_path={sample_image_paths[0]!r} base_bytes={'OK' if base_bytes else 'None'}", file=_sys.stderr, flush=True)
         if base_bytes:
             if balance == "text_focus":
-                # text_focus: サンプル画像をそのまま背景として使用（編集APIを通さない）
-                img_bytes = base_bytes
-                print(f"[DBG] text_focus: using sample image directly", file=_sys.stderr, flush=True)
-                logger.info("[背景] text_focus: サンプル画像を直接背景として使用")
+                # text_focus: サンプル画像のスタイル分析結果をプロンプトに反映したtext-to-image生成
+                # edit APIは白背景になる問題あり。サンプル直接使用はサンプル内の文字が残る問題あり。
+                try:
+                    img_bytes = _call_dalle_bytes(metadata["image_prompt"], size, api_key)
+                    logger.info("[背景] text_focus: サンプル分析プロンプトでtext-to-image生成")
+                except Exception as e:
+                    logger.warning(f"text_focus text-to-image生成失敗、サンプル画像直接使用: {e}")
+                    img_bytes = base_bytes
             else:
                 # balanced/image_focus: image-to-image で加工
                 try:
@@ -1283,7 +1283,6 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
             logger.error(f"再生成も失敗: {e}")
 
     # [5] text_focus: Playwright でキャッチコピーを合成
-    print(f"[DBG] before playwright: balance={balance!r} catch_copy={metadata.get('catch_copy')!r} layout={metadata.get('layout_type')!r}", file=_sys.stderr, flush=True)
     if balance == "text_focus" and metadata.get("catch_copy"):
         try:
             img_bytes = _compose_with_playwright(
@@ -1294,9 +1293,7 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
                 aspect_ratio=aspect_ratio,
                 client_id=client_id,
             )
-            print(f"[DBG] Playwright OK", file=_sys.stderr, flush=True)
         except Exception as e:
-            print(f"[DBG] Playwright FAILED: {e}", file=_sys.stderr, flush=True)
             logger.warning(f"[Playwright] 合成失敗、PILフォールバック: {e}")
             try:
                 img_bytes = _overlay_title_text(img_bytes, metadata["catch_copy"])
@@ -1407,8 +1404,6 @@ def generate_images_for_post(
 
     サンプル画像未設定の場合は過去投稿画像を一度だけ取得して全枚数に使いまわす。
     """
-    import sys as _sys
-    print(f"[DBG generate_images_for_post] balance={balance!r} sample_paths={sample_image_paths} count={count}", file=_sys.stderr, flush=True)
     past_image_paths = None
     if not sample_image_paths:
         past_image_paths = _get_past_post_image_paths(client_id)
