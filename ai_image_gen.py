@@ -655,9 +655,11 @@ def _generate_copy_metadata(
 出力（JSONのみ・説明文不要）:
 {{
   "catch_copy": "記事の魅力を伝える20文字以内の日本語キャッチコピー",
-  "layout_type": "top または bottom または center のいずれか",
+  "layout_type": "center（画像中央）を基本とする。上部に重要ビジュアルがある場合のみ bottom、下部に重要ビジュアルがある場合のみ top",
   "tone": "bright または calm または professional のいずれか"
-}}"""
+}}
+
+※ layout_type は "top" / "bottom" / "center" のいずれかの文字列のみを出力してください。デフォルトは center です。"""
 
     try:
         client_obj = anthropic.Anthropic(api_key=api_key)
@@ -674,13 +676,13 @@ def _generate_copy_metadata(
             tone   = data.get("tone", "professional")
             return {
                 "catch_copy":  str(data.get("catch_copy", title[:20]))[:20],
-                "layout_type": layout  if layout  in ("top", "bottom", "center")       else "bottom",
+                "layout_type": layout  if layout  in ("top", "bottom", "center")       else "center",
                 "tone":        tone    if tone     in ("bright", "calm", "professional") else "professional",
             }
     except Exception as e:
         logger.warning(f"[Claude] コピーメタデータ生成失敗: {e}")
 
-    return {"catch_copy": title[:20], "layout_type": "bottom", "tone": "professional"}
+    return {"catch_copy": title[:20], "layout_type": "center", "tone": "professional"}
 
 
 def _generate_claude_metadata(
@@ -856,12 +858,14 @@ def _build_playwright_html(
     }
     band_pos = _pos_map.get(layout_type, _pos_map["bottom"])
 
+    import html as _html
+    catch_copy_escaped = _html.escape(catch_copy)
+
     return f"""<!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ width: {width}px; height: {height}px; overflow: hidden; background: #000; }}
 .canvas {{
@@ -880,7 +884,8 @@ html, body {{ width: {width}px; height: {height}px; overflow: hidden; background
   justify-content: center;
 }}
 .copy {{
-  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Meiryo', 'Yu Gothic', sans-serif;
+  font-family: 'Noto Sans CJK JP', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Hiragino Sans',
+               'Yu Gothic', 'YuGothic', 'Meiryo', 'MS PGothic', sans-serif;
   font-size: {fs}px;
   font-weight: 900;
   color: {text_color};
@@ -896,7 +901,7 @@ html, body {{ width: {width}px; height: {height}px; overflow: hidden; background
 <body>
 <div class="canvas">
   <div class="band">
-    <span class="copy">{catch_copy}</span>
+    <span class="copy">{catch_copy_escaped}</span>
   </div>
 </div>
 </body>
@@ -931,10 +936,7 @@ def _compose_with_playwright(
             try:
                 page = browser.new_page(viewport={"width": width, "height": height})
                 page.goto(Path(html_path).as_uri())
-                try:
-                    page.wait_for_load_state("networkidle", timeout=5000)
-                except Exception:
-                    page.wait_for_timeout(1500)
+                page.wait_for_load_state("domcontentloaded", timeout=5000)
                 screenshot = page.screenshot(type="png", full_page=False)
             finally:
                 browser.close()
