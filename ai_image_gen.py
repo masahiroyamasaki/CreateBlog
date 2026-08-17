@@ -932,7 +932,10 @@ def _compose_with_playwright(
 
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"],
+            )
             try:
                 page = browser.new_page(viewport={"width": width, "height": height})
                 page.goto(Path(html_path).as_uri())
@@ -1237,14 +1240,19 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
     # [3] 背景画像生成
     img_bytes = None
     if sample_image_paths:
-        # 添付画像あり → image-to-image を試みる
         base_bytes = _load_sample_image_bytes(sample_image_paths[0])
         if base_bytes:
-            try:
-                img_bytes = _call_dalle_edit_bytes(metadata["image_prompt"], base_bytes, size, api_key)
-                logger.info("[gpt-image-1] image-to-image 生成完了")
-            except Exception as e:
-                logger.warning(f"image-to-image 失敗、text-to-image にフォールバック: {e}")
+            if balance == "text_focus":
+                # text_focus: サンプル画像をそのまま背景として使用（編集APIを通さない）
+                img_bytes = base_bytes
+                logger.info("[背景] text_focus: サンプル画像を直接背景として使用")
+            else:
+                # balanced/image_focus: image-to-image で加工
+                try:
+                    img_bytes = _call_dalle_edit_bytes(metadata["image_prompt"], base_bytes, size, api_key)
+                    logger.info("[gpt-image-1] image-to-image 生成完了")
+                except Exception as e:
+                    logger.warning(f"image-to-image 失敗、text-to-image にフォールバック: {e}")
 
     if img_bytes is None:
         img_bytes = _call_dalle_bytes(metadata["image_prompt"], size, api_key)
