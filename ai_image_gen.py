@@ -1407,6 +1407,8 @@ def generate_images_for_post(
 
     サンプル画像未設定の場合は過去投稿画像を一度だけ取得して全枚数に使いまわす。
     """
+    import sys as _sys
+    print(f"[DBG generate_images_for_post] balance={balance!r} sample_paths={sample_image_paths} count={count}", file=_sys.stderr, flush=True)
     past_image_paths = None
     if not sample_image_paths:
         past_image_paths = _get_past_post_image_paths(client_id)
