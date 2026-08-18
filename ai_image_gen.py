@@ -1277,7 +1277,23 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         except Exception as e:
             logger.error(f"再生成も失敗: {e}")
 
-    # [5] テキスト合成はスキップ（背景画像のみを使用）
+    # [5] text_focus: Playwright でキャッチコピーを合成
+    if balance == "text_focus" and metadata.get("catch_copy"):
+        try:
+            img_bytes = _compose_with_playwright(
+                bg_image_bytes=img_bytes,
+                catch_copy=metadata["catch_copy"],
+                layout_type=metadata["layout_type"],
+                tone=metadata["tone"],
+                aspect_ratio=aspect_ratio,
+                client_id=client_id,
+            )
+        except Exception as e:
+            logger.warning(f"[Playwright] 合成失敗、PILフォールバック: {e}")
+            try:
+                img_bytes = _overlay_title_text(img_bytes, metadata["catch_copy"])
+            except Exception as e2:
+                logger.warning(f"[PIL fallback] テキスト合成も失敗: {e2}")
 
     # [6] 保存
     return _save_image(img_bytes, "png", client_id)
