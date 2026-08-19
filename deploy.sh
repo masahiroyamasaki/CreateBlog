@@ -61,7 +61,11 @@ chmod -R 755 "$APP_DIR/uploads"
 # ---- 4. サービス再起動 ----
 echo "[4/4] サービス再起動: $SERVICE_NAME"
 sudo systemctl stop "$SERVICE_NAME" || true
-sudo pkill -9 -f "venv/bin/gunicorn" || true
+# pkill -f は自分自身のsudoプロセスを誤ってKillするため、pgrep+killで代替
+GUNICORN_PIDS=$(pgrep -f "blog-app/venv/bin/gunicorn" 2>/dev/null | tr '\n' ' ') || true
+if [ -n "$GUNICORN_PIDS" ]; then
+  sudo kill -9 $GUNICORN_PIDS 2>/dev/null || true
+fi
 sleep 2
 sudo systemctl daemon-reload
 sudo systemctl start "$SERVICE_NAME"
