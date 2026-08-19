@@ -358,6 +358,7 @@ def post_refine_ai_image(client_id: int, post_id: int):
     original_url = orig_img.image_url
     title        = post.title or ""
     body_html    = post.body_html or ""
+    aspect_ratio = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
 
     def _run():
         try:
@@ -368,6 +369,7 @@ def post_refine_ai_image(client_id: int, post_id: int):
                 client_id=client_id,
                 title=title,
                 body_html=body_html,
+                aspect_ratio=aspect_ratio,
             )
             with app.app_context():
                 from models import Post as _Post, PostImage as _PI, db as _db

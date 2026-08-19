@@ -67,7 +67,8 @@ _ASPECT_LABELS = {
 
 # ── 除外指示（全生成に適用する必須ネガティブプロンプト） ─────────────────
 _UNIVERSAL_NEGATIVES = (
-    "no text, no typography, no logos, no watermarks, "
+    "no text, no typography, no letters, no words, no numbers, no digits, no numerals, "
+    "no logos, no watermarks, no signs, no labels, "
     "no human figures, no people, no faces, no hands, "
     "no unrequested objects, clean composition"
 )
@@ -1284,13 +1285,17 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
 
 
 def refine_image(original_url: str, instruction: str, client_id: int,
-                 title: str = "", body_html: str = "") -> str:
+                 title: str = "", body_html: str = "",
+                 aspect_ratio: str = "1:1") -> str:
     """元画像を gpt-image-1 edit API に渡して image-to-image 修正を行う。"""
     from config import Config
 
     api_key = Config.OPENAI_API_KEY
     if not api_key:
         raise ValueError("OPENAI_API_KEY が設定されていません")
+
+    size       = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
+    crop_ratio = _ASPECT_TO_CROP.get(aspect_ratio)
 
     original_bytes = None
     try:
@@ -1311,21 +1316,25 @@ def refine_image(original_url: str, instruction: str, client_id: int,
         logger.warning(f"[Claude] 修正プロンプト強化失敗、フォールバック: {e}")
         wants_text = _wants_text_in_image(instruction)
         wants_remove = _wants_remove_text(instruction)
-        no_text = "" if (wants_text and not wants_remove) else "no text, no letters, no words, no japanese characters."
+        no_text = "" if (wants_text and not wants_remove) else "no text, no letters, no words, no numbers, no japanese characters."
         prompt = (
             f"Edit this image. Change: {instruction}. "
             f"Keep the overall style, character design, and composition. {no_text}"
         )
 
-    size = "1024x1024"
-
     if original_bytes:
         try:
-            return _call_dalle_edit(prompt, original_bytes, size, client_id, api_key)
+            img_bytes = _call_dalle_edit_bytes(prompt, original_bytes, size, api_key)
+            if crop_ratio:
+                try:
+                    img_bytes = _crop_to_ratio(img_bytes, *crop_ratio)
+                except Exception as e:
+                    logger.warning(f"クロップ失敗: {e}")
+            return _save_image(img_bytes, "png", client_id)
         except Exception as e:
             logger.warning(f"画像編集API失敗、新規生成にフォールバック: {e}")
 
-    return _call_dalle(prompt, size, client_id, api_key)
+    return _call_dalle(prompt, size, client_id, api_key, crop_ratio=crop_ratio)
 
 
 def _extract_key_points(body_html: str, count: int, title: str) -> list:
