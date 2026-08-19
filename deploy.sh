@@ -60,7 +60,10 @@ chmod -R 755 "$APP_DIR/uploads"
 
 # ---- 4. サービス再起動 ----
 echo "[4/4] サービス再起動: $SERVICE_NAME"
-sudo systemctl restart "$SERVICE_NAME"
+sudo systemctl stop "$SERVICE_NAME" || true
+sudo pkill -9 -f gunicorn || true
+sleep 2
+sudo systemctl start "$SERVICE_NAME"
 sleep 2
 STATUS=$(sudo systemctl is-active "$SERVICE_NAME")
 if [ "$STATUS" = "active" ]; then
