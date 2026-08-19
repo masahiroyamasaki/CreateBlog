@@ -1283,13 +1283,13 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         except Exception as e:
             logger.error(f"再生成も失敗: {e}")
 
-    # [5] text_focus: Playwright で日本語キャッチコピーを合成
+    # [5] text_focus: Playwright で日本語キャッチコピーを合成（常にセンター配置）
     if balance == "text_focus" and metadata.get("catch_copy"):
         try:
             img_bytes = _compose_with_playwright(
                 bg_image_bytes=img_bytes,
                 catch_copy=metadata["catch_copy"],
-                layout_type=metadata["layout_type"],
+                layout_type="center",
                 tone=metadata["tone"],
                 aspect_ratio=aspect_ratio,
                 client_id=client_id,
