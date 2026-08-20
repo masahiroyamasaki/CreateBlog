@@ -832,13 +832,13 @@ def _build_playwright_html(
     bg_data = _b64.b64encode(bg_image_bytes).decode("utf-8")
     bg_uri = f"data:image/png;base64,{bg_data}"
 
-    # トーン別スタイル: (band_bg, text_color, text_shadow)
+    # トーン別スタイル: (text_color, text_shadow)
     _tone_map = {
-        "bright":       ("rgba(0,0,0,0.35)",  "#FFFFFF",  "2px 2px 6px rgba(0,0,0,0.7)"),
-        "calm":         ("rgba(20,15,10,0.55)", "#FFF8E7", "2px 2px 10px rgba(0,0,0,0.85)"),
-        "professional": ("rgba(0,0,0,0.65)",  "#FFFFFF",  "1px 1px 4px rgba(0,0,0,0.95)"),
+        "bright":       ("#FFFFFF", "0 0 8px rgba(0,0,0,0.9), 2px 2px 6px rgba(0,0,0,0.8), -1px -1px 4px rgba(0,0,0,0.7)"),
+        "calm":         ("#FFF8E7", "0 0 12px rgba(0,0,0,0.95), 2px 2px 10px rgba(0,0,0,0.9), -1px -1px 6px rgba(0,0,0,0.8)"),
+        "professional": ("#FFFFFF", "0 0 10px rgba(0,0,0,1), 2px 2px 8px rgba(0,0,0,0.95), -1px -1px 5px rgba(0,0,0,0.9)"),
     }
-    band_bg, text_color, text_shadow = _tone_map.get(tone, _tone_map["professional"])
+    text_color, text_shadow = _tone_map.get(tone, _tone_map["professional"])
 
     # フォントサイズ（文字数ベース）
     n = len(catch_copy)
@@ -879,7 +879,6 @@ html, body {{ width: {width}px; height: {height}px; overflow: hidden; background
   position: absolute;
   {band_pos}
   padding: {pad}px {pad_x}px;
-  background: {band_bg};
   display: flex;
   align-items: center;
   justify-content: center;
