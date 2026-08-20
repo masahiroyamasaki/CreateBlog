@@ -358,12 +358,12 @@ def _generate_prompt_with_claude(title: str, body_html: str, taste: str,
 この画像はPlaywrightで後からテキストを重ねるため、画像自体にはテキスト・文字を一切描画しないこと。
 【必須制約】
 - 画像内に文字・テキスト・数字・ロゴを含めないこと（英語・日本語・記号すべて禁止）
-- 下部1/3エリアをやや暗め・シンプルに仕上げること（テキストが読みやすい領域を確保するため）
+- 画像全体をクリーンで均一なデザインにすること（特定エリアを暗くしない）
 - 人物・人間・キャラクター・顔は一切含めないこと
 - 抽象的・グラフィカルな背景のみで構成すること"""
         output_suffix = (
             "clean abstract background optimized for text overlay, "
-            "lower third area with subtle darker tone or gradient for text readability, "
+            "uniform brightness throughout, no dark gradient bands, "
             "no people, no persons, no human figures, no characters, no faces, "
             "no text, no letters, no words, no numbers, no watermarks, "
             + (_UNIVERSAL_NEGATIVES + ", ") +
@@ -1218,8 +1218,8 @@ def generate_image(title: str, taste: str, aspect_ratio: str, client_id: int,
         if balance == "text_focus":
             fb_prompt = (
                 f"Professional blog thumbnail, {taste_hint}, {aspect_hint}, "
-                f"clean abstract background for text overlay, "
-                f"lower third area with darker tone, {_UNIVERSAL_NEGATIVES}, high quality."
+                f"clean abstract background for text overlay, uniform brightness, "
+                f"no dark gradient bands, {_UNIVERSAL_NEGATIVES}, high quality."
             )
         else:
             fb_prompt = (
