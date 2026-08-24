@@ -51,6 +51,18 @@ def image_post_new(client_id: int):
 @login_required
 def image_post_generate(client_id: int):
     """画像を受け取り、バックグラウンドで Stage0 → 記事生成 を実行する。"""
+    try:
+        return _image_post_generate_impl(client_id)
+    except Exception as e:
+        logger.error(f"[image_post_generate] Unexpected error: {e}", exc_info=True)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({"error": f"サーバーエラー: {type(e).__name__}: {e}"}), 500
+
+
+def _image_post_generate_impl(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
 
@@ -67,7 +79,7 @@ def image_post_generate(client_id: int):
         return jsonify({"error": f"画像は最大{_MAX_IMAGES}枚までです"}), 400
 
     # 画像を一時保存
-    base_dir = os.path.dirname(os.path.abspath(os.path.join(__file__, "..")))
+    base_dir = current_app.root_path
     save_dir = os.path.join(base_dir, "static", "uploads", "companies",
                             str(client_id), "image_posts", "tmp")
     os.makedirs(save_dir, exist_ok=True)

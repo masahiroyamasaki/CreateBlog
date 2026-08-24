@@ -323,7 +323,13 @@ async function startGenerate() {
   let jobId = null;
   try {
     const res = await fetch(GENERATE_URL, { method: 'POST', body: formData });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`サーバーエラー(${res.status}): ${text.replace(/<[^>]+>/g,'').trim().slice(0,120)}`);
+    }
     if (!res.ok || data.error) throw new Error(data.error || 'サーバーエラー');
     jobId = data.job_id;
   } catch (e) {
