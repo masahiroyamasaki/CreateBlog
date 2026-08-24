@@ -192,6 +192,9 @@
         <a href="{{ url_for('designer.topic_list', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.topic_list' %}active{% endif %}">
           💡 記事ネタ
         </a>
+        <a href="{{ url_for('designer.image_post_new', client_id=client.id) }}" class="nav-link {% if request.endpoint == 'designer.image_post_new' %}active{% endif %}">
+          📸 画像から生成
+        </a>
         <a href="{{ url_for('designer.insight_list', client_id=client.id) }}" class="nav-link {% if request.endpoint and 'insight' in request.endpoint %}active{% endif %}">
           📈 インサイト
         </a>

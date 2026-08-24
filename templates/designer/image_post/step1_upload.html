@@ -1,0 +1,381 @@
+{% extends "designer/base.html" %}
+{% block title %}画像から記事生成{% endblock %}
+{% block page_title %}画像から記事生成{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--bg3);
+  }
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--primary);
+    background: rgba(99,102,241,.06);
+  }
+  .upload-area svg { color: var(--muted); margin-bottom: 12px; }
+  .upload-area p { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+  .upload-area small { font-size: 12px; color: var(--muted); opacity: .6; }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .preview-item {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    cursor: grab;
+    user-select: none;
+  }
+  .preview-item:active { cursor: grabbing; }
+  .preview-item img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+  }
+  .preview-item .item-num {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(0,0,0,.65);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+  .preview-item .item-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0,0,0,.65);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .preview-item .item-remove:hover { background: var(--danger); }
+  .preview-item .drag-handle {
+    text-align: center;
+    padding: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg2);
+  }
+
+  .type-selector { display: flex; gap: 10px; }
+  .type-option {
+    flex: 1;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    background: var(--bg3);
+  }
+  .type-option:hover { border-color: var(--primary); }
+  .type-option input[type=radio] { display: none; }
+  .type-option.selected { border-color: var(--primary); background: rgba(99,102,241,.08); }
+  .type-option .icon { font-size: 24px; margin-bottom: 6px; }
+  .type-option .label { font-size: 13px; font-weight: 700; }
+  .type-option .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* 生成中オーバーレイ */
+  .generating-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,17,23,.92);
+    z-index: 1000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  .generating-overlay.show { display: flex; }
+  .gen-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(99,102,241,.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .gen-step {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    min-height: 24px;
+    text-align: center;
+  }
+  .gen-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+  }
+  .gen-step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+  .gen-step-item.active { color: var(--text); background: var(--bg3); }
+  .gen-step-item.done { color: var(--success); }
+  .step-icon { width: 18px; text-align: center; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;margin:0 auto;">
+
+  <!-- 生成中オーバーレイ -->
+  <div class="generating-overlay" id="generating-overlay">
+    <div class="gen-spinner"></div>
+    <div class="gen-step" id="gen-step-label">準備中...</div>
+    <div class="gen-steps-list" id="gen-steps-list">
+      <div class="gen-step-item" data-step="extract">  <span class="step-icon">🔍</span> 画像を分析</div>
+      <div class="gen-step-item" data-step="build_topic"><span class="step-icon">📋</span> 記事の構成を決定</div>
+      <div class="gen-step-item" data-step="blog_creator"><span class="step-icon">✍️</span> 下書き作成</div>
+      <div class="gen-step-item" data-step="seo_checker"><span class="step-icon">🔎</span> SEO最適化</div>
+      <div class="gen-step-item" data-step="fact_checker"><span class="step-icon">✅</span> ファクトチェック</div>
+      <div class="gen-step-item" data-step="legal_checker"><span class="step-icon">⚖️</span> リーガルチェック</div>
+      <div class="gen-step-item" data-step="final_creator"><span class="step-icon">📝</span> 最終記事を完成</div>
+      <div class="gen-step-item" data-step="ig_formatter"><span class="step-icon">📱</span> IGキャプション生成</div>
+      <div class="gen-step-item" data-step="saving">   <span class="step-icon">💾</span> 保存</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>📸 画像から記事を生成</h2>
+      <a href="{{ url_for('designer.client_detail', client_id=client.id) }}" class="btn btn-secondary btn-sm">← 戻る</a>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:24px;">
+
+      <!-- 投稿タイプ -->
+      <div class="form-group" style="margin-bottom:0;">
+        <label>投稿タイプ</label>
+        <div class="type-selector">
+          <label class="type-option selected" id="type-feed">
+            <input type="radio" name="post_type" value="feed" checked>
+            <div class="icon">🖼️</div>
+            <div class="label">フィード投稿</div>
+            <div class="desc">画像 最大5枚</div>
+          </label>
+          <label class="type-option" id="type-reel">
+            <input type="radio" name="post_type" value="reel">
+            <div class="icon">🎬</div>
+            <div class="label">リール</div>
+            <div class="desc">動画（準備中）</div>
+          </label>
+        </div>
+      </div>
+
+      <!-- アップロードエリア -->
+      <div class="form-group" style="margin-bottom:0;">
+        <label>画像を選択 <span style="color:var(--muted);font-weight:400;">（最大{{ max_images }}枚・ドラッグ&ドロップ可）</span></label>
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4M8 8l4-4 4 4"/></svg>
+          <p>クリックまたはドラッグ&ドロップで画像を追加</p>
+          <small>JPG・PNG・WebP・GIF / 最大5枚</small>
+        </div>
+        <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+
+        <!-- プレビュー -->
+        <div class="preview-grid" id="preview-grid"></div>
+        <p class="hint" id="preview-hint" style="display:none;">ドラッグで順番を変更できます</p>
+      </div>
+
+      <!-- 生成ボタン -->
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" id="generate-btn" disabled onclick="startGenerate()">
+          ✨ 記事を生成する
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MAX_IMAGES = {{ max_images }};
+const CLIENT_ID  = {{ client.id }};
+const GENERATE_URL = "{{ url_for('designer.image_post_generate', client_id=client.id) }}";
+const STATUS_URL   = "{{ url_for('designer.image_post_status', client_id=client.id, job_id='__JOB__') }}";
+const POST_URL     = "{{ url_for('designer.post_detail', client_id=client.id, post_id=0) }}".replace('/0', '/');
+
+// ── 状態管理 ──────────────────────────────────────────────────────────────
+let imageFiles = [];  // {file: File, url: string}[]
+
+// ── 投稿タイプ切替 ────────────────────────────────────────────────────────
+document.querySelectorAll('.type-option').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.type-option').forEach(x => x.classList.remove('selected'));
+    el.classList.add('selected');
+  });
+});
+
+// ── ファイル入力 ──────────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  addFiles(Array.from(e.target.files));
+  e.target.value = '';
+});
+
+// ── ドラッグ&ドロップ ─────────────────────────────────────────────────────
+const uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+});
+
+function addFiles(files) {
+  const remaining = MAX_IMAGES - imageFiles.length;
+  if (remaining <= 0) { showToast(`画像は最大${MAX_IMAGES}枚までです`, 'error'); return; }
+  files.slice(0, remaining).forEach(file => {
+    const url = URL.createObjectURL(file);
+    imageFiles.push({ file, url });
+  });
+  renderPreviews();
+}
+
+// ── プレビュー描画 ────────────────────────────────────────────────────────
+function renderPreviews() {
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  imageFiles.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    div.dataset.index = i;
+    div.innerHTML = `
+      <img src="${item.url}" alt="preview ${i+1}">
+      <span class="item-num">${i + 1}</span>
+      <button class="item-remove" onclick="removeImage(${i})" type="button">✕</button>
+      <div class="drag-handle">≡ 並び替え</div>`;
+    grid.appendChild(div);
+  });
+  document.getElementById('preview-hint').style.display = imageFiles.length > 1 ? '' : 'none';
+  document.getElementById('generate-btn').disabled = imageFiles.length === 0;
+
+  // Sortable 初期化
+  if (window._sortable) window._sortable.destroy();
+  window._sortable = Sortable.create(grid, {
+    animation: 150,
+    handle: '.drag-handle',
+    onEnd: () => {
+      const newOrder = Array.from(grid.children).map(el => parseInt(el.dataset.index));
+      imageFiles = newOrder.map(i => imageFiles[i]);
+      // dataset.index を更新
+      Array.from(grid.children).forEach((el, i) => {
+        el.dataset.index = i;
+        el.querySelector('.item-num').textContent = i + 1;
+        el.querySelector('.item-remove').setAttribute('onclick', `removeImage(${i})`);
+      });
+    },
+  });
+}
+
+function removeImage(index) {
+  URL.revokeObjectURL(imageFiles[index].url);
+  imageFiles.splice(index, 1);
+  renderPreviews();
+}
+
+// ── 記事生成 ──────────────────────────────────────────────────────────────
+async function startGenerate() {
+  if (imageFiles.length === 0) return;
+
+  const postType = document.querySelector('input[name=post_type]:checked')?.value || 'feed';
+  const formData = new FormData();
+  formData.append('post_type', postType);
+  imageFiles.forEach(item => formData.append('images', item.file));
+
+  // オーバーレイ表示
+  document.getElementById('generating-overlay').classList.add('show');
+  document.getElementById('generate-btn').disabled = true;
+
+  let jobId = null;
+  try {
+    const res = await fetch(GENERATE_URL, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'サーバーエラー');
+    jobId = data.job_id;
+  } catch (e) {
+    showOverlayError(e.message);
+    return;
+  }
+
+  // ポーリング
+  const statusUrl = STATUS_URL.replace('__JOB__', jobId);
+  pollStatus(statusUrl);
+}
+
+async function pollStatus(url) {
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    updateOverlayStep(data.step, data.step_label);
+
+    if (data.status === 'done') {
+      // 完了 → 記事詳細へ
+      window.location.href = POST_URL + data.post_id;
+      return;
+    }
+    if (data.status === 'error') {
+      showOverlayError(data.error || '生成中にエラーが発生しました');
+      return;
+    }
+    setTimeout(() => pollStatus(url), 2000);
+  } catch (e) {
+    setTimeout(() => pollStatus(url), 3000);
+  }
+}
+
+function updateOverlayStep(step, label) {
+  document.getElementById('gen-step-label').textContent = label || '';
+  const items = document.querySelectorAll('.gen-step-item');
+  const steps  = ['extract','build_topic','blog_creator','seo_checker','fact_checker','legal_checker','final_creator','ig_formatter','saving'];
+  const curIdx = steps.indexOf(step);
+  items.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < curIdx)  el.classList.add('done');
+    if (i === curIdx) el.classList.add('active');
+  });
+}
+
+function showOverlayError(msg) {
+  document.getElementById('gen-step-label').textContent = '❌ ' + msg;
+  document.getElementById('generate-btn').disabled = false;
+  setTimeout(() => {
+    document.getElementById('generating-overlay').classList.remove('show');
+  }, 4000);
+}
+</script>
+{% endblock %}
