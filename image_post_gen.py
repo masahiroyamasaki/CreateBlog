@@ -153,6 +153,9 @@ def build_topic_from_images(
     client_name: str = "",
     business_description: str = "",
     target_word_count: int = 0,
+    target_audience: str = "",
+    character_prompt: str = "",
+    article_taste: str = "standard",
 ) -> dict:
     """画像分析結果から記事生成用のトピック・アウトラインを生成する。
 
@@ -173,11 +176,24 @@ def build_topic_from_images(
     images_summary = _format_results_for_prompt(extracted_results)
     word_note = f"目標文字数: {target_word_count}文字" if target_word_count else "文字数は投稿として適切に"
 
+    taste_map = {
+        "standard":    "標準・バランス重視",
+        "casual":      "カジュアル・親しみやすい",
+        "formal":      "フォーマル・専門的",
+        "storytelling": "ストーリーテリング・感情に訴える",
+        "seo_focused": "SEO重視・情報密度高め",
+    }
+    taste_note = taste_map.get(article_taste, article_taste) if article_taste else ""
+
+    audience_section = f"\nターゲット読者: {target_audience}" if target_audience else ""
+    character_section = f"\nライターのキャラクター・口調: {character_prompt}" if character_prompt else ""
+    taste_section = f"\n記事テイスト: {taste_note}" if taste_note else ""
+
     prompt = f"""あなたはInstagram投稿・ブログ記事のコンテンツプランナーです。
-以下の画像分析結果をもとに、記事生成に使うトピックとアウトラインを作成してください。
+以下の画像分析結果と会社情報をもとに、記事生成に使うトピックとアウトラインを作成してください。
 
 企業名: {client_name or "（未設定）"}
-事業内容: {business_description or "（未設定）"}
+事業内容: {business_description or "（未設定）"}{audience_section}{character_section}{taste_section}
 {word_note}
 
 【画像から抽出した情報】
@@ -186,8 +202,8 @@ def build_topic_from_images(
 以下のJSON形式のみで出力してください（説明文不要）:
 {{
   "title": "投稿のメインテーマ・タイトル（20〜40文字の日本語）",
-  "outline": "記事のアウトライン。各画像の情報を活かした構成と要点を箇条書きで記述",
-  "ig_base": "Instagramキャプションの下書きベース（画像内容を反映した自然な投稿文・200文字程度）"
+  "outline": "記事のアウトライン。各画像の情報・会社の特性・ターゲット読者を活かした構成と要点を箇条書きで記述",
+  "ig_base": "Instagramキャプションの下書きベース（画像内容と会社のトーンを反映した自然な投稿文・200文字程度）"
 }}"""
 
     client_obj = anthropic.Anthropic(api_key=api_key)

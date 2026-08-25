@@ -173,6 +173,9 @@ def _image_post_generate_impl(client_id: int):
                 client_name=client_name,
                 business_description=business_desc,
                 target_word_count=target_word_count,
+                target_audience=target_audience,
+                character_prompt=character_prompt,
+                article_taste=article_taste,
             )
             topic_title   = topic_data.get("title") or "（タイトル未生成）"
             topic_outline = topic_data.get("outline") or ""
@@ -251,14 +254,24 @@ def _image_post_generate_impl(client_id: int):
                 body_html = _md.markdown(final_content, extensions=["extra", "toc"])
 
             with app.app_context():
-                from models import Post as _Post, PostImage as _PI, db as _db
+                from models import Post as _Post, PostImage as _PI, Client as _Client, db as _db
+                from schedule_utils import next_scheduled_at
                 post = _Post.query.get(post_id)
+                client_obj = _Client.query.get(client_id_val)
                 if post:
                     post.title      = topic_title
                     post.outline    = topic_outline
                     post.body_html  = body_html
                     post.ig_caption = _clean_caption(ig_caption_raw)
                     post.status     = "draft"
+
+                    # 自動予約（トピック起点と同じロジック）
+                    if client_obj and getattr(client_obj, "schedule_type", None):
+                        existing = {p.scheduled_at.date() for p in _Post.query.filter(
+                            _Post.client_id == client_id_val,
+                            _Post.scheduled_at.isnot(None),
+                        ).all() if p.scheduled_at}
+                        post.scheduled_at = next_scheduled_at(client_obj, existing)
 
                     # アップロード画像を PostImage として紐付け（絶対URLで保存）
                     _base_url = os.getenv("BASE_URL", "").rstrip("/")
