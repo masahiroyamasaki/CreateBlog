@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # バックグラウンドジョブのステート管理（in-memory）
 _image_post_jobs: dict[str, dict] = {}
 
-_ALLOWED_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}
+_ALLOWED_EXTS = {"jpg", "jpeg", "png"}  # Instagram API は WebP/GIF 非対応のため除外
 _MAX_IMAGES = 5
 
 
@@ -260,13 +260,17 @@ def _image_post_generate_impl(client_id: int):
                     post.ig_caption = _clean_caption(ig_caption_raw)
                     post.status     = "draft"
 
-                    # アップロード画像を PostImage として紐付け
-                    rel_base = os.path.join("uploads", "companies",
-                                            str(client_id_val), "image_posts", "tmp")
+                    # アップロード画像を PostImage として紐付け（絶対URLで保存）
+                    _base_url = os.getenv("BASE_URL", "").rstrip("/")
+                    rel_base = "uploads/companies/{}/image_posts/tmp".format(client_id_val)
                     for idx, path in enumerate(saved_paths, start=1):
                         fname = os.path.basename(path)
-                        rel   = f"/static/{rel_base}/{fname}".replace("\\", "/")
-                        pi    = _PI(post_id=post.id, image_url=rel, sort_order=idx)
+                        img_url = (
+                            f"{_base_url}/static/{rel_base}/{fname}"
+                            if _base_url else
+                            f"/static/{rel_base}/{fname}"
+                        )
+                        pi = _PI(post_id=post.id, image_url=img_url, sort_order=idx)
                         _db.session.add(pi)
 
                     _db.session.commit()

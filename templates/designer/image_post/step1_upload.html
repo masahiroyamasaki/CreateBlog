@@ -199,9 +199,9 @@
         <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4M8 8l4-4 4 4"/></svg>
           <p>クリックまたはドラッグ&ドロップで画像を追加</p>
-          <small>JPG・PNG・WebP・GIF / 最大5枚</small>
+          <small>JPG・PNG / 最大5枚（Instagram対応形式）</small>
         </div>
-        <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+        <input type="file" id="file-input" accept="image/jpeg,image/png" multiple style="display:none">
 
         <!-- プレビュー -->
         <div class="preview-grid" id="preview-grid"></div>
@@ -252,7 +252,7 @@ uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag
 uploadArea.addEventListener('drop', e => {
   e.preventDefault();
   uploadArea.classList.remove('drag-over');
-  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type === 'image/jpeg' || f.type === 'image/png'));
 });
 
 function addFiles(files) {
