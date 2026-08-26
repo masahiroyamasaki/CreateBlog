@@ -8,6 +8,13 @@ from flask_login import login_required, current_user
 from models import db, Client, TopicQueue, Post
 from routes import designer_bp
 
+def _normalize_md(text: str) -> str:
+    """段落間・見出し前後に空行を保証してMarkdown → HTML変換を正確にする。"""
+    text = re.sub(r'([^\n])\n(#{1,6} )', r'\1\n\n\2', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text
+
+
 # バックグラウンド生成ジョブのステート管理（in-memory）
 _generation_runs = {}
 # topic_id → run_id の逆引きマップ（進捗確認ページの再接続用）
@@ -357,7 +364,7 @@ def topic_generate(client_id: int, topic_id: int):
                 body_html = ""
             else:
                 import markdown as _md
-                body_html = _md.markdown(final_content, extensions=["extra", "toc"])
+                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
 
             with app.app_context():
                 from schedule_utils import next_scheduled_at
@@ -619,7 +626,7 @@ def topic_bulk_generate(client_id: int):
                     _cancel_and_cleanup(); return
 
                 run.update(step="saving", step_num=7)
-                body_html = "" if platform_type == "instagram" else _md.markdown(final_content, extensions=["extra", "toc"])
+                body_html = "" if platform_type == "instagram" else _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
 
                 with app.app_context():
                     from schedule_utils import next_scheduled_at

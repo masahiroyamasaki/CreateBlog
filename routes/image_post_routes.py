@@ -248,10 +248,16 @@ def _image_post_generate_impl(client_id: int):
                 ]
                 return _re.sub(r'\n{3,}', '\n\n', '\n'.join(cleaned)).strip()
 
+            def _normalize_md(text: str) -> str:
+                """段落間・見出し前後に空行を保証してMarkdown → HTML変換を正確にする。"""
+                text = _re.sub(r'([^\n])\n(#{1,6} )', r'\1\n\n\2', text)
+                text = _re.sub(r'\n{3,}', '\n\n', text)
+                return text
+
             if platform_type == "instagram":
                 body_html = ""
             else:
-                body_html = _md.markdown(final_content, extensions=["extra", "toc"])
+                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
 
             with app.app_context():
                 from models import Post as _Post, PostImage as _PI, Client as _Client, db as _db
