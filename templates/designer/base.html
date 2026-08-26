@@ -263,7 +263,134 @@
   </div>
 
   <div class="toast-wrap" id="toast-wrap"></div>
+
+  <!-- バックグラウンドジョブ進捗パネル -->
+  <div id="bg-job-panel" style="display:none;position:fixed;bottom:24px;right:24px;z-index:9990;width:300px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px #000a;">
+    <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleBgPanel()">
+      <span style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+        📸 記事生成中
+        <span id="bg-job-spinner" class="spinner-sm" style="display:none;"></span>
+      </span>
+      <span id="bg-panel-toggle" style="color:var(--muted);font-size:18px;line-height:1;width:20px;text-align:center;">−</span>
+    </div>
+    <div id="bg-job-body" style="padding:8px;">
+      <div id="bg-job-list"></div>
+    </div>
+  </div>
+
   <script>
+  // ── バックグラウンドジョブ管理 ─────────────────────────────────────────
+  (function() {
+    const LS_KEY = 'artivo_bg_jobs';
+    const POLL_MS = 3000;
+    const TIMEOUT_MS = 30 * 60 * 1000;
+    const AUTO_REMOVE_MS = 5 * 60 * 1000;
+    let _panelOpen = true;
+    let _pollTimer = null;
+
+    function getJobs() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+    }
+    function saveJobs(jobs) { localStorage.setItem(LS_KEY, JSON.stringify(jobs)); }
+
+    window.removeJob = function(job_id) {
+      saveJobs(getJobs().filter(j => j.job_id !== job_id));
+      startBgPoll();
+    };
+    window.toggleBgPanel = function() {
+      _panelOpen = !_panelOpen;
+      document.getElementById('bg-job-body').style.display = _panelOpen ? '' : 'none';
+      document.getElementById('bg-panel-toggle').textContent = _panelOpen ? '−' : '+';
+    };
+
+    function renderPanel(jobs) {
+      const panel = document.getElementById('bg-job-panel');
+      const list  = document.getElementById('bg-job-list');
+      const spin  = document.getElementById('bg-job-spinner');
+      if (!jobs.length) { panel.style.display = 'none'; return; }
+      panel.style.display = '';
+      const running = jobs.some(j => j.status === 'running');
+      spin.style.display = running ? 'inline-block' : 'none';
+      list.innerHTML = jobs.map(job => {
+        const icon  = job.status === 'done' ? '✅' : job.status === 'error' ? '❌' : '⏳';
+        const color = job.status === 'done' ? 'var(--success)' : job.status === 'error' ? 'var(--danger)' : 'var(--text)';
+        const link  = (job.status === 'done' && job.post_id)
+          ? `<a href="${job.post_base_url}${job.post_id}" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:700;color:var(--primary);">記事を確認する →</a>` : '';
+        const dismiss = (job.status !== 'running')
+          ? `<button onclick="removeJob('${job.job_id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;" title="閉じる">×</button>` : '';
+        return `<div style="padding:10px 12px;border-radius:8px;background:var(--bg3);margin-bottom:4px;display:flex;align-items:flex-start;gap:8px;">
+          <span style="font-size:15px;flex-shrink:0;margin-top:1px;">${icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:700;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${job.client_name || ''}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${job.step_label || '処理中...'}</div>
+            ${link}
+          </div>
+          ${dismiss}
+        </div>`;
+      }).join('');
+    }
+
+    async function pollJobs() {
+      _pollTimer = null;
+      const jobs = getJobs();
+      const now  = Date.now();
+      let changed = false;
+      const updated = [];
+      for (const job of jobs) {
+        if (job.auto_remove_at && now > job.auto_remove_at) { changed = true; continue; }
+        if (job.status === 'running' && now - job.started_at > TIMEOUT_MS) {
+          job.status = 'error'; job.step_label = 'タイムアウト（30分経過）';
+          job.auto_remove_at = now + AUTO_REMOVE_MS; changed = true;
+        }
+        if (job.status === 'running') {
+          try {
+            const res = await fetch(job.status_url);
+            if (res.ok) {
+              const d = await res.json();
+              if (d.step_label) { job.step_label = d.step_label; changed = true; }
+              if (d.status === 'done') {
+                job.status = 'done'; job.post_id = d.post_id || job.post_id;
+                job.auto_remove_at = now + AUTO_REMOVE_MS; changed = true;
+                showToast('✅ 記事が完成しました', 'success');
+              } else if (d.status === 'error') {
+                job.status = 'error'; job.step_label = d.error || 'エラーが発生しました';
+                job.auto_remove_at = now + AUTO_REMOVE_MS; changed = true;
+                showToast('❌ 記事生成に失敗しました', 'error');
+              }
+            }
+          } catch {}
+        }
+        updated.push(job);
+      }
+      if (changed) saveJobs(updated);
+      renderPanel(updated);
+      if (updated.length) {
+        _pollTimer = setTimeout(pollJobs, updated.some(j => j.status === 'running') ? POLL_MS : 10000);
+      }
+    }
+
+    function startBgPoll() {
+      if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+      const jobs = getJobs();
+      renderPanel(jobs);
+      if (jobs.length) _pollTimer = setTimeout(pollJobs, 0);
+    }
+
+    window.startBgPoll = startBgPoll;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // sessionStorage フラッシュ（ページ遷移後トースト）
+      try {
+        const f = sessionStorage.getItem('artivo_flash');
+        if (f) { sessionStorage.removeItem('artivo_flash'); const o = JSON.parse(f); showToast(o.msg, o.type || 'success'); }
+      } catch {}
+      startBgPoll();
+    });
+
+    window.addEventListener('pageshow', startBgPoll);
+    window.addEventListener('storage', e => { if (e.key === LS_KEY) startBgPoll(); });
+  })();
+
   function toggleClientSwitcher(e) {
     e.stopPropagation();
     document.getElementById('client-switcher')?.classList.toggle('open');

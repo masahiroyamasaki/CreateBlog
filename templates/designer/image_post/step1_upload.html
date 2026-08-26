@@ -99,74 +99,13 @@
   .type-option .label { font-size: 13px; font-weight: 700; }
   .type-option .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-  /* 生成中オーバーレイ */
-  .generating-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15,17,23,.92);
-    z-index: 1000;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  }
-  .generating-overlay.show { display: flex; }
-  .gen-spinner {
-    width: 48px; height: 48px;
-    border: 4px solid rgba(99,102,241,.3);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-  }
-  .gen-step {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-    min-height: 24px;
-    text-align: center;
-  }
-  .gen-steps-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 260px;
-  }
-  .gen-step-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--muted);
-    padding: 6px 10px;
-    border-radius: 8px;
-  }
-  .gen-step-item.active { color: var(--text); background: var(--bg3); }
-  .gen-step-item.done { color: var(--success); }
-  .step-icon { width: 18px; text-align: center; flex-shrink: 0; }
+  /* アップロード中インジケーター */
+  #generate-btn.uploading { opacity: .7; cursor: not-allowed; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div style="max-width:680px;margin:0 auto;">
-
-  <!-- 生成中オーバーレイ -->
-  <div class="generating-overlay" id="generating-overlay">
-    <div class="gen-spinner"></div>
-    <div class="gen-step" id="gen-step-label">準備中...</div>
-    <div class="gen-steps-list" id="gen-steps-list">
-      <div class="gen-step-item" data-step="extract">  <span class="step-icon">🔍</span> 画像を分析</div>
-      <div class="gen-step-item" data-step="build_topic"><span class="step-icon">📋</span> 記事の構成を決定</div>
-      <div class="gen-step-item" data-step="blog_creator"><span class="step-icon">✍️</span> 下書き作成</div>
-      <div class="gen-step-item" data-step="seo_checker"><span class="step-icon">🔎</span> SEO最適化</div>
-      <div class="gen-step-item" data-step="fact_checker"><span class="step-icon">✅</span> ファクトチェック</div>
-      <div class="gen-step-item" data-step="legal_checker"><span class="step-icon">⚖️</span> リーガルチェック</div>
-      <div class="gen-step-item" data-step="final_creator"><span class="step-icon">📝</span> 最終記事を完成</div>
-      <div class="gen-step-item" data-step="ig_formatter"><span class="step-icon">📱</span> IGキャプション生成</div>
-      <div class="gen-step-item" data-step="saving">   <span class="step-icon">💾</span> 保存</div>
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-header">
       <h2>📸 画像から記事を生成</h2>
@@ -222,8 +161,9 @@
 
 {% block scripts %}
 <script>
-const MAX_IMAGES = {{ max_images }};
-const CLIENT_ID  = {{ client.id }};
+const MAX_IMAGES   = {{ max_images }};
+const CLIENT_ID    = {{ client.id }};
+const CLIENT_NAME  = {{ client.name | tojson }};
 const GENERATE_URL = "{{ url_for('designer.image_post_generate', client_id=client.id) }}";
 const STATUS_URL   = "{{ url_for('designer.image_post_status', client_id=client.id, job_id='__JOB__') }}";
 const POST_URL     = "{{ url_for('designer.post_detail', client_id=client.id, post_id=0) }}".replace('/0', '/');
@@ -307,20 +247,20 @@ function removeImage(index) {
   renderPreviews();
 }
 
-// ── 記事生成 ──────────────────────────────────────────────────────────────
+// ── 記事生成（バックグラウンド開始 → 即リダイレクト） ────────────────────
 async function startGenerate() {
   if (imageFiles.length === 0) return;
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.classList.add('uploading');
+  btn.innerHTML = '<span class="spinner-sm"></span> アップロード中...';
 
   const postType = document.querySelector('input[name=post_type]:checked')?.value || 'feed';
   const formData = new FormData();
   formData.append('post_type', postType);
   imageFiles.forEach(item => formData.append('images', item.file));
 
-  // オーバーレイ表示
-  document.getElementById('generating-overlay').classList.add('show');
-  document.getElementById('generate-btn').disabled = true;
-
-  let jobId = null;
   try {
     const res = await fetch(GENERATE_URL, { method: 'POST', body: formData });
     let data;
@@ -331,57 +271,37 @@ async function startGenerate() {
       throw new Error(`サーバーエラー(${res.status}): ${text.replace(/<[^>]+>/g,'').trim().slice(0,120)}`);
     }
     if (!res.ok || data.error) throw new Error(data.error || 'サーバーエラー');
-    jobId = data.job_id;
+
+    // バックグラウンドジョブを localStorage に登録
+    const jobs = JSON.parse(localStorage.getItem('artivo_bg_jobs') || '[]');
+    jobs.push({
+      job_id:       data.job_id,
+      client_id:    CLIENT_ID,
+      client_name:  CLIENT_NAME,
+      status_url:   STATUS_URL.replace('__JOB__', data.job_id),
+      post_base_url: POST_URL,
+      started_at:   Date.now(),
+      status:       'running',
+      step_label:   '準備中...',
+      post_id:      data.post_id || null,
+    });
+    localStorage.setItem('artivo_bg_jobs', JSON.stringify(jobs));
+
+    // 次回ページ表示時にトーストを出す
+    sessionStorage.setItem('artivo_flash', JSON.stringify({
+      msg: '記事生成を開始しました。右下のパネルで進捗を確認できます。',
+      type: 'success',
+    }));
+
+    // 同じアップロードページへ（次の記事をすぐ作成可能に）
+    window.location.href = window.location.href;
+
   } catch (e) {
-    showOverlayError(e.message);
-    return;
+    showToast('❌ ' + e.message, 'error');
+    btn.disabled = false;
+    btn.classList.remove('uploading');
+    btn.innerHTML = '✨ 記事を生成する';
   }
-
-  // ポーリング
-  const statusUrl = STATUS_URL.replace('__JOB__', jobId);
-  pollStatus(statusUrl);
-}
-
-async function pollStatus(url) {
-  try {
-    const res  = await fetch(url);
-    const data = await res.json();
-
-    updateOverlayStep(data.step, data.step_label);
-
-    if (data.status === 'done') {
-      // 完了 → 記事詳細へ
-      window.location.href = POST_URL + data.post_id;
-      return;
-    }
-    if (data.status === 'error') {
-      showOverlayError(data.error || '生成中にエラーが発生しました');
-      return;
-    }
-    setTimeout(() => pollStatus(url), 2000);
-  } catch (e) {
-    setTimeout(() => pollStatus(url), 3000);
-  }
-}
-
-function updateOverlayStep(step, label) {
-  document.getElementById('gen-step-label').textContent = label || '';
-  const items = document.querySelectorAll('.gen-step-item');
-  const steps  = ['extract','build_topic','blog_creator','seo_checker','fact_checker','legal_checker','final_creator','ig_formatter','saving'];
-  const curIdx = steps.indexOf(step);
-  items.forEach((el, i) => {
-    el.classList.remove('active', 'done');
-    if (i < curIdx)  el.classList.add('done');
-    if (i === curIdx) el.classList.add('active');
-  });
-}
-
-function showOverlayError(msg) {
-  document.getElementById('gen-step-label').textContent = '❌ ' + msg;
-  document.getElementById('generate-btn').disabled = false;
-  setTimeout(() => {
-    document.getElementById('generating-overlay').classList.remove('show');
-  }, 4000);
 }
 </script>
 {% endblock %}
