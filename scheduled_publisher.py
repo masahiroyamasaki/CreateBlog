@@ -189,11 +189,18 @@ def _do_instagram(client, post, ig_client, decrypt_field) -> dict:
     if hashtags:
         caption = caption.rstrip() + "\n\n" + hashtags
 
+    import os as _os
+    def _abs(url: str) -> str:
+        if url.startswith("http"):
+            return url
+        base = _os.getenv("BASE_URL", "").rstrip("/")
+        return (base + url) if base else url
+
     if len(images) == 1:
         return ig_client.post_single_image(
             ig_user_id=ig_id,
             access_token=token,
-            image_url=images[0].image_url,
+            image_url=_abs(images[0].image_url),
             caption=caption,
         )
 
@@ -201,7 +208,7 @@ def _do_instagram(client, post, ig_client, decrypt_field) -> dict:
     from models import db
     container_ids = []
     for img in images:
-        r = ig_client.create_carousel_item(ig_id, token, img.image_url)
+        r = ig_client.create_carousel_item(ig_id, token, _abs(img.image_url))
         if not r.get("success"):
             return r
         img.ig_container_id = r["container_id"]

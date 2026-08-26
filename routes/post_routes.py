@@ -742,6 +742,16 @@ def _publish_to_threads(client: Client, post: Post) -> dict:
         return th.post_text(user_id=user_id, access_token=token, text=text, url=url)
 
 
+def _to_absolute_url(url: str) -> str:
+    """相対URLを絶対URLに変換する（Instagram API は https:// が必須）。"""
+    if url.startswith("http"):
+        return url
+    base = os.getenv("BASE_URL", "").rstrip("/")
+    if base:
+        return base + url
+    return url
+
+
 def _publish_to_instagram(client: Client, post: Post) -> dict:
     """Instagram 投稿処理（単一画像 or カルーセル）"""
     from config import decrypt_field
@@ -760,14 +770,14 @@ def _publish_to_instagram(client: Client, post: Post) -> dict:
         return ig_client.post_single_image(
             ig_user_id=ig_id,
             access_token=token,
-            image_url=images[0].image_url,
+            image_url=_to_absolute_url(images[0].image_url),
             caption=caption,
         )
     else:
         # カルーセル投稿
         container_ids = []
         for img in images:
-            r = ig_client.create_carousel_item(ig_id, token, img.image_url)
+            r = ig_client.create_carousel_item(ig_id, token, _to_absolute_url(img.image_url))
             if not r.get("success"):
                 return r
             img.ig_container_id = r["container_id"]
