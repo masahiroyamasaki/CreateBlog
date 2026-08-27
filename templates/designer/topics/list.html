@@ -22,6 +22,9 @@
 .img-slot-body { font-size: 10px; color: var(--muted); margin-top: 2px; word-break: break-all; }
 .img-slot-copy { position: absolute; top: 4px; right: 4px; font-size: 10px; color: var(--muted); opacity: 0; transition: opacity .15s; }
 .img-slot:hover .img-slot-copy { opacity: 1; }
+.img-slot-expand { position: absolute; bottom: 4px; right: 4px; background: none; border: none; font-size: 13px; color: var(--muted); cursor: pointer; padding: 2px 4px; opacity: 0; transition: opacity .15s; line-height: 1; }
+.img-slot:hover .img-slot-expand { opacity: 1; }
+.img-slot-feedback { position: absolute; inset: 0; background: rgba(16,185,129,.2); border: 1.5px solid #10b981; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #065f46; pointer-events: none; }
 .img-check { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
 .topic-item.image-done { opacity: .65; }
 .generated-at { font-size: 10px; color: var(--muted); margin-top: 3px; }
@@ -70,6 +73,18 @@
   ✕ <span>ネタ生成でエラーが発生しました: {{ bulk_idea_job.error }}</span>
 </div>
 {% endif %}
+<!-- 画像スロット拡大モーダル -->
+<div id="slot-modal" onclick="if(event.target===this)closeSlotModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:14px;padding:36px 30px 28px;max-width:500px;width:92%;position:relative;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+    <button onclick="closeSlotModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);">✕</button>
+    <div id="slot-modal-num" style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px;"></div>
+    <div id="slot-modal-label" style="font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
+    <div id="slot-modal-text" style="font-size:26px;font-weight:700;line-height:1.5;word-break:break-all;"></div>
+    <div id="slot-modal-body" style="font-size:18px;color:var(--text);margin-top:12px;line-height:1.75;word-break:break-all;"></div>
+    <button onclick="copySlotModal()" class="btn btn-primary" style="margin-top:22px;width:100%;font-size:15px;">コピー</button>
+  </div>
+</div>
+
 <div>
   <div class="card">
     <div class="card-header">
@@ -172,8 +187,9 @@
                 {% if t.created_by == 'ai_auto' %}<span class="badge badge-blue" style="font-size:10px;">AI生成</span>{% endif %}
                 {% if t.image_created %}<span class="badge badge-green" style="font-size:10px;">✓ 画像作成済</span>{% endif %}
               </div>
+              <div class="generated-at">ネタ登録: {{ (t.created_at | to_jst).strftime('%Y/%m/%d %H:%M:%S') }}</div>
               {% if t.generated_at %}
-              <div class="generated-at">記事生成: {{ t.generated_at.strftime('%Y/%m/%d %H:%M') }}</div>
+              <div class="generated-at">記事生成: {{ t.generated_at.strftime('%Y/%m/%d %H:%M:%S') }}</div>
               {% endif %}
               {% if t.outline %}
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
@@ -189,6 +205,7 @@
                   <div class="img-slot-num">📷 1枚目</div>
                   <div class="img-slot-label">キャッチコピー</div>
                   <div class="img-slot-text">{{ s.catchcopy }}</div>
+                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal({{ s | tojson }})" title="拡大">⤢</button>
                 </div>
                 {% else %}
                 <div class="img-slot" onclick="copySlot(this, {{ s | tojson }})" title="クリックでコピー">
@@ -196,6 +213,7 @@
                   <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
                   <div class="img-slot-text">{{ s.title }}</div>
                   <div class="img-slot-body">{{ s.body }}</div>
+                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal({{ s | tojson }})" title="拡大">⤢</button>
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -468,13 +486,42 @@ async function bulkGenerate() {
 function copySlot(el, slot) {
   const text = slot.catchcopy || (slot.title ? `${slot.title}\n${slot.body || ''}` : '');
   navigator.clipboard.writeText(text.trim()).then(() => {
-    const orig = el.querySelector('.img-slot-copy');
-    if (orig) { orig.textContent = 'コピー完了!'; orig.style.opacity = '1'; orig.style.color = 'var(--success)'; }
-    setTimeout(() => {
-      if (orig) { orig.textContent = 'コピー'; orig.style.opacity = ''; orig.style.color = ''; }
-    }, 1500);
+    // カード上に緑色オーバーレイで「コピーしました」表示
+    const fb = document.createElement('div');
+    fb.className = 'img-slot-feedback';
+    fb.textContent = 'コピーしました ✓';
+    el.style.position = 'relative';
+    el.appendChild(fb);
+    setTimeout(() => fb.remove(), 1400);
+    showToast('コピーしました');
   }).catch(() => showToast('コピーに失敗しました', 'error'));
 }
+
+// ── 画像スロット 拡大モーダル ────────────────────────────────────────────────
+let _modalSlot = null;
+function openSlotModal(slot) {
+  _modalSlot = slot;
+  document.getElementById('slot-modal-num').textContent = `📷 ${slot.slot}枚目`;
+  if (slot.slot === 1) {
+    document.getElementById('slot-modal-label').textContent = 'キャッチコピー';
+    document.getElementById('slot-modal-text').textContent = slot.catchcopy || '';
+    document.getElementById('slot-modal-body').textContent = '';
+  } else {
+    document.getElementById('slot-modal-label').textContent = 'スライド';
+    document.getElementById('slot-modal-text').textContent = slot.title || '';
+    document.getElementById('slot-modal-body').textContent = slot.body || '';
+  }
+  document.getElementById('slot-modal').style.display = 'flex';
+}
+function closeSlotModal() {
+  document.getElementById('slot-modal').style.display = 'none';
+}
+function copySlotModal() {
+  if (!_modalSlot) return;
+  const text = _modalSlot.catchcopy || (_modalSlot.title ? `${_modalSlot.title}\n${_modalSlot.body || ''}` : '');
+  navigator.clipboard.writeText(text.trim()).then(() => showToast('コピーしました'));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSlotModal(); });
 
 // ── 画像スロット 再生成（再作成） ───────────────────────────────────────────
 async function regenSlots(id, btn) {
@@ -502,19 +549,22 @@ function renderSlots(id, slots) {
   const container = document.getElementById('slots-' + id);
   if (!container) return;
   container.innerHTML = slots.map(s => {
+    const sd = JSON.stringify(s).replace(/'/g, '&#39;');
     if (s.slot === 1) {
-      return `<div class="img-slot" onclick='copySlot(this, ${JSON.stringify(s)})' title="クリックでコピー">
+      return `<div class="img-slot" onclick='copySlot(this, ${sd})' title="クリックでコピー">
         <span class="img-slot-copy">コピー</span>
         <div class="img-slot-num">📷 1枚目</div>
         <div class="img-slot-label">キャッチコピー</div>
         <div class="img-slot-text">${s.catchcopy || ''}</div>
+        <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal(${sd})" title="拡大">⤢</button>
       </div>`;
     }
-    return `<div class="img-slot" onclick='copySlot(this, ${JSON.stringify(s)})' title="クリックでコピー">
+    return `<div class="img-slot" onclick='copySlot(this, ${sd})' title="クリックでコピー">
       <span class="img-slot-copy">コピー</span>
       <div class="img-slot-num">📷 ${s.slot}枚目</div>
       <div class="img-slot-text">${s.title || ''}</div>
       <div class="img-slot-body">${s.body || ''}</div>
+      <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal(${sd})" title="拡大">⤢</button>
     </div>`;
   }).join('');
 }
