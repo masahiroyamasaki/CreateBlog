@@ -13,6 +13,12 @@
 .drag-handle { color: var(--muted); font-size: 18px; cursor: grab; flex-shrink: 0; padding-top: 2px; }
 .topic-title { font-weight: 600; font-size: 14px; }
 .topic-outline { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
+.img-slots { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.img-slot { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; min-width: 80px; max-width: 160px; background: var(--bg2); }
+.img-slot-num { font-size: 10px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
+.img-slot-label { font-size: 10px; color: var(--muted); }
+.img-slot-text { font-size: 11px; color: var(--text); margin-top: 1px; word-break: break-all; }
+.img-slot-body { font-size: 10px; color: var(--muted); margin-top: 2px; word-break: break-all; }
 .edit-form { display: none; margin-top: 10px; }
 .edit-form.open { display: block; }
 .btn-generate { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; }
@@ -110,6 +116,25 @@
               {% if t.outline %}
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
               {% endif %}
+              {% if t.image_slots %}
+              {% set slots = t.image_slots | from_json %}
+              {% if slots %}
+              <div class="img-slots">
+                {% for s in slots %}
+                <div class="img-slot">
+                  <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
+                  {% if s.slot == 1 %}
+                  <div class="img-slot-label">キャッチコピー</div>
+                  <div class="img-slot-text">{{ s.catchcopy }}</div>
+                  {% else %}
+                  <div class="img-slot-text">{{ s.title }}</div>
+                  <div class="img-slot-body">{{ s.body }}</div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+              {% endif %}
             </div>
           </div>
           {% else %}
@@ -133,6 +158,25 @@
               </div>
               {% if t.outline %}
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
+              {% endif %}
+              {% if t.image_slots %}
+              {% set slots = t.image_slots | from_json %}
+              {% if slots %}
+              <div class="img-slots">
+                {% for s in slots %}
+                <div class="img-slot">
+                  <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
+                  {% if s.slot == 1 %}
+                  <div class="img-slot-label">キャッチコピー</div>
+                  <div class="img-slot-text">{{ s.catchcopy }}</div>
+                  {% else %}
+                  <div class="img-slot-text">{{ s.title }}</div>
+                  <div class="img-slot-body">{{ s.body }}</div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
               {% endif %}
               <div class="edit-form" id="edit-{{ t.id }}">
                 <input class="form-control" style="margin-bottom:6px;" type="text" id="edit-title-{{ t.id }}" value="{{ t.title }}">

@@ -63,11 +63,23 @@ def _generate_topics(client: Client, count: int) -> list[dict]:
 2. 切り口の多様化: 初心者向け・上級者向け・季節トレンド・よくある失敗・プロの視点など角度を変えること。
 3. 読者の悩みや関心に刺さるタイトルにすること。
 4. 大枠はキーポイントを200文字以内で簡潔に記載すること。
+5. 画像構成: 最大5枚の画像スライドを設計すること。
+   - 1枚目: キャッチコピー（15〜20文字のインパクトある一言）
+   - 2〜5枚目: スライドのタイトル（15文字以内）と本文（40〜60文字）
+   - 合計2〜5枚で内容に合った最適な枚数にすること
 
 以下の JSON 配列形式のみで出力してください。他のテキストは含めないでください。
 
 [
-  {{"title": "記事タイトル1", "outline": "大枠・キーポイントのメモ（200文字以内）"}},
+  {{
+    "title": "記事タイトル1",
+    "outline": "大枠・キーポイントのメモ（200文字以内）",
+    "image_slots": [
+      {{"slot": 1, "catchcopy": "キャッチコピー（15〜20文字）"}},
+      {{"slot": 2, "title": "スライドタイトル", "body": "スライド本文（40〜60文字）"}},
+      {{"slot": 3, "title": "スライドタイトル", "body": "スライド本文（40〜60文字）"}}
+    ]
+  }},
   ...
 ]"""
 
@@ -110,10 +122,12 @@ def replenish_client(app, client_id: int):
         next_order = (last.sort_order + 1) if last else 1
 
         for i, t in enumerate(topics):
+            slots = t.get("image_slots") or []
             topic = TopicQueue(
                 client_id=client_id,
                 title=t.get("title", ""),
                 outline=t.get("outline", ""),
+                image_slots=json.dumps(slots, ensure_ascii=False) if slots else "",
                 sort_order=next_order + i,
                 status="pending",
                 created_by="ai_auto",

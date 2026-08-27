@@ -323,11 +323,23 @@ def _build_ideas_prompt(client_name, themes, business_note, audience_note, avoid
 4. 切り口の多様化: 初心者向け・上級者向け・季節トレンド・よくある失敗・プロの視点など角度を変えること。
 5. 読者の悩みや関心に刺さるタイトルにすること。
 6. 大枠は投稿の方向性を2〜3文で簡潔に記載すること。
-7. 必ず{n}件すべて出力すること。途中で省略しないこと。
+7. 画像構成: 最大5枚の画像スライドを設計すること。
+   - 1枚目: キャッチコピー（15〜20文字のインパクトある一言）
+   - 2〜5枚目: スライドのタイトル（15文字以内）と本文（40〜60文字）
+   - 合計2〜5枚で内容に合った最適な枚数にすること
+8. 必ず{n}件すべて出力すること。途中で省略しないこと。
 
 JSONのみ出力してください（説明・前置き一切不要）:
 [
-  {{"title": "タイトル", "outline": "大枠・方向性"}},
+  {{
+    "title": "タイトル",
+    "outline": "大枠・方向性",
+    "image_slots": [
+      {{"slot": 1, "catchcopy": "キャッチコピー（15〜20文字）"}},
+      {{"slot": 2, "title": "スライドタイトル", "body": "スライド本文（40〜60文字）"}},
+      {{"slot": 3, "title": "スライドタイトル", "body": "スライド本文（40〜60文字）"}}
+    ]
+  }},
   ...
 ]"""
 
@@ -415,10 +427,12 @@ def _generate_ideas(client, ai, count: int, db) -> list:
         title = (idea.get("title") or "").strip()
         if not title:
             continue
+        slots = idea.get("image_slots") or []
         topic = TopicQueue(
             client_id=client.id,
             title=title,
             outline=(idea.get("outline") or "").strip(),
+            image_slots=json.dumps(slots, ensure_ascii=False) if slots else "",
             sort_order=next_order + len(added),
             created_by="ai_auto",
         )

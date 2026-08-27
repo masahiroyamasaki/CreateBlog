@@ -38,6 +38,14 @@ def _fromjson(s):
     except Exception:
         return {}
 
+@app.template_filter("from_json")
+def _from_json(s):
+    import json
+    try:
+        return json.loads(s or "[]")
+    except Exception:
+        return []
+
 from datetime import timedelta
 app.jinja_env.globals["timedelta"] = timedelta
 
