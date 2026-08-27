@@ -364,7 +364,7 @@ def topic_generate(client_id: int, topic_id: int):
                 body_html = ""
             else:
                 import markdown as _md
-                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
+                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc", "nl2br"])
 
             with app.app_context():
                 from schedule_utils import next_scheduled_at
@@ -626,7 +626,7 @@ def topic_bulk_generate(client_id: int):
                     _cancel_and_cleanup(); return
 
                 run.update(step="saving", step_num=7)
-                body_html = "" if platform_type == "instagram" else _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
+                body_html = "" if platform_type == "instagram" else _md.markdown(_normalize_md(final_content), extensions=["extra", "toc", "nl2br"])
 
                 with app.app_context():
                     from schedule_utils import next_scheduled_at

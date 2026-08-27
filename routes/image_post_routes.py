@@ -257,7 +257,7 @@ def _image_post_generate_impl(client_id: int):
             if platform_type == "instagram":
                 body_html = ""
             else:
-                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc"])
+                body_html = _md.markdown(_normalize_md(final_content), extensions=["extra", "toc", "nl2br"])
 
             with app.app_context():
                 from models import Post as _Post, PostImage as _PI, Client as _Client, db as _db
