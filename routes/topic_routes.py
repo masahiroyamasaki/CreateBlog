@@ -170,7 +170,7 @@ def topic_generate_ui(client_id: int, topic_id: int):
     if topic.status == "generated":
         flash("このネタはすでに生成済みです", "warning")
         return redirect(url_for("designer.topic_list", client_id=client_id))
-    image_gen_enabled = bool(getattr(client, "image_gen_enabled", False))
+    image_gen_enabled = False  # 画像生成機能無効化
     return render_template("designer/topics/generate.html", client=client, topic=topic,
                            image_gen_enabled=image_gen_enabled)
 
@@ -236,7 +236,7 @@ def topic_generate(client_id: int, topic_id: int):
     character_prompt     = client.character_prompt or ""
     business_description = client.business_description or ""
     threads_limit        = 400 if (client.threads_user_id or "").strip() else 0
-    image_gen_enabled_val   = bool(getattr(client, "image_gen_enabled", False))
+    image_gen_enabled_val   = False  # 画像生成機能無効化
     image_taste_val         = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance_val       = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_val  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
@@ -504,7 +504,7 @@ def topic_bulk_generate(client_id: int):
     character_prompt_bulk     = client.character_prompt or ""
     business_description_bulk = client.business_description or ""
     threads_limit_bulk        = 400 if (client.threads_user_id or "").strip() else 0
-    image_gen_enabled_bulk    = bool(getattr(client, "image_gen_enabled", False))
+    image_gen_enabled_bulk    = False  # 画像生成機能無効化
     image_taste_bulk          = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance_bulk        = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio_bulk   = getattr(client, "image_aspect_ratio", "1:1") or "1:1"

@@ -208,24 +208,7 @@
       </div>
       <div class="card-body">
 
-        <!-- AI画像生成ボタン -->
-        {% set img_gen_on = client.image_gen_enabled if client.image_gen_enabled is not none else false %}
-        {% set edit_count = post.image_edit_count or 0 %}
-        {% if img_gen_on %}
-        <div style="margin-bottom:14px;padding:12px 14px;background:#1e2a3a;border:1px solid #2f5d8a;border-radius:8px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="flex:1;font-size:13px;color:#93c5fd;">
-              <strong>AI画像生成オン</strong> — テイスト: <span style="color:#fff;">{{ {'business_clean':'ビジネス','photo_real':'写真','illustration_pop':'イラスト','minimal':'ミニマル','japanese_calm':'和風','colorful_energy':'カラフル'}.get(client.image_taste or 'business_clean', client.image_taste) }}</span>
-            </div>
-            <button class="btn btn-secondary btn-sm" id="ai-img-btn" onclick="generateAiImage()">AI画像を生成する</button>
-          </div>
-          <div style="margin-top:8px;font-size:12px;color:{% if edit_count >= 10 %}var(--danger){% else %}#60a5fa{% endif %};">
-            画像修正: <strong id="edit-count-display">{{ edit_count }}</strong> / 10 回使用
-            {% if edit_count >= 10 %}<span> — 上限に達しました</span>{% endif %}
-          </div>
-        </div>
-        <div id="ai-img-result" style="display:none;margin-bottom:12px;font-size:13px;"></div>
-        {% endif %}
+        {# AI画像生成機能無効化のためブロック非表示 #}
 
         <!-- アップロードゾーン -->
         <div id="upload-zone"
@@ -434,7 +417,7 @@ const clientId = {{ client.id }};
 const postId = {{ post.id }};
 const defaultPostTime = "{{ client.default_post_time or '10:00' }}";
 const hasThreads = {{ 'true' if client.threads_user_id else 'false' }};
-const imgGenOn = {{ 'true' if client.image_gen_enabled else 'false' }};
+const imgGenOn = false; // 画像生成機能無効化
 let editCount = {{ post.image_edit_count or 0 }};
 let isGenerating = false;  // 生成中フラグ（削除時のリロード防止）
 

@@ -345,8 +345,7 @@ def client_edit(client_id: int):
         client.custom_url = request.form.get("custom_url", "")
         client.default_post_time = request.form.get("default_post_time") or None
         # AI画像生成オプション（ON/OFFはプランロック対象）
-        if not locked:
-            client.image_gen_enabled = request.form.get("image_gen_enabled") == "1"
+        client.image_gen_enabled = False  # 画像生成機能無効化
         client.image_taste = request.form.get("image_taste", "business_clean")
         client.image_balance = request.form.get("image_balance", "balanced")
         client.image_aspect_ratio = request.form.get("image_aspect_ratio", "1:1")

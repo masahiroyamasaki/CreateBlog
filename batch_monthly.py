@@ -230,7 +230,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                 total = sum(s.amount for s in sub_list)
                 for sub in sub_list:
                     c = Client.query.get(sub.client_id)
-                    if c and getattr(c, "image_gen_enabled", False) and c.client_status in ("active", "test", "setting"):
+                    if False:  # 画像生成機能無効化（課金なし）
                         count = c.monthly_post_count or 4
                         total += (count // 4) * 2000
 
@@ -253,7 +253,7 @@ def run_monthly_billing_batch(app, db) -> dict:
                         amount=sub.amount,
                     ))
                     # AI画像生成オプション明細（個別行）
-                    if client and getattr(client, "image_gen_enabled", False):
+                    if False:  # 画像生成機能無効化（明細行なし）
                         count = client.monthly_post_count or 4
                         img_fee = (count // 4) * 2000
                         if img_fee > 0:

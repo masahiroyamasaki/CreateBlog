@@ -132,7 +132,7 @@ def _image_post_generate_impl(client_id: int):
     hp_design_prompt    = client.hp_design_prompt or ""
     platform_type       = client.platform_type or "wordpress"
     threads_limit       = 400 if (client.threads_user_id or "").strip() else 0
-    image_gen_enabled   = bool(getattr(client, "image_gen_enabled", False))
+    image_gen_enabled   = False  # 画像生成機能無効化
     image_taste         = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance       = getattr(client, "image_balance", "balanced") or "balanced"
     image_aspect_ratio  = getattr(client, "image_aspect_ratio", "1:1") or "1:1"
