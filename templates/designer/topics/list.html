@@ -22,8 +22,8 @@
 .img-slot-body { font-size: 10px; color: var(--muted); margin-top: 2px; word-break: break-all; }
 .img-slot-copy { position: absolute; top: 4px; right: 4px; font-size: 10px; color: var(--muted); opacity: 0; transition: opacity .15s; }
 .img-slot:hover .img-slot-copy { opacity: 1; }
-.img-slot-expand { position: absolute; bottom: 4px; right: 4px; background: none; border: none; font-size: 13px; color: var(--muted); cursor: pointer; padding: 2px 4px; opacity: 0; transition: opacity .15s; line-height: 1; }
-.img-slot:hover .img-slot-expand { opacity: 1; }
+.img-slot-expand { position: absolute; bottom: 4px; right: 4px; background: none; border: none; font-size: 13px; color: var(--muted); cursor: pointer; padding: 2px 4px; line-height: 1; transition: color .15s; }
+.img-slot-expand:hover { color: var(--primary); }
 .img-slot-feedback { position: absolute; inset: 0; background: rgba(16,185,129,.2); border: 1.5px solid #10b981; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #065f46; pointer-events: none; }
 .img-check { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
 .topic-item.image-done { opacity: .65; }
@@ -200,20 +200,20 @@
               <div class="img-slots" id="slots-{{ t.id }}">
                 {% for s in slots %}
                 {% if s.slot == 1 %}
-                <div class="img-slot" onclick="copySlot(this, {{ s | tojson }})" title="クリックでコピー">
+                <div class="img-slot" data-slot="{{ s | tojson }}" onclick="copySlotAttr(this)" title="クリックでコピー">
                   <span class="img-slot-copy">コピー</span>
                   <div class="img-slot-num">📷 1枚目</div>
                   <div class="img-slot-label">キャッチコピー</div>
                   <div class="img-slot-text">{{ s.catchcopy }}</div>
-                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal({{ s | tojson }})" title="拡大">⤢</button>
+                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotAttr(this.closest('.img-slot'))" title="拡大">⤢</button>
                 </div>
                 {% else %}
-                <div class="img-slot" onclick="copySlot(this, {{ s | tojson }})" title="クリックでコピー">
+                <div class="img-slot" data-slot="{{ s | tojson }}" onclick="copySlotAttr(this)" title="クリックでコピー">
                   <span class="img-slot-copy">コピー</span>
                   <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
                   <div class="img-slot-text">{{ s.title }}</div>
                   <div class="img-slot-body">{{ s.body }}</div>
-                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal({{ s | tojson }})" title="拡大">⤢</button>
+                  <button class="img-slot-expand" onclick="event.stopPropagation();openSlotAttr(this.closest('.img-slot'))" title="拡大">⤢</button>
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -545,26 +545,35 @@ async function regenSlots(id, btn) {
   }
 }
 
+function _escAttr(obj) {
+  return JSON.stringify(obj).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+function copySlotAttr(el) {
+  copySlot(el, JSON.parse(el.dataset.slot));
+}
+function openSlotAttr(el) {
+  openSlotModal(JSON.parse(el.dataset.slot));
+}
 function renderSlots(id, slots) {
   const container = document.getElementById('slots-' + id);
   if (!container) return;
   container.innerHTML = slots.map(s => {
-    const sd = JSON.stringify(s).replace(/'/g, '&#39;');
+    const sd = _escAttr(s);
     if (s.slot === 1) {
-      return `<div class="img-slot" onclick='copySlot(this, ${sd})' title="クリックでコピー">
+      return `<div class="img-slot" data-slot="${sd}" onclick="copySlotAttr(this)" title="クリックでコピー">
         <span class="img-slot-copy">コピー</span>
         <div class="img-slot-num">📷 1枚目</div>
         <div class="img-slot-label">キャッチコピー</div>
         <div class="img-slot-text">${s.catchcopy || ''}</div>
-        <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal(${sd})" title="拡大">⤢</button>
+        <button class="img-slot-expand" onclick="event.stopPropagation();openSlotAttr(this.closest('.img-slot'))" title="拡大">⤢</button>
       </div>`;
     }
-    return `<div class="img-slot" onclick='copySlot(this, ${sd})' title="クリックでコピー">
+    return `<div class="img-slot" data-slot="${sd}" onclick="copySlotAttr(this)" title="クリックでコピー">
       <span class="img-slot-copy">コピー</span>
       <div class="img-slot-num">📷 ${s.slot}枚目</div>
       <div class="img-slot-text">${s.title || ''}</div>
       <div class="img-slot-body">${s.body || ''}</div>
-      <button class="img-slot-expand" onclick="event.stopPropagation();openSlotModal(${sd})" title="拡大">⤢</button>
+      <button class="img-slot-expand" onclick="event.stopPropagation();openSlotAttr(this.closest('.img-slot'))" title="拡大">⤢</button>
     </div>`;
   }).join('');
 }
