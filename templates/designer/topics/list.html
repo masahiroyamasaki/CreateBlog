@@ -82,7 +82,10 @@
         <span style="font-size:12px;color:var(--muted);">記事生成: 制限なし</span>
         {% endif %}
         {% if current_user.role == 'admin' %}
-        {# AIでネタ生成（1件）は非表示 #}
+        <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
+          <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
+          AIでネタ生成
+        </button>
         <button class="btn btn-secondary btn-sm" id="ai-idea-bulk-btn" onclick="generateAiIdeaBulk()"
           title="{{ client.monthly_post_count or 4 }}件生成（契約数分）">
           <span id="ai-idea-bulk-spinner" class="spinner-sm" style="display:none;"></span>
@@ -152,8 +155,7 @@
                    onchange="toggleImageCreated({{ t.id }}, this)"
                    title="画像作成済み">
             <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
-              <button class="btn btn-generate btn-sm" onclick="confirmGenerate({{ t.id }})" id="gen-btn-{{ t.id }}"
-                {% if not can_generate %}disabled title="月間契約数に達しています"{% endif %}>AI生成</button>
+              {# 各記事のAI生成ボタンは非表示 #}
               {% if current_user.role == 'admin' %}
               <form method="POST" action="{{ url_for('designer.topic_delete', client_id=client.id, topic_id=t.id) }}" onsubmit="return confirm('削除しますか？')">
                 <button type="submit" class="btn btn-danger btn-sm">削除</button>
