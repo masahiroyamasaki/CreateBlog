@@ -200,7 +200,7 @@
               <div class="img-slots" id="slots-{{ t.id }}">
                 {% for s in slots %}
                 {% if s.slot == 1 %}
-                <div class="img-slot" data-slot="{{ s | tojson }}" onclick="copySlotAttr(this)" title="クリックでコピー">
+                <div class="img-slot" data-slot='{{ s | tojson }}' onclick="copySlotAttr(this)" title="クリックでコピー">
                   <span class="img-slot-copy">コピー</span>
                   <div class="img-slot-num">📷 1枚目</div>
                   <div class="img-slot-label">キャッチコピー</div>
@@ -208,7 +208,7 @@
                   <button class="img-slot-expand" onclick="event.stopPropagation();openSlotAttr(this.closest('.img-slot'))" title="拡大">⤢</button>
                 </div>
                 {% else %}
-                <div class="img-slot" data-slot="{{ s | tojson }}" onclick="copySlotAttr(this)" title="クリックでコピー">
+                <div class="img-slot" data-slot='{{ s | tojson }}' onclick="copySlotAttr(this)" title="クリックでコピー">
                   <span class="img-slot-copy">コピー</span>
                   <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
                   <div class="img-slot-text">{{ s.title }}</div>
