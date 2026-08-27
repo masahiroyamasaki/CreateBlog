@@ -239,12 +239,14 @@ class TopicQueue(db.Model):
     client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False)
     title = db.Column(db.String(255), default="")
     outline = db.Column(db.Text, default="")
-    image_slots = db.Column(db.Text, default="")   # 画像構成 JSON（最大5枚）
+    image_slots = db.Column(db.Text, default="")      # 画像構成 JSON（最大5枚）
+    image_created = db.Column(db.Boolean, default=False)  # 画像作成済みフラグ
     sort_order = db.Column(db.Integer, default=0)
     status = db.Column(db.Enum("pending", "processing", "generated"), default="pending", nullable=False)
     created_by = db.Column(db.Enum("designer", "ai_auto"), default="designer", nullable=False)
     created_by_designer_id = db.Column(db.Integer, db.ForeignKey("designers.id"))
     generated_post_id = db.Column(db.Integer, db.ForeignKey("posts_ig.id"))
+    generated_at = db.Column(db.DateTime, nullable=True)  # 記事生成日時
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     client = db.relationship("Client", back_populates="topics")

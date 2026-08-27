@@ -3,10 +3,14 @@ import uuid
 import re
 import json
 import threading
+from datetime import datetime, timezone, timedelta
 from flask import render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import login_required, current_user
 from models import db, Client, TopicQueue, Post
 from routes import designer_bp
+
+def _now_jst():
+    return datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
 
 def _normalize_md(text: str) -> str:
     """段落間・見出し前後に空行を保証してMarkdown → HTML変換を正確にする。"""
@@ -387,6 +391,7 @@ def topic_generate(client_id: int, topic_id: int):
                 topic_obj = TopicQueue.query.get(topic_id_val)
                 if topic_obj:
                     topic_obj.status = "generated"
+                    topic_obj.generated_at = _now_jst() if hasattr(topic_obj, "generated_at") else None
                 _db.session.commit()
                 run["post_id"] = post_id
                 # AI 画像生成
@@ -643,6 +648,7 @@ def topic_bulk_generate(client_id: int):
                     tq = _TQ.query.get(topic_id_val)
                     if tq:
                         tq.status = "generated"
+                        tq.generated_at = _now_jst() if hasattr(tq, "generated_at") else None
                     _db.session.commit()
                     run["post_id"] = post_id
                     # AI 画像生成
@@ -802,3 +808,62 @@ def topic_bulk_idea_status(client_id: int):
     if not job:
         return jsonify({"status": "none"})
     return jsonify(job)
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/regen-slots", methods=["POST"])
+@login_required
+def topic_regen_slots(client_id: int, topic_id: int):
+    """画像スロットをAIで再生成する"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    topic = TopicQueue.query.get_or_404(topic_id)
+    if topic.client_id != client_id:
+        abort(403)
+    try:
+        import anthropic as _ant
+        from config import Config
+        ai = _ant.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        prompt = f"""あなたはInstagram投稿のコンテンツプランナーです。
+以下の記事タイトルと概要をもとに、投稿用画像の構成を設計してください。
+
+タイトル: {topic.title}
+概要: {topic.outline or '（なし）'}
+
+【画像構成ルール】
+- 1枚目: キャッチコピー（15〜20文字のインパクトある一言）
+- 2〜5枚目: スライドのタイトル（15文字以内）と本文（40〜60文字）
+- 合計2〜5枚で内容に合った最適な枚数にすること
+
+JSONのみ出力してください（他のテキスト一切不要）:
+[
+  {{"slot": 1, "catchcopy": "キャッチコピー"}},
+  {{"slot": 2, "title": "スライドタイトル", "body": "スライド本文"}},
+  ...
+]"""
+        msg = ai.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = msg.content[0].text
+        m = re.search(r'\[.*\]', raw, re.DOTALL)
+        slots = json.loads(m.group()) if m else []
+        topic.image_slots = json.dumps(slots, ensure_ascii=False)
+        db.session.commit()
+        return jsonify({"success": True, "image_slots": slots})
+    except Exception as e:
+        return jsonify({"success": False, "reason": str(e)})
+
+
+@designer_bp.route("/clients/<int:client_id>/topics/<int:topic_id>/toggle-image-created", methods=["POST"])
+@login_required
+def topic_toggle_image_created(client_id: int, topic_id: int):
+    """画像作成済みフラグを切り替える"""
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    topic = TopicQueue.query.get_or_404(topic_id)
+    if topic.client_id != client_id:
+        abort(403)
+    topic.image_created = not bool(topic.image_created)
+    db.session.commit()
+    return jsonify({"success": True, "image_created": topic.image_created})

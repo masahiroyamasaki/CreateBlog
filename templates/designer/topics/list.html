@@ -14,11 +14,19 @@
 .topic-title { font-weight: 600; font-size: 14px; }
 .topic-outline { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
 .img-slots { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.img-slot { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; min-width: 80px; max-width: 160px; background: var(--bg2); }
+.img-slot { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; min-width: 100px; max-width: 180px; background: var(--bg2); position: relative; cursor: pointer; transition: border-color .15s; }
+.img-slot:hover { border-color: var(--primary); }
 .img-slot-num { font-size: 10px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
 .img-slot-label { font-size: 10px; color: var(--muted); }
 .img-slot-text { font-size: 11px; color: var(--text); margin-top: 1px; word-break: break-all; }
 .img-slot-body { font-size: 10px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+.img-slot-copy { position: absolute; top: 4px; right: 4px; font-size: 10px; color: var(--muted); opacity: 0; transition: opacity .15s; }
+.img-slot:hover .img-slot-copy { opacity: 1; }
+.img-check { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+.topic-item.image-done { opacity: .65; }
+.generated-at { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.btn-recreate { background: var(--bg4); color: var(--muted); border: 1px solid var(--border); }
+.btn-recreate:hover { border-color: var(--primary); color: var(--text); }
 .edit-form { display: none; margin-top: 10px; }
 .edit-form.open { display: block; }
 .btn-generate { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; }
@@ -74,10 +82,7 @@
         <span style="font-size:12px;color:var(--muted);">記事生成: 制限なし</span>
         {% endif %}
         {% if current_user.role == 'admin' %}
-        <button class="btn btn-secondary btn-sm" id="ai-idea-btn" onclick="generateAiIdea()">
-          <span id="ai-idea-spinner" class="spinner-sm" style="display:none;"></span>
-          AIでネタ生成
-        </button>
+        {# AIでネタ生成（1件）は非表示 #}
         <button class="btn btn-secondary btn-sm" id="ai-idea-bulk-btn" onclick="generateAiIdeaBulk()"
           title="{{ client.monthly_post_count or 4 }}件生成（契約数分）">
           <span id="ai-idea-bulk-spinner" class="spinner-sm" style="display:none;"></span>
@@ -138,8 +143,15 @@
             </div>
           </div>
           {% else %}
-          <div class="topic-item" draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}">
-            <div style="display:flex;gap:6px;flex-shrink:0;">
+          <div class="topic-item {% if t.image_created %}image-done{% endif %}"
+               draggable="true" data-id="{{ t.id }}" id="topic-{{ t.id }}"
+               data-image-created="{{ 'true' if t.image_created else 'false' }}">
+            <!-- 画像作成済みチェックボックス -->
+            <input type="checkbox" class="img-check" id="check-{{ t.id }}"
+                   {% if t.image_created %}checked{% endif %}
+                   onchange="toggleImageCreated({{ t.id }}, this)"
+                   title="画像作成済み">
+            <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
               <button class="btn btn-generate btn-sm" onclick="confirmGenerate({{ t.id }})" id="gen-btn-{{ t.id }}"
                 {% if not can_generate %}disabled title="月間契約数に達しています"{% endif %}>AI生成</button>
               {% if current_user.role == 'admin' %}
@@ -147,7 +159,8 @@
                 <button type="submit" class="btn btn-danger btn-sm">削除</button>
               </form>
               {% endif %}
-              <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">編集</button>
+              <button class="btn btn-recreate btn-sm" id="regen-btn-{{ t.id }}"
+                      onclick="regenSlots({{ t.id }}, this)" title="画像スロットをAIで再生成">再作成</button>
             </div>
             <span class="drag-handle">⠿</span>
             <div style="flex:1;min-width:0;">
@@ -155,37 +168,38 @@
                 <span class="topic-title">{{ t.title }}</span>
                 <span style="font-size:10px;color:var(--muted);">#{{ t.sort_order }}</span>
                 {% if t.created_by == 'ai_auto' %}<span class="badge badge-blue" style="font-size:10px;">AI生成</span>{% endif %}
+                {% if t.image_created %}<span class="badge badge-green" style="font-size:10px;">✓ 画像作成済</span>{% endif %}
               </div>
+              {% if t.generated_at %}
+              <div class="generated-at">記事生成: {{ t.generated_at.strftime('%Y/%m/%d %H:%M') }}</div>
+              {% endif %}
               {% if t.outline %}
               <div class="topic-outline">{{ t.outline[:120] }}{% if t.outline|length > 120 %}...{% endif %}</div>
               {% endif %}
               {% if t.image_slots %}
               {% set slots = t.image_slots | from_json %}
               {% if slots %}
-              <div class="img-slots">
+              <div class="img-slots" id="slots-{{ t.id }}">
                 {% for s in slots %}
-                <div class="img-slot">
-                  <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
-                  {% if s.slot == 1 %}
+                {% if s.slot == 1 %}
+                <div class="img-slot" onclick="copySlot(this, {{ s | tojson }})" title="クリックでコピー">
+                  <span class="img-slot-copy">コピー</span>
+                  <div class="img-slot-num">📷 1枚目</div>
                   <div class="img-slot-label">キャッチコピー</div>
                   <div class="img-slot-text">{{ s.catchcopy }}</div>
-                  {% else %}
+                </div>
+                {% else %}
+                <div class="img-slot" onclick="copySlot(this, {{ s | tojson }})" title="クリックでコピー">
+                  <span class="img-slot-copy">コピー</span>
+                  <div class="img-slot-num">📷 {{ s.slot }}枚目</div>
                   <div class="img-slot-text">{{ s.title }}</div>
                   <div class="img-slot-body">{{ s.body }}</div>
-                  {% endif %}
                 </div>
+                {% endif %}
                 {% endfor %}
               </div>
               {% endif %}
               {% endif %}
-              <div class="edit-form" id="edit-{{ t.id }}">
-                <input class="form-control" style="margin-bottom:6px;" type="text" id="edit-title-{{ t.id }}" value="{{ t.title }}">
-                <textarea class="form-control" id="edit-outline-{{ t.id }}" rows="3">{{ t.outline }}</textarea>
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                  <button class="btn btn-primary btn-sm" onclick="saveEdit({{ t.id }})">保存</button>
-                  <button class="btn btn-secondary btn-sm" onclick="toggleEdit({{ t.id }})">キャンセル</button>
-                </div>
-              </div>
             </div>
           </div>
           {% endif %}
@@ -448,19 +462,93 @@ async function bulkGenerate() {
   }
 }
 
-async function saveEdit(id) {
-  const title = document.getElementById('edit-title-' + id).value;
-  const outline = document.getElementById('edit-outline-' + id).value;
-  const res = await fetch(`/designer/clients/${clientId}/topics/${id}/edit`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `title=${encodeURIComponent(title)}&outline=${encodeURIComponent(outline)}`,
-  });
-  if ((await res.json()).success) {
-    document.querySelector(`#topic-${id} .topic-title`).textContent = title;
-    document.querySelector(`#topic-${id} .topic-outline`).textContent = outline.slice(0, 120) + (outline.length > 120 ? '...' : '');
-    toggleEdit(id);
-    showToast('保存しました');
+// ── 画像スロット テキストコピー ─────────────────────────────────────────────
+function copySlot(el, slot) {
+  const text = slot.catchcopy || (slot.title ? `${slot.title}\n${slot.body || ''}` : '');
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const orig = el.querySelector('.img-slot-copy');
+    if (orig) { orig.textContent = 'コピー完了!'; orig.style.opacity = '1'; orig.style.color = 'var(--success)'; }
+    setTimeout(() => {
+      if (orig) { orig.textContent = 'コピー'; orig.style.opacity = ''; orig.style.color = ''; }
+    }, 1500);
+  }).catch(() => showToast('コピーに失敗しました', 'error'));
+}
+
+// ── 画像スロット 再生成（再作成） ───────────────────────────────────────────
+async function regenSlots(id, btn) {
+  if (!confirm('このネタの画像スロットをAIで再生成しますか？')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span>';
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/${id}/regen-slots`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      renderSlots(id, data.image_slots);
+      showToast('画像スロットを再生成しました');
+    } else {
+      showToast(data.reason || 'エラーが発生しました', 'error');
+    }
+  } catch(e) {
+    showToast('通信エラー', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '再作成';
+  }
+}
+
+function renderSlots(id, slots) {
+  const container = document.getElementById('slots-' + id);
+  if (!container) return;
+  container.innerHTML = slots.map(s => {
+    if (s.slot === 1) {
+      return `<div class="img-slot" onclick='copySlot(this, ${JSON.stringify(s)})' title="クリックでコピー">
+        <span class="img-slot-copy">コピー</span>
+        <div class="img-slot-num">📷 1枚目</div>
+        <div class="img-slot-label">キャッチコピー</div>
+        <div class="img-slot-text">${s.catchcopy || ''}</div>
+      </div>`;
+    }
+    return `<div class="img-slot" onclick='copySlot(this, ${JSON.stringify(s)})' title="クリックでコピー">
+      <span class="img-slot-copy">コピー</span>
+      <div class="img-slot-num">📷 ${s.slot}枚目</div>
+      <div class="img-slot-text">${s.title || ''}</div>
+      <div class="img-slot-body">${s.body || ''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── 画像作成済みチェックボックス ─────────────────────────────────────────────
+async function toggleImageCreated(id, checkbox) {
+  try {
+    const res = await fetch(`/designer/clients/${clientId}/topics/${id}/toggle-image-created`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) { checkbox.checked = !checkbox.checked; return; }
+
+    const item = document.getElementById('topic-' + id);
+    const badge = item.querySelector('.badge-green');
+    if (data.image_created) {
+      item.classList.add('image-done');
+      item.dataset.imageCreated = 'true';
+      if (!badge) {
+        const titleRow = item.querySelector('.topic-title').parentElement;
+        const b = document.createElement('span');
+        b.className = 'badge badge-green';
+        b.style.fontSize = '10px';
+        b.textContent = '✓ 画像作成済';
+        titleRow.appendChild(b);
+      }
+      // チェック済みは末尾へ
+      const list = document.getElementById('topic-list');
+      list.appendChild(item);
+      saveOrder();
+    } else {
+      item.classList.remove('image-done');
+      item.dataset.imageCreated = 'false';
+      if (badge) badge.remove();
+    }
+  } catch(e) {
+    checkbox.checked = !checkbox.checked;
+    showToast('通信エラー', 'error');
   }
 }
 </script>
