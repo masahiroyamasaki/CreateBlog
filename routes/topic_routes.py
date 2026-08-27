@@ -61,7 +61,7 @@ def topic_list(client_id: int):
     topics = (
         TopicQueue.query.filter_by(client_id=client_id)
         .filter(TopicQueue.status.in_(["pending", "processing"]))
-        .order_by(TopicQueue.sort_order, TopicQueue.id)
+        .order_by(TopicQueue.image_created.asc(), TopicQueue.sort_order.desc(), TopicQueue.created_at.desc())
         .all()
     )
     pending_count = sum(1 for t in topics if t.status == "pending")
@@ -151,10 +151,11 @@ def topic_delete(client_id: int, topic_id: int):
 def topic_reorder(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
-    order = request.json.get("order", [])
-    for i, topic_id in enumerate(order, 1):
+    order = [tid for tid in request.json.get("order", []) if tid]
+    total = len(order)
+    for i, topic_id in enumerate(order):
         TopicQueue.query.filter_by(id=topic_id, client_id=client_id).update(
-            {"sort_order": i}
+            {"sort_order": total - i}
         )
     db.session.commit()
     return jsonify({"success": True})

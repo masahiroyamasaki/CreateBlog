@@ -306,7 +306,9 @@ document.querySelectorAll('.topic-item').forEach(item => {
 });
 
 function saveOrder() {
-  const ids = [...document.querySelectorAll('.topic-item')].map(el => +el.dataset.id);
+  const ids = [...document.querySelectorAll('.topic-item[data-id]')]
+    .map(el => +el.dataset.id)
+    .filter(id => id > 0);
   fetch(`/designer/clients/${clientId}/topics/reorder`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
