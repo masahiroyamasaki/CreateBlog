@@ -187,6 +187,11 @@ def lp():
     return render_template("lp.html", sent=sent, error=error)
 
 
+@app.route("/tokusho")
+def tokusho():
+    return render_template("tokushoho.html")
+
+
 @app.route("/lp/contact", methods=["POST"])
 def lp_contact():
     name    = request.form.get("name", "").strip()

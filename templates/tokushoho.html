@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>特定商取引法に基づく表記 — Artivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #2f5d8a;
+      --navy-dark:   #1e3d5c;
+      --navy-deeper: #132840;
+      --orange:      #d6572f;
+      --white:       #ffffff;
+      --bg-light:    #f4f7fb;
+      --text:        #1a2332;
+      --text-body:   #374151;
+      --text-muted:  #6b7280;
+      --border:      #dde3ed;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 16px;
+      background: var(--white);
+    }
+
+    /* ナビ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--border);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--navy);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: var(--orange); }
+    .nav-back {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s;
+    }
+    .nav-back:hover { color: var(--navy); }
+
+    /* メインコンテンツ */
+    .page-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 104px 24px 80px;
+    }
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      margin-bottom: 8px;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    /* 表 */
+    .tokusho-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .tokusho-table th,
+    .tokusho-table td {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+    }
+    .tokusho-table th {
+      background: var(--bg-light);
+      color: var(--navy-dark);
+      font-weight: 700;
+      white-space: nowrap;
+      width: 200px;
+    }
+    .tokusho-table td {
+      color: var(--text-body);
+    }
+    .tokusho-table a {
+      color: var(--navy);
+      text-decoration: underline;
+    }
+    .tokusho-table a:hover { color: var(--orange); }
+
+    /* フッター */
+    .footer {
+      background: var(--navy-deeper);
+      color: rgba(255,255,255,0.65);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo { font-size: 20px; font-weight: 900; color: var(--white); text-decoration: none; }
+    .footer-logo span { color: #f09070; }
+    .footer-links { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .footer-links a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 13px; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--white); }
+    .footer-copy { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; text-align: center; }
+
+    @media (max-width: 600px) {
+      .tokusho-table th { width: 120px; white-space: normal; }
+      .page-title { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/lp" class="nav-logo">Artiv<span>o</span></a>
+    <a href="/lp" class="nav-back">← トップページへ戻る</a>
+  </div>
+</nav>
+
+<main class="page-wrap">
+  <h1 class="page-title">特定商取引法に基づく表記</h1>
+  <p class="page-subtitle">最終更新日：2025年1月1日</p>
+
+  <table class="tokusho-table">
+    <tbody>
+      <tr>
+        <th>販売事業者名</th>
+        <td>RKパートナーズ（個人事業主）</td>
+      </tr>
+      <tr>
+        <th>運営統括責任者</th>
+        <td>山崎 粛福</td>
+      </tr>
+      <tr>
+        <th>所在地</th>
+        <td>請求があれば遅滞なく開示いたします。</td>
+      </tr>
+      <tr>
+        <th>電話番号</th>
+        <td>請求があれば遅滞なく開示いたします。</td>
+      </tr>
+      <tr>
+        <th>メールアドレス</th>
+        <td><a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a></td>
+      </tr>
+      <tr>
+        <th>販売価格</th>
+        <td>各プランの料金は<a href="/lp#pricing">料金プランページ</a>をご参照ください。</td>
+      </tr>
+      <tr>
+        <th>商品代金以外の<br>必要料金</th>
+        <td>該当なし（インターネット接続料金等はお客様のご負担となります）</td>
+      </tr>
+      <tr>
+        <th>お支払い方法</th>
+        <td>クレジットカード決済（PAY.JP経由）</td>
+      </tr>
+      <tr>
+        <th>お支払い時期</th>
+        <td>契約成立時に初回課金を行います。以降は毎月1日に自動引き落としとなります。</td>
+      </tr>
+      <tr>
+        <th>サービス提供時期</th>
+        <td>決済完了後、契約内容に基づき速やかにサービスの提供を開始いたします。</td>
+      </tr>
+      <tr>
+        <th>キャンセル・<br>返金について</th>
+        <td>
+          月額制サービスのため、解約のお申し出があった月の末日をもって契約を終了いたします。<br>
+          月の途中での解約の場合も日割り返金は行っておりません。<br>
+          既にお支払いいただいた料金の返金は承っておりませんので、あらかじめご了承ください。<br>
+          解約のお申し出は <a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a> までメールにてご連絡ください。
+        </td>
+      </tr>
+      <tr>
+        <th>動作環境</th>
+        <td>Webブラウザからご利用いただけるサービスです。推奨環境：Google Chrome 最新版・Safari 最新版（インターネット接続が必要です）</td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <a href="/lp" class="footer-logo">Artiv<span>o</span></a>
+    <div class="footer-links">
+      <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener">LINE</a>
+      <a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a>
+      <a href="/tokusho">特定商取引法に基づく表記</a>
+    </div>
+  </div>
+  <div class="footer-inner">
+    <p class="footer-copy">© 2025 RKパートナーズ. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>
