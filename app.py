@@ -197,6 +197,11 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
 @app.route("/lp/contact", methods=["POST"])
 def lp_contact():
     name    = request.form.get("name", "").strip()

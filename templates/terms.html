@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>利用規約 — Artivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #2f5d8a;
+      --navy-dark:   #1e3d5c;
+      --navy-deeper: #132840;
+      --orange:      #d6572f;
+      --white:       #ffffff;
+      --bg-light:    #f4f7fb;
+      --text:        #1a2332;
+      --text-body:   #374151;
+      --text-muted:  #6b7280;
+      --border:      #dde3ed;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 16px;
+      background: var(--white);
+    }
+
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--border);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 22px; font-weight: 900; color: var(--navy); text-decoration: none; letter-spacing: -0.5px; }
+    .nav-logo span { color: var(--orange); }
+    .nav-back { font-size: 13px; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
+    .nav-back:hover { color: var(--navy); }
+
+    .page-wrap {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 104px 24px 80px;
+    }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--navy-dark); margin-bottom: 6px; }
+    .page-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 40px; }
+
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      border-left: 4px solid var(--navy);
+      padding-left: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .section p { font-size: 14px; color: var(--text-body); margin-bottom: 10px; }
+    .section ul, .section ol { font-size: 14px; color: var(--text-body); padding-left: 20px; }
+    .section li { margin-bottom: 6px; }
+    .section a { color: var(--navy); }
+    .section a:hover { color: var(--orange); }
+
+    .note-box {
+      background: var(--bg-light);
+      border-left: 3px solid var(--navy);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-body);
+      margin-top: 14px;
+      line-height: 1.75;
+    }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    .footer { background: var(--navy-deeper); color: rgba(255,255,255,0.65); padding: 40px 0; }
+    .footer-inner { max-width: 1080px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-logo { font-size: 20px; font-weight: 900; color: var(--white); text-decoration: none; }
+    .footer-logo span { color: #f09070; }
+    .footer-links { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .footer-links a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 13px; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--white); }
+    .footer-copy { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; text-align: center; }
+
+    @media (max-width: 600px) {
+      .page-title { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/lp" class="nav-logo">Artiv<span>o</span></a>
+    <a href="/lp" class="nav-back">← トップページへ戻る</a>
+  </div>
+</nav>
+
+<main class="page-wrap">
+  <h1 class="page-title">利用規約</h1>
+  <p class="page-meta">制定日：2026年8月29日　最終更新日：2026年8月29日</p>
+
+  <!-- 第1条 -->
+  <div class="section">
+    <h2 class="section-title">第1条　適用</h2>
+    <p>本規約は、屋号：RKパートナーズ（運営者：山崎 粛福、以下「当社」）が提供する「Artivo AI」（記事生成・SNS/WordPress自動投稿サービス、以下「本サービス」）の利用条件を定めるものです。</p>
+    <p>本サービスの利用を申し込んだデザイナー・代理店・コンサルタント等の事業者（以下「契約者」）は、本規約の全条項に同意のうえ、本サービスを利用するものとします。</p>
+  </div>
+
+  <!-- 第2条 -->
+  <div class="section">
+    <h2 class="section-title">第2条　定義</h2>
+    <p>本規約において使用する主な用語の定義は以下のとおりです。</p>
+    <ul>
+      <li><strong>「契約者」</strong>：当社と本サービス利用契約を締結する、デザイナー・コンサルタント・代理店等の事業者をいいます。</li>
+      <li><strong>「エンドクライアント」</strong>：契約者が本サービスを再販・提供する先の事業者をいいます。</li>
+      <li><strong>「本サービス」</strong>：記事生成、Instagram・WordPress・カスタムホームページへの自動投稿等、当社が提供するArtivo AI関連機能一式をいいます。</li>
+    </ul>
+  </div>
+
+  <!-- 第3条 -->
+  <div class="section">
+    <h2 class="section-title">第3条　契約の成立</h2>
+    <p>契約者がオンライン登録フォーム上で本規約への同意ボタンを押下（クリックワップ方式）した時点で、当社と契約者との間に本サービス利用契約が成立します。</p>
+    <p>同意時点において、以下の情報が記録されます。</p>
+    <ul>
+      <li>同意日時（タイムスタンプ）</li>
+      <li>規約バージョン（バージョンハッシュ）</li>
+      <li>IPアドレス・ユーザーエージェント</li>
+    </ul>
+  </div>
+
+  <!-- 第4条 -->
+  <div class="section">
+    <h2 class="section-title">第4条　料金及び支払方法</h2>
+    <ol>
+      <li>各プランの料金は、<a href="/lp#pricing">LP内の料金プランページ</a>をご参照ください。</li>
+      <li>支払方法はクレジットカード決済（PAY.JP経由）に限ります。登録カードへの都度課金方式となります。</li>
+      <li>請求サイクルは毎月1日とし、当月分の記事生成・投稿処理および請求を実行します。</li>
+      <li>新規契約者は登録月について初回請求サイクルを免除するグレース期間を設けます。</li>
+      <li>プランのアップグレードは即時反映、ダウングレードは翌請求サイクル（翌月1日）からの適用となります。</li>
+    </ol>
+  </div>
+
+  <!-- 第5条 -->
+  <div class="section">
+    <h2 class="section-title">第5条　解約</h2>
+    <ol>
+      <li>解約は、契約者より当社（<a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a>）への直接連絡によってのみ受け付けます。エンドクライアントからの直接申し出は対象外となります。</li>
+      <li>当月末日23:59:59までに解約のお申し出があった場合、翌月分より課金を停止します。当月末日を過ぎてのお申し出は翌々月分からの適用となります。</li>
+      <li>解約後、既存の生成コンテンツ・データへのアクセスは順次終了します。</li>
+    </ol>
+  </div>
+
+  <!-- 第6条 -->
+  <div class="section">
+    <h2 class="section-title">第6条　返金</h2>
+    <ol>
+      <li>既に提供が完了したサービスについて、月の途中での解約による日割り等の返金は行いません。</li>
+      <li>当社起因のシステムエラーによりサービス提供ができなかった場合を除き、一度お支払いいただいた料金の返金は原則行いません。</li>
+      <li>返金が発生する場合は、当社より個別にご連絡のうえ対応いたします。</li>
+    </ol>
+  </div>
+
+  <!-- 第7条 -->
+  <div class="section">
+    <h2 class="section-title">第7条　禁止事項</h2>
+    <p>契約者およびエンドクライアントは、本サービスの利用にあたり以下の行為を行ってはなりません。</p>
+    <ul>
+      <li>法令・公序良俗に違反する内容の投稿・生成</li>
+      <li>第三者の著作権・商標権・特許権・肖像権・プライバシー権その他の知的財産権を侵害する内容の生成・投稿</li>
+      <li>誹謗中傷・虚偽情報・差別的表現を含むコンテンツの生成・拡散</li>
+      <li>当社のシステムに過度な負荷をかける行為、不正アクセス、リバースエンジニアリング等</li>
+      <li>Instagram・WordPress等の連携先プラットフォームの利用規約に違反する行為</li>
+      <li>反社会的勢力への利益供与、または反社会的勢力との関係を有する行為</li>
+      <li>その他、当社が不適切と判断する行為</li>
+    </ul>
+  </div>
+
+  <!-- 第8条 -->
+  <div class="section">
+    <h2 class="section-title">第8条　アカウント停止・利用制限</h2>
+    <p>契約者が前条の禁止事項に該当した場合、または連携先プラットフォーム（Instagram等）の規約違反によりアカウントが停止・凍結された場合、当社は事前通知なく本サービスの提供を停止できるものとします。この場合においても、既払い料金の返金は行いません。</p>
+  </div>
+
+  <!-- 第9条 -->
+  <div class="section">
+    <h2 class="section-title">第9条　免責事項</h2>
+    <ol>
+      <li>本サービスは、Instagram Graph API・WordPress REST API等の第三者プラットフォームとの連携により提供されます。当該プラットフォームの仕様変更・API制限・アカウント停止・障害等によって生じた損害について、当社は一切の責任を負いません。</li>
+      <li>生成AIによって生成されたコンテンツ（記事・画像等）の完全性・正確性・適法性について、当社は保証しません。契約者およびエンドクライアントは、コンテンツの内容を自己の責任において最終確認のうえ投稿・公開するものとします。</li>
+      <li>天災・通信障害・外部API提供事業者の障害・その他当社の合理的な支配が及ばない事由による本サービスの停止・遅延について、当社は責任を負いません。</li>
+      <li>当社の損害賠償責任は、損害が発生した月に契約者が支払った利用料金を上限とします。</li>
+    </ol>
+  </div>
+
+  <!-- 第10条 -->
+  <div class="section">
+    <h2 class="section-title">第10条　知的財産権</h2>
+    <ol>
+      <li>本サービスにより生成されたコンテンツ（記事・画像等）の著作権は、生成完了および当該月の利用料金のお支払いをもって契約者に帰属します。</li>
+      <li>当社が提供するシステム・ロジック・アルゴリズム・ノウハウ・ブランド等に関する一切の知的財産権は当社に帰属し、契約者への譲渡は行いません。</li>
+    </ol>
+  </div>
+
+  <!-- 第11条 -->
+  <div class="section">
+    <h2 class="section-title">第11条　秘密保持</h2>
+    <p>契約者および当社は、本サービスの提供・利用にあたり相手方から開示された情報のうち、秘密情報として指定されたものまたは秘密として取り扱うことが合理的に期待されるものを、正当な理由なく第三者に開示・漏洩してはなりません。本条の義務は、契約終了後も3年間継続するものとします。</p>
+  </div>
+
+  <!-- 第12条 -->
+  <div class="section">
+    <h2 class="section-title">第12条　個人情報の取扱い</h2>
+    <p>本サービスにおける個人情報の取扱いについては、別途定める<a href="/privacy" target="_blank">プライバシーポリシー</a>によるものとします。</p>
+  </div>
+
+  <!-- 第13条 -->
+  <div class="section">
+    <h2 class="section-title">第13条　規約の変更</h2>
+    <p>当社は、法令の改正やサービス内容の変更等に伴い、本規約を変更できるものとします。変更にあたっては、変更内容を本ページに掲示するとともに、可能な範囲でメール等により契約者に事前通知します。変更後も本サービスの利用を継続した場合、変更後の規約に同意したものとみなします。</p>
+  </div>
+
+  <!-- 第14条 -->
+  <div class="section">
+    <h2 class="section-title">第14条　準拠法及び管轄裁判所</h2>
+    <p>本規約の準拠法は日本法とします。本サービスに関して当社と契約者との間に紛争が生じた場合には、大阪地方裁判所堺支部を第一審の専属的合意管轄裁判所とします。</p>
+  </div>
+
+  <hr class="divider">
+
+  <p style="font-size:13px;color:var(--text-muted);">
+    附則：本規約は2026年8月29日に制定しました。
+  </p>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <a href="/lp" class="footer-logo">Artiv<span>o</span></a>
+    <div class="footer-links">
+      <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener">LINE</a>
+      <a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a>
+      <a href="/terms">利用規約</a>
+      <a href="/privacy">プライバシーポリシー</a>
+      <a href="/tokusho">特定商取引法に基づく表記</a>
+    </div>
+  </div>
+  <div class="footer-inner">
+    <p class="footer-copy">© 2025 RKパートナーズ. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>
