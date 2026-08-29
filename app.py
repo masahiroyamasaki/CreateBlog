@@ -192,6 +192,11 @@ def tokusho():
     return render_template("tokushoho.html")
 
 
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 @app.route("/lp/contact", methods=["POST"])
 def lp_contact():
     name    = request.form.get("name", "").strip()

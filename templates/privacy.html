@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プライバシーポリシー — Artivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #2f5d8a;
+      --navy-dark:   #1e3d5c;
+      --navy-deeper: #132840;
+      --orange:      #d6572f;
+      --white:       #ffffff;
+      --bg-light:    #f4f7fb;
+      --text:        #1a2332;
+      --text-body:   #374151;
+      --text-muted:  #6b7280;
+      --border:      #dde3ed;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 16px;
+      background: var(--white);
+    }
+
+    /* ナビ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--border);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 22px; font-weight: 900; color: var(--navy); text-decoration: none; letter-spacing: -0.5px; }
+    .nav-logo span { color: var(--orange); }
+    .nav-back { font-size: 13px; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
+    .nav-back:hover { color: var(--navy); }
+
+    /* メインコンテンツ */
+    .page-wrap {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 104px 24px 80px;
+    }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--navy-dark); margin-bottom: 6px; }
+    .page-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 40px; }
+
+    /* 章 */
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      border-left: 4px solid var(--navy);
+      padding-left: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .section p { font-size: 14px; color: var(--text-body); margin-bottom: 10px; }
+    .section ul, .section ol { font-size: 14px; color: var(--text-body); padding-left: 20px; }
+    .section li { margin-bottom: 6px; }
+    .section a { color: var(--navy); }
+    .section a:hover { color: var(--orange); }
+
+    /* 第三者提供テーブル */
+    .provider-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 12px;
+      line-height: 1.7;
+    }
+    .provider-table th,
+    .provider-table td {
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+    }
+    .provider-table th {
+      background: var(--bg-light);
+      color: var(--navy-dark);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .provider-table td { color: var(--text-body); }
+
+    .note-box {
+      background: var(--bg-light);
+      border-left: 3px solid var(--navy);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-body);
+      margin-top: 14px;
+      line-height: 1.75;
+    }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* フッター */
+    .footer { background: var(--navy-deeper); color: rgba(255,255,255,0.65); padding: 40px 0; }
+    .footer-inner { max-width: 1080px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-logo { font-size: 20px; font-weight: 900; color: var(--white); text-decoration: none; }
+    .footer-logo span { color: #f09070; }
+    .footer-links { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .footer-links a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 13px; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--white); }
+    .footer-copy { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; text-align: center; }
+
+    @media (max-width: 600px) {
+      .page-title { font-size: 20px; }
+      .provider-table { font-size: 12px; }
+      .provider-table th, .provider-table td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/lp" class="nav-logo">Artiv<span>o</span></a>
+    <a href="/lp" class="nav-back">← トップページへ戻る</a>
+  </div>
+</nav>
+
+<main class="page-wrap">
+  <h1 class="page-title">プライバシーポリシー</h1>
+  <p class="page-meta">制定日：2026年8月29日　最終更新日：2026年8月29日</p>
+
+  <!-- 第1条 -->
+  <div class="section">
+    <h2 class="section-title">第1条　基本方針</h2>
+    <p>RKパートナーズ（運営者：山崎 粛福、以下「当社」）は、本サービス「Artivo AI」（以下「本サービス」）の提供にあたり、お客様の個人情報を適切に取り扱うことを重要な責務と考えています。</p>
+    <p>当社は、個人情報の保護に関する法律（個人情報保護法）その他の関連法令・ガイドラインを遵守し、お客様の個人情報を適切かつ安全に管理するとともに、その保護に努めます。</p>
+  </div>
+
+  <!-- 第2条 -->
+  <div class="section">
+    <h2 class="section-title">第2条　取得する情報</h2>
+    <p>当社は、以下の情報を取得します。</p>
+
+    <p style="font-weight:600;margin-top:14px;margin-bottom:6px;">① デザイナー（契約者）から取得する情報</p>
+    <ul>
+      <li>氏名・会社名・メールアドレス・電話番号</li>
+      <li>請求先情報（住所等）</li>
+      <li>クレジットカード情報（PAY.JP経由でトークン化処理を行うため、カード番号等の機密情報は当社サーバーに保存されません）</li>
+    </ul>
+
+    <p style="font-weight:600;margin-top:14px;margin-bottom:6px;">② エンドクライアント（デザイナーが管理する顧客）に関する情報</p>
+    <ul>
+      <li>会社名・業種・ビジネス概要</li>
+      <li>Instagramアカウント情報（アカウント名・業種等）</li>
+      <li>投稿用素材（画像ファイル等）</li>
+    </ul>
+
+    <p style="font-weight:600;margin-top:14px;margin-bottom:6px;">③ Instagram連携により取得する情報</p>
+    <ul>
+      <li>Instagram Graph API経由のOAuthアクセストークン</li>
+      <li>Instagramアカウント基本情報・フォロワー数等</li>
+      <li>投稿インサイト（リーチ数・エンゲージメント等、分析機能利用時）</li>
+    </ul>
+
+    <p style="font-weight:600;margin-top:14px;margin-bottom:6px;">④ WordPress連携により取得する情報</p>
+    <ul>
+      <li>WordPress REST API経由の投稿用認証情報（ユーザー名・アプリケーションパスワード）</li>
+    </ul>
+
+    <p style="font-weight:600;margin-top:14px;margin-bottom:6px;">⑤ サービス利用状況</p>
+    <ul>
+      <li>アクセスログ・IPアドレス・ブラウザ情報・Cookie等</li>
+    </ul>
+  </div>
+
+  <!-- 第3条 -->
+  <div class="section">
+    <h2 class="section-title">第3条　利用目的</h2>
+    <p>取得した情報は、以下の目的に限り利用します。</p>
+    <ul>
+      <li>本サービスの提供・運用（AI記事生成、Instagram／WordPress自動投稿）</li>
+      <li>課金・請求処理および領収書等の発行</li>
+      <li>利用規約・契約書面（クリックワップ登録時のPDF）の作成・保管</li>
+      <li>お問い合わせへの対応</li>
+      <li>サービスの改善・品質向上・不正利用の防止</li>
+      <li>法令等に基づく義務の履行</li>
+    </ul>
+  </div>
+
+  <!-- 第4条 -->
+  <div class="section">
+    <h2 class="section-title">第4条　第三者提供・外部送信</h2>
+    <p>当社は、以下の外部サービスに対し、サービス提供に必要な範囲でデータを送信・委託します。お客様の情報が第三者に販売されることはありません。</p>
+
+    <table class="provider-table">
+      <thead>
+        <tr>
+          <th>委託・送信先</th>
+          <th>送信される情報</th>
+          <th>目的</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>PAY.JP</strong><br>（GMOペイメントゲートウェイ）</td>
+          <td>カード情報（トークン化）、決済金額</td>
+          <td>クレジットカード決済処理</td>
+        </tr>
+        <tr>
+          <td><strong>Anthropic</strong><br>（Claude API）</td>
+          <td>記事生成に必要なトピック・キーワード・素材情報</td>
+          <td>AIによる記事コンテンツ生成</td>
+        </tr>
+        <tr>
+          <td><strong>Google</strong><br>（Gemini API）</td>
+          <td>画像生成に必要な指示内容・参照画像</td>
+          <td>AIによる画像生成</td>
+        </tr>
+        <tr>
+          <td><strong>OpenAI</strong><br>（gpt-image-1）</td>
+          <td>画像生成に必要な指示内容</td>
+          <td>AIによる背景画像生成</td>
+        </tr>
+        <tr>
+          <td><strong>Meta</strong><br>（Instagram Graph API）</td>
+          <td>投稿コンテンツ（画像・テキスト）、アクセストークン</td>
+          <td>SNS自動投稿</td>
+        </tr>
+        <tr>
+          <td><strong>GMOあおぞらネット銀行</strong></td>
+          <td>入金確認に必要な範囲の取引情報</td>
+          <td>事業口座管理</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note-box">
+      <strong>【AI APIへの送信データについて】</strong><br>
+      Anthropic（Claude API）・Google（Gemini API）・OpenAI のいずれも、商用API（有償APIプラン）の標準ポリシーにおいて、APIを通じて送信されたデータはAIモデルの学習目的に使用されないことが各社のポリシーにより定められています。当社はこれらの商用APIのみを使用しており、お客様のデータがモデル学習に利用されることはありません。
+    </div>
+  </div>
+
+  <!-- 第5条 -->
+  <div class="section">
+    <h2 class="section-title">第5条　個人情報の保管・管理</h2>
+    <ul>
+      <li><strong>カード情報の非保持：</strong>クレジットカード番号・セキュリティコード等の機密情報は当社サーバーに保存しません。PAY.JPによりトークン化されたデータとしてのみ管理します。</li>
+      <li><strong>サーバー管理：</strong>お客様の情報は、適切なアクセス制限が施されたクラウドサーバー上に保管し、権限を持つ担当者のみがアクセスできる体制を整えています。</li>
+      <li><strong>保管期間：</strong>契約終了後3年間保有し、期間経過後は適切な方法により速やかに消去します。ただし、法令により保存が義務付けられている情報についてはこの限りではありません。</li>
+    </ul>
+  </div>
+
+  <!-- 第6条 -->
+  <div class="section">
+    <h2 class="section-title">第6条　Cookie・アクセス解析</h2>
+    <p>現在、本サービスにおいてGoogle Analytics等のアクセス解析ツールは使用しておりません。将来的に導入する場合は、本ポリシーを改定のうえ利用目的等を明記します。</p>
+    <p>なお、本サービスのログイン機能・セッション管理のためにCookieを使用することがあります。ブラウザの設定によりCookieを無効にすることが可能ですが、その場合一部機能がご利用いただけない場合があります。</p>
+  </div>
+
+  <!-- 第7条 -->
+  <div class="section">
+    <h2 class="section-title">第7条　開示・訂正・利用停止等の請求</h2>
+    <p>お客様は、当社が保有するご自身の個人情報について、開示・訂正・追加・削除・利用停止・第三者提供の停止等を請求する権利を有します。</p>
+    <p>ご請求の際は、下記のお問い合わせ窓口までメールにてご連絡ください。本人確認のうえ、合理的な期間内に対応いたします。</p>
+  </div>
+
+  <!-- 第8条 -->
+  <div class="section">
+    <h2 class="section-title">第8条　お問い合わせ窓口</h2>
+    <p>個人情報の取り扱いに関するお問い合わせ・請求は、以下の窓口までご連絡ください。</p>
+    <p style="margin-top:10px;">
+      <strong>RKパートナーズ（運営者：山崎 粛福）</strong><br>
+      メールアドレス：<a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a><br>
+      受付時間：平日 10:00〜18:00（土日祝・年末年始を除く）
+    </p>
+  </div>
+
+  <!-- 第9条 -->
+  <div class="section">
+    <h2 class="section-title">第9条　ポリシーの改定</h2>
+    <p>当社は、法令の改正・サービス内容の変更等に伴い、本ポリシーを予告なく変更する場合があります。変更後のポリシーは本ページに掲示した時点より効力を生じるものとし、掲示をもってお客様への周知とします。</p>
+    <p>重要な変更については、サービス内またはメールにて別途お知らせします。</p>
+  </div>
+
+  <hr class="divider">
+
+  <p style="font-size:13px;color:var(--text-muted);">
+    附則：本ポリシーは2026年8月29日に制定しました。
+  </p>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <a href="/lp" class="footer-logo">Artiv<span>o</span></a>
+    <div class="footer-links">
+      <a href="https://lin.ee/7vRDrNw" target="_blank" rel="noopener">LINE</a>
+      <a href="mailto:info@rk-rpa.com">info@rk-rpa.com</a>
+      <a href="/privacy">プライバシーポリシー</a>
+      <a href="/tokusho">特定商取引法に基づく表記</a>
+    </div>
+  </div>
+  <div class="footer-inner">
+    <p class="footer-copy">© 2025 RKパートナーズ. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>
