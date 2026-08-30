@@ -180,11 +180,24 @@ def _image_post_generate_impl(client_id: int):
             topic_title   = topic_data.get("title") or "（タイトル未生成）"
             topic_outline = topic_data.get("outline") or ""
 
+            # 画像から抽出した生テキストを outline に追記して全 Stage に渡す
+            from image_post_gen import _format_results_for_prompt
+            images_raw_summary = _format_results_for_prompt(results)
+            if images_raw_summary.strip():
+                enriched_keywords = (
+                    f"{topic_outline}\n\n"
+                    f"---\n\n"
+                    f"【画像から直接読み取った情報（記事の内容は必ずこれを軸にすること）】\n"
+                    f"{images_raw_summary}"
+                )
+            else:
+                enriched_keywords = topic_outline
+
             # ── Stage 1: 下書き作成 ─────────────────────────────────────────
             job.update(step="blog_creator", step_label="記事の下書きを作成中...")
             draft = BlogCreatorAgent().run({
                 "topic": topic_title,
-                "keywords": topic_outline,
+                "keywords": enriched_keywords,
                 "tone": "標準",
                 "word_count": target_word_count,
                 "existing_posts": wp_sample_posts,
@@ -200,7 +213,7 @@ def _image_post_generate_impl(client_id: int):
             seo_draft = SeoCheckerAgent().run({
                 "draft": draft,
                 "topic": topic_title,
-                "keywords": topic_outline,
+                "keywords": enriched_keywords,
             })
 
             # ── Stage 3: ファクトチェック ───────────────────────────────────
@@ -218,7 +231,7 @@ def _image_post_generate_impl(client_id: int):
                 "content_check": fact_check,
                 "legal_check": legal_check,
                 "topic": topic_title,
-                "keywords": topic_outline,
+                "keywords": enriched_keywords,
                 "tone": "標準",
                 "word_count": target_word_count,
             })
