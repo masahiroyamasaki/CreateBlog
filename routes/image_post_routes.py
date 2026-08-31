@@ -131,7 +131,8 @@ def _image_post_generate_impl(client_id: int):
         pass
     hp_design_prompt    = client.hp_design_prompt or ""
     platform_type       = client.platform_type or "wordpress"
-    threads_limit       = 400 if (client.threads_user_id or "").strip() else 0
+    _th_on_img = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
+    threads_limit       = 400 if _th_on_img else 0
     image_gen_enabled   = False  # 画像生成機能無効化
     image_taste         = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance       = getattr(client, "image_balance", "balanced") or "balanced"

@@ -240,7 +240,8 @@ def topic_generate(client_id: int, topic_id: int):
     target_audience      = client.target_audience or ""
     character_prompt     = client.character_prompt or ""
     business_description = client.business_description or ""
-    threads_limit        = 400 if (client.threads_user_id or "").strip() else 0
+    _th_on = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
+    threads_limit        = 400 if _th_on else 0
     image_gen_enabled_val   = False  # 画像生成機能無効化
     image_taste_val         = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance_val       = getattr(client, "image_balance", "balanced") or "balanced"
@@ -509,7 +510,8 @@ def topic_bulk_generate(client_id: int):
     target_audience_bulk      = client.target_audience or ""
     character_prompt_bulk     = client.character_prompt or ""
     business_description_bulk = client.business_description or ""
-    threads_limit_bulk        = 400 if (client.threads_user_id or "").strip() else 0
+    _th_on_bulk = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
+    threads_limit_bulk        = 400 if _th_on_bulk else 0
     image_gen_enabled_bulk    = False  # 画像生成機能無効化
     image_taste_bulk          = getattr(client, "image_taste", "business_clean") or "business_clean"
     image_balance_bulk        = getattr(client, "image_balance", "balanced") or "balanced"
