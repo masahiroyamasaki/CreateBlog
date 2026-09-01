@@ -3,12 +3,33 @@ import os
 import uuid
 import threading
 import logging
+from datetime import datetime, timezone, timedelta
 from flask import render_template, request, jsonify, redirect, url_for, abort, current_app
 from flask_login import login_required, current_user
 from models import db, Client, Post, PostImage
 from routes import designer_bp
 
 logger = logging.getLogger(__name__)
+
+_JST = timezone(timedelta(hours=9))
+
+def _month_start_utc() -> datetime:
+    """今月1日 00:00 JST を UTC（naive）で返す"""
+    now_jst = datetime.now(_JST)
+    start_jst = datetime(now_jst.year, now_jst.month, 1, tzinfo=_JST)
+    return start_jst.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _monthly_usage(client_id: int, monthly_limit: int) -> dict:
+    """今月の利用状況を返す"""
+    used = Post.query.filter(
+        Post.client_id == client_id,
+        Post.created_at >= _month_start_utc(),
+        Post.status != "failed",
+    ).count()
+    remaining = max(0, monthly_limit - used)
+    return {"used": used, "limit": monthly_limit, "remaining": remaining}
+
 
 # バックグラウンドジョブのステート管理（in-memory）
 _image_post_jobs: dict[str, dict] = {}
@@ -38,10 +59,17 @@ def image_post_new(client_id: int):
         from flask import flash
         flash("このクライアントは現在利用停止中です", "error")
         return redirect(url_for("designer.client_detail", client_id=client_id))
+    monthly_limit = client.monthly_post_count or 4
+    usage = _monthly_usage(client.id, monthly_limit)
+    can_generate = usage["remaining"] > 0 or current_user.role == "admin"
     return render_template(
         "designer/image_post/step1_upload.html",
         client=client,
         max_images=_MAX_IMAGES,
+        monthly_limit=monthly_limit,
+        remaining_points=usage["remaining"],
+        posts_this_month=usage["used"],
+        can_generate=can_generate,
     )
 
 
@@ -65,6 +93,18 @@ def image_post_generate(client_id: int):
 def _image_post_generate_impl(client_id: int):
     client = Client.query.get_or_404(client_id)
     _assert_access(client)
+
+    # ── 月次ポイントチェック ───────────────────────────────────────────────
+    if current_user.role != "admin":
+        _monthly_limit = client.monthly_post_count or 4
+        _usage = _monthly_usage(client.id, _monthly_limit)
+        if _usage["remaining"] <= 0:
+            return jsonify({
+                "error": (
+                    f"今月の生成ポイント（{_monthly_limit}件）を使い切りました。"
+                    "毎月1日にポイントが回復します。"
+                )
+            }), 429
 
     files = request.files.getlist("images")
     post_type = request.form.get("post_type", "feed")  # "feed" | "reel"
@@ -252,6 +292,10 @@ def _image_post_generate_impl(client_id: int):
             import re as _re, markdown as _md
             from caption_utils import strip_account_prefix
 
+            # 生成記事の H1 をタイトルとして使用
+            _h1_match = _re.search(r'^#\s+(.+)', final_content, _re.MULTILINE)
+            resolved_title = _h1_match.group(1).strip() if _h1_match else topic_title
+
             def _clean_caption(cap: str) -> str:
                 cap = strip_account_prefix(cap, client_name)
                 lines = cap.splitlines()
@@ -279,7 +323,7 @@ def _image_post_generate_impl(client_id: int):
                 post = _Post.query.get(post_id)
                 client_obj = _Client.query.get(client_id_val)
                 if post:
-                    post.title      = topic_title
+                    post.title      = resolved_title
                     post.outline    = topic_outline
                     post.body_html  = body_html
                     post.ig_caption = _clean_caption(ig_caption_raw)
