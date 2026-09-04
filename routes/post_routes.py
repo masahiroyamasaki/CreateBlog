@@ -101,12 +101,26 @@ def post_list(client_id: int):
 
     posts = sorted(posts, key=_sort_key)
     creating_count = sum(1 for p in posts if p.status == "creating")
+
+    # 今月の投稿済み件数・残り件数
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    posted_this_month = Post.query.filter(
+        Post.client_id == client_id,
+        Post.status == "posted",
+        Post.posted_at >= month_start,
+    ).count()
+    monthly_limit = client.monthly_post_count or 4
+    remaining_this_month = max(0, monthly_limit - posted_this_month)
+
     return render_template(
         "designer/posts/list.html",
         client=client,
         posts=posts,
         status_filter=status_filter,
         creating_count=creating_count,
+        posted_this_month=posted_this_month,
+        monthly_limit=monthly_limit,
+        remaining_this_month=remaining_this_month,
     )
 
 
