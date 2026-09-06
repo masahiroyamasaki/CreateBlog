@@ -9,6 +9,10 @@ import stripe_utils
 @designer_bp.route("/billing")
 @login_required
 def billing():
+    # Stripe Checkout 完了後のリダイレクト時
+    if request.args.get("session_id"):
+        flash("お支払いが完了しました。プランが有効になるまで少々お待ちください。", "success")
+        return redirect(url_for("designer.billing"))
     return render_template(
         "designer/billing.html",
         stripe_enabled=stripe_utils.stripe_enabled(),
@@ -90,7 +94,7 @@ def billing_webhook():
     return jsonify({"received": True}), 200
 
 
-def _sync_subscription(sub_obj, force_status: str | None = None):
+def _sync_subscription(sub_obj, force_status=None):
     """Stripe Subscription オブジェクトから DB を更新する。"""
     customer_id = sub_obj.get("customer")
     if not customer_id:
