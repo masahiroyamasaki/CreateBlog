@@ -67,6 +67,59 @@ def create_checkout_session(designer, success_url: str, cancel_url: str):
     return session.url
 
 
+def add_client_subscription_item(designer, stripe_price_id: str) -> str:
+    """デザイナーのサブスクリプションに企業プランのアイテムを追加し、item IDを返す。
+    サブスクリプションがなければ新規作成する。失敗時は空文字。
+    """
+    stripe = get_stripe()
+    if not stripe or not stripe_price_id:
+        return ""
+    try:
+        sub_id = designer.stripe_subscription_id or ""
+        if sub_id:
+            item = stripe.SubscriptionItem.create(
+                subscription=sub_id,
+                price=stripe_price_id,
+            )
+        else:
+            # 初回企業追加時にサブスクリプションを作成
+            customer_kwargs = {}
+            if designer.stripe_customer_id:
+                customer_kwargs["customer"] = designer.stripe_customer_id
+            else:
+                customer_kwargs["customer_email"] = designer.email
+            sub = stripe.Subscription.create(
+                **customer_kwargs,
+                items=[{"price": stripe_price_id}],
+                payment_behavior="default_incomplete",
+                expand=["latest_invoice.payment_intent"],
+            )
+            from models import db, Designer as _Designer
+            d = _Designer.query.get(designer.id)
+            if d:
+                d.stripe_subscription_id = sub.id
+                if not d.stripe_customer_id:
+                    d.stripe_customer_id = sub.customer
+                d.subscription_status = "active"
+                db.session.commit()
+            item = sub["items"]["data"][0]
+        return item.id
+    except Exception:
+        return ""
+
+
+def remove_client_subscription_item(subscription_item_id: str) -> bool:
+    """サブスクリプションアイテムを削除する。"""
+    stripe = get_stripe()
+    if not stripe or not subscription_item_id:
+        return False
+    try:
+        stripe.SubscriptionItem.delete(subscription_item_id)
+        return True
+    except Exception:
+        return False
+
+
 def cancel_subscription(subscription_id: str) -> bool:
     """サブスクリプションをキャンセルする。"""
     stripe = get_stripe()

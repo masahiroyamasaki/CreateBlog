@@ -22,6 +22,12 @@
         <label>月額料金（円）</label>
         <input type="number" name="monthly_fee" class="form-control" min="0" value="{{ plan.monthly_fee if plan else 0 }}" required>
       </div>
+      <div class="form-group">
+        <label>Stripe Price ID <span style="font-size:11px;color:var(--muted);">（price_xxx）</span></label>
+        <input type="text" name="stripe_price_id" class="form-control" placeholder="price_xxxxxxxxxx"
+               value="{{ plan.stripe_price_id if plan else '' }}">
+        <small style="color:var(--muted);">Stripeダッシュボード → 商品カタログ → 該当プランの Price ID</small>
+      </div>
       <div style="display:flex;gap:10px;margin-top:24px;">
         <button type="submit" class="btn btn-primary">{% if plan %}更新{% else %}追加{% endif %}</button>
         <a href="{{ url_for('designer.admin_pricing') }}" class="btn btn-secondary">キャンセル</a>

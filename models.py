@@ -264,6 +264,7 @@ class PricingPlan(db.Model):
     monthly_posts = db.Column(db.Integer, nullable=False)
     monthly_fee = db.Column(db.Integer, nullable=False)
     sort_order = db.Column(db.Integer, default=0)
+    stripe_price_id = db.Column(db.String(255), default="")  # Stripe Price ID (price_xxx)
 
 
 # ─── 請求書 ───────────────────────────────────────────────────────────────────
@@ -362,6 +363,7 @@ class ClientSubscription(db.Model):
     is_trial = db.Column(db.Boolean, default=True)       # True = 無料お試し期間中
     contract_date = db.Column(db.DateTime, nullable=False)  # 契約日（登録日）
     billing_date = db.Column(db.DateTime)                # 請求開始日（先払い第1回請求日）
+    stripe_subscription_item_id = db.Column(db.String(255), default="")  # Stripe Subscription Item ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

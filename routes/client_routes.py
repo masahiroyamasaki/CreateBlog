@@ -209,7 +209,24 @@ def client_new():
         # 先払い: 翌月1日が第1回請求日
         _next_m = (_now.replace(day=1) + _td(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _plan_name = _build_plan_name(client)
-        db.session.add(ClientSubscription(
+        # Stripe Price ID をプランマスタから取得
+        from models import PricingPlan as _PP
+        _pricing = _PP.query.filter_by(
+            platform_type=client.platform_type,
+            monthly_posts=client.monthly_post_count,
+        ).first()
+        _stripe_price_id = (_pricing.stripe_price_id or "") if _pricing else ""
+
+        # Stripe サブスクリプションアイテムを追加
+        _stripe_item_id = ""
+        if _stripe_price_id:
+            from models import Designer as _Designer
+            _designer = _Designer.query.get(assign_id)
+            if _designer:
+                import stripe_utils as _su
+                _stripe_item_id = _su.add_client_subscription_item(_designer, _stripe_price_id)
+
+        _sub = ClientSubscription(
             client_id=client.id,
             designer_id=assign_id,
             plan_name=_plan_name,
@@ -217,7 +234,9 @@ def client_new():
             is_trial=True,
             contract_date=_now,
             billing_date=_next_m,
-        ))
+            stripe_subscription_item_id=_stripe_item_id,
+        )
+        db.session.add(_sub)
         db.session.flush()
 
         # ── トライアル請求書を発行（¥0）────────────────────────────────────────
