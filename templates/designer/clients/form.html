@@ -647,6 +647,13 @@
       <div style="display:flex;gap:10px;margin-top:28px;">
         <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
         <button type="submit" class="btn btn-primary">保存する</button>
+        {% if client and current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('designer.admin_client_delete', client_id=client.id) }}"
+              style="margin:0;"
+              onsubmit="return confirm('「{{ client.name }}」と全データを削除します。\nこの操作は取り消せません。本当に削除しますか？')">
+          <button type="submit" class="btn btn-danger">この企業を削除</button>
+        </form>
+        {% endif %}
       </div>
     </form>
 
