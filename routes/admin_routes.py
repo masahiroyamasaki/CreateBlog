@@ -503,15 +503,20 @@ def admin_designer_delete(designer_id: int):
             db.session.delete(inv)
         db.session.flush()
 
-        # DesignerAgreement と AgreementPdf
-        for agr in DesignerAgreement.query.filter_by(designer_id=designer_id).all():
-            if agr.pdf and agr.pdf.pdf_path and os.path.exists(agr.pdf.pdf_path):
-                try:
-                    os.remove(agr.pdf.pdf_path)
-                except OSError:
-                    pass
-            db.session.delete(agr)
-        db.session.flush()
+        # DesignerAgreement と AgreementPdf（PDF先削除→Agreement削除の順）
+        agr_ids = [a.id for a in DesignerAgreement.query.filter_by(designer_id=designer_id).all()]
+        if agr_ids:
+            pdfs = AgreementPdf.query.filter(AgreementPdf.designer_agreement_id.in_(agr_ids)).all()
+            for pdf in pdfs:
+                if pdf.pdf_path and os.path.exists(pdf.pdf_path):
+                    try:
+                        os.remove(pdf.pdf_path)
+                    except OSError:
+                        pass
+                db.session.delete(pdf)
+            db.session.flush()
+            DesignerAgreement.query.filter_by(designer_id=designer_id).delete()
+            db.session.flush()
 
         # Stripe カード情報を解除
         import stripe_utils as _su
