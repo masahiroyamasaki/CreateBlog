@@ -1,5 +1,8 @@
 """stripe_utils.py — Stripe API ヘルパー（カード保存 + オフセッション課金）"""
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def stripe_enabled() -> bool:
@@ -59,19 +62,22 @@ def create_setup_session(designer, success_url: str, cancel_url: str):
             if d:
                 d.stripe_customer_id = customer_id
                 db.session.commit()
-        except Exception:
+        except Exception as e:
+            logger.error(f"[stripe] Customer作成エラー: {e}")
             return None
 
     try:
         session = stripe.checkout.Session.create(
             customer=customer_id,
             mode="setup",
+            currency="jpy",
             success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=cancel_url,
             metadata={"designer_id": str(designer.id)},
         )
         return session.url
-    except Exception:
+    except Exception as e:
+        logger.error(f"[stripe] Setup Session作成エラー: {e}")
         return None
 
 
