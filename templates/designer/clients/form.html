@@ -648,11 +648,10 @@
         <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
         <button type="submit" class="btn btn-primary">保存する</button>
         {% if client and current_user.role == 'admin' %}
-        <form method="POST" action="{{ url_for('designer.admin_client_delete', client_id=client.id) }}"
-              style="margin:0;"
-              onsubmit="return confirm('「{{ client.name }}」と全データを削除します。\nこの操作は取り消せません。本当に削除しますか？')">
-          <button type="submit" class="btn btn-danger">この企業を削除</button>
-        </form>
+        <button type="submit" form="client-delete-form" class="btn btn-danger"
+                onclick="return confirm('「{{ client.name }}」と全データを削除します。\nこの操作は取り消せません。本当に削除しますか？')">
+          この企業を削除
+        </button>
         {% endif %}
       </div>
     </form>
@@ -660,6 +659,9 @@
     {% if client %}
     <form id="wp-fetch-form" method="POST" action="{{ url_for('designer.client_fetch_wp_posts', client_id=client.id) }}"></form>
     <form id="hp-template-form" method="POST" action="{{ url_for('designer.client_upload_hp_template', client_id=client.id) }}" enctype="multipart/form-data"></form>
+    {% if current_user.role == 'admin' %}
+    <form id="client-delete-form" method="POST" action="{{ url_for('designer.admin_client_delete', client_id=client.id) }}"></form>
+    {% endif %}
     {% endif %}
   </div>
 </div>
