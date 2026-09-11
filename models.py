@@ -27,9 +27,10 @@ class Designer(UserMixin, db.Model):
     bank_account_holder= db.Column(db.String(100), default="")  # 口座名義（カナ）
     region = db.Column(db.String(100), default="")         # 活動地域
     job_type = db.Column(db.String(100), default="")       # 職種
-    stripe_customer_id = db.Column(db.String(255), default="")      # Stripe 顧客 ID
-    stripe_subscription_id = db.Column(db.String(255), default="")  # Stripe サブスクリプション ID
-    subscription_status = db.Column(db.String(20), default="free")  # free / active / past_due / cancelled
+    stripe_customer_id = db.Column(db.String(255), default="")         # Stripe 顧客 ID
+    stripe_subscription_id = db.Column(db.String(255), default="")     # 旧設計互換（未使用）
+    stripe_payment_method_id = db.Column(db.String(255), default="")   # デフォルト支払方法 PM ID
+    subscription_status = db.Column(db.String(20), default="free")     # free / active / past_due / cancelled
     postal_code = db.Column(db.String(10), default="")   # 郵便番号
     address = db.Column(db.Text, default="")             # 住所
     phone = db.Column(db.String(20), default="")         # 電話番号

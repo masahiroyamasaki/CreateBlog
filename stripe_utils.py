@@ -1,4 +1,4 @@
-"""stripe_utils.py — Stripe API ヘルパー"""
+"""stripe_utils.py — Stripe API ヘルパー（カード保存 + オフセッション課金）"""
 import os
 
 
@@ -38,95 +38,83 @@ def is_client_operational(client, designer) -> bool:
     return client.client_status == "active"
 
 
-def create_checkout_session(designer, success_url: str, cancel_url: str):
-    """Stripe Checkout セッションを作成し URL を返す。失敗時は None。"""
+def create_setup_session(designer, success_url: str, cancel_url: str):
+    """カード情報のみ保存する Checkout Session（mode=setup）を作成して URL を返す。失敗時は None。"""
     stripe = get_stripe()
     if not stripe:
         return None
 
-    price_id = os.getenv("STRIPE_PRICE_ID", "")
-    if not price_id:
-        return None
-
-    # 既存の Stripe 顧客 ID があれば再利用
-    customer_kwargs = {}
-    if designer.stripe_customer_id:
-        customer_kwargs["customer"] = designer.stripe_customer_id
-    else:
-        customer_kwargs["customer_email"] = designer.email
-
-    session = stripe.checkout.Session.create(
-        **customer_kwargs,
-        payment_method_types=["card"],
-        line_items=[{"price": price_id, "quantity": 1}],
-        mode="subscription",
-        success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url=cancel_url,
-        metadata={"designer_id": str(designer.id)},
-    )
-    return session.url
-
-
-def add_client_subscription_item(designer, stripe_price_id: str) -> str:
-    """デザイナーのサブスクリプションに企業プランのアイテムを追加し、item IDを返す。
-    サブスクリプションがなければ新規作成する。失敗時は空文字。
-    """
-    stripe = get_stripe()
-    if not stripe or not stripe_price_id:
-        return ""
-    try:
-        sub_id = designer.stripe_subscription_id or ""
-        if sub_id:
-            item = stripe.SubscriptionItem.create(
-                subscription=sub_id,
-                price=stripe_price_id,
+    # 既存 Customer があれば再利用、なければ新規作成して即 DB 保存
+    customer_id = designer.stripe_customer_id or ""
+    if not customer_id:
+        try:
+            customer = stripe.Customer.create(
+                email=designer.email,
+                name=designer.name,
+                metadata={"designer_id": str(designer.id)},
             )
-        else:
-            # 初回企業追加時にサブスクリプションを作成
-            customer_kwargs = {}
-            if designer.stripe_customer_id:
-                customer_kwargs["customer"] = designer.stripe_customer_id
-            else:
-                customer_kwargs["customer_email"] = designer.email
-            sub = stripe.Subscription.create(
-                **customer_kwargs,
-                items=[{"price": stripe_price_id}],
-                payment_behavior="default_incomplete",
-                expand=["latest_invoice.payment_intent"],
-            )
+            customer_id = customer.id
             from models import db, Designer as _Designer
             d = _Designer.query.get(designer.id)
             if d:
-                d.stripe_subscription_id = sub.id
-                if not d.stripe_customer_id:
-                    d.stripe_customer_id = sub.customer
-                d.subscription_status = "active"
+                d.stripe_customer_id = customer_id
                 db.session.commit()
-            item = sub["items"]["data"][0]
-        return item.id
+        except Exception:
+            return None
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            mode="setup",
+            success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=cancel_url,
+            metadata={"designer_id": str(designer.id)},
+        )
+        return session.url
     except Exception:
-        return ""
+        return None
 
 
-def remove_client_subscription_item(subscription_item_id: str) -> bool:
-    """サブスクリプションアイテムを削除する。"""
+def charge_designer(designer, amount_jpy: int, description: str) -> dict:
+    """off_session=True で PaymentIntent を即時課金する。
+    戻り値: {"success": bool, "payment_intent_id": str, "reason": str}
+    """
     stripe = get_stripe()
-    if not stripe or not subscription_item_id:
+    if not stripe:
+        return {"success": False, "reason": "Stripe 未設定"}
+
+    pm_id = designer.stripe_payment_method_id or ""
+    customer_id = designer.stripe_customer_id or ""
+    if not pm_id or not customer_id:
+        return {"success": False, "reason": "支払方法が未登録"}
+    if amount_jpy <= 0:
+        return {"success": False, "reason": "課金額が0円以下"}
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=amount_jpy,
+            currency="jpy",
+            customer=customer_id,
+            payment_method=pm_id,
+            off_session=True,
+            confirm=True,
+            description=description,
+            metadata={"designer_id": str(designer.id)},
+        )
+        return {"success": True, "payment_intent_id": intent.id, "reason": ""}
+    except stripe.error.CardError as e:
+        return {"success": False, "payment_intent_id": "", "reason": f"カードエラー: {e.user_message}"}
+    except Exception as e:
+        return {"success": False, "payment_intent_id": "", "reason": str(e)}
+
+
+def detach_payment_method(payment_method_id: str) -> bool:
+    """PaymentMethod を顧客から切り離す（カード登録解除）。"""
+    stripe = get_stripe()
+    if not stripe or not payment_method_id:
         return False
     try:
-        stripe.SubscriptionItem.delete(subscription_item_id)
-        return True
-    except Exception:
-        return False
-
-
-def cancel_subscription(subscription_id: str) -> bool:
-    """サブスクリプションをキャンセルする。"""
-    stripe = get_stripe()
-    if not stripe or not subscription_id:
-        return False
-    try:
-        stripe.Subscription.cancel(subscription_id)
+        stripe.PaymentMethod.detach(payment_method_id)
         return True
     except Exception:
         return False

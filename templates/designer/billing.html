@@ -112,16 +112,16 @@
 
     {% if stripe_enabled %}
       {% if status == 'active' %}
-      <!-- キャンセルボタン -->
+      <!-- カード登録解除ボタン -->
       <form method="POST" action="{{ url_for('designer.billing_cancel') }}"
-            onsubmit="return confirm('本当にサブスクリプションをキャンセルしますか？\n次回更新日以降は企業の追加ができなくなります。')">
-        <button type="submit" class="btn btn-danger btn-sm">サブスクリプションを解約</button>
+            onsubmit="return confirm('カード情報の登録を解除しますか？\n翌月以降の課金が行われなくなり、企業の追加もできなくなります。')">
+        <button type="submit" class="btn btn-danger btn-sm">カード登録を解除する</button>
       </form>
       {% else %}
-      <!-- Checkout へ -->
+      <!-- カード登録 -->
       <form method="POST" action="{{ url_for('designer.billing_checkout') }}">
         <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;">
-          プランに登録する（Stripe 決済）
+          クレジットカードを登録する
         </button>
       </form>
       {% endif %}
@@ -132,9 +132,9 @@
     {% endif %}
   </div>
 
-  {% if status == 'active' and current_user.stripe_subscription_id %}
+  {% if status == 'active' and current_user.stripe_payment_method_id %}
   <p style="font-size:11px;color:var(--muted);text-align:center;">
-    サブスクリプション ID: {{ current_user.stripe_subscription_id }}
+    登録済みカード（PM: {{ current_user.stripe_payment_method_id[:8] }}...）
   </p>
   {% endif %}
 

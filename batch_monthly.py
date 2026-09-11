@@ -284,6 +284,35 @@ def run_monthly_billing_batch(app, db) -> dict:
                     else:
                         logger.warning(f"[billing] メール送付失敗: {r.get('reason')}")
 
+                # Stripe off_session 課金
+                import stripe_utils as _stripe_utils
+                if (
+                    _stripe_utils.stripe_enabled()
+                    and designer
+                    and invoice.total_with_tax > 0
+                ):
+                    charge_result = _stripe_utils.charge_designer(
+                        designer,
+                        amount_jpy=invoice.total_with_tax,
+                        description=f"{year}年{month}月分 ご利用料金",
+                    )
+                    if charge_result.get("success"):
+                        invoice.status = "paid"
+                        db.session.commit()
+                        logger.info(
+                            f"[billing] Designer {designer_id}: Stripe課金成功 "
+                            f"¥{invoice.total_with_tax:,} "
+                            f"PI={charge_result.get('payment_intent_id')}"
+                        )
+                    else:
+                        logger.error(
+                            f"[billing] Designer {designer_id}: Stripe課金失敗 "
+                            f"reason={charge_result.get('reason')}"
+                        )
+                        if designer:
+                            designer.subscription_status = "past_due"
+                            db.session.commit()
+
                 result["invoices"] += 1
             except Exception as e:
                 db.session.rollback()
