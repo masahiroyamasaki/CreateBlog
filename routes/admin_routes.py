@@ -3,6 +3,7 @@ import os
 from flask import render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
 from models import db, Designer, Client, Post, DesignerClient, PricingPlan, Invoice, InvoiceItem, ClientSubscription
+from models import TopicQueue, DesignerAgreement, AgreementPdf, WeeklyInsight
 from routes import designer_bp
 
 
@@ -416,6 +417,115 @@ def admin_subscription_edit(sub_id: int):
         flash("契約情報を更新しました", "success")
         return redirect(url_for("designer.admin_subscriptions"))
     return render_template("designer/admin/subscription_edit.html", sub=sub)
+
+
+def _delete_client_data(client_id: int):
+    """企業に紐づく全データを削除するヘルパー。"""
+    # TopicQueue.generated_post_id をNULL化してから削除
+    TopicQueue.query.filter_by(client_id=client_id).update({"generated_post_id": None})
+    db.session.flush()
+    TopicQueue.query.filter_by(client_id=client_id).delete()
+
+    # Posts（PostImages は cascade="all, delete-orphan" で自動削除）
+    for post in Post.query.filter_by(client_id=client_id).all():
+        db.session.delete(post)
+    db.session.flush()
+
+    # WeeklyInsight
+    WeeklyInsight.query.filter_by(client_id=client_id).delete()
+
+    # DesignerClient / ClientSubscription
+    DesignerClient.query.filter_by(client_id=client_id).delete()
+    ClientSubscription.query.filter_by(client_id=client_id).delete()
+
+    # InvoiceItem は client_id を NULL に（請求書履歴は残す）
+    InvoiceItem.query.filter_by(client_id=client_id).update({"client_id": None, "client_name": InvoiceItem.client_name})
+
+    client = Client.query.get(client_id)
+    if client:
+        db.session.delete(client)
+
+
+@designer_bp.route("/admin/clients/<int:client_id>/delete", methods=["POST"])
+@login_required
+def admin_client_delete(client_id: int):
+    """管理者のみ: 企業を全データごと削除する。"""
+    _admin_only()
+    client = Client.query.get_or_404(client_id)
+    client_name = client.name
+    try:
+        _delete_client_data(client_id)
+        db.session.commit()
+        flash(f"「{client_name}」を削除しました", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"削除エラー: {e}", "error")
+    return redirect(url_for("designer.admin_designers"))
+
+
+@designer_bp.route("/admin/designers/<int:designer_id>/delete", methods=["POST"])
+@login_required
+def admin_designer_delete(designer_id: int):
+    """管理者のみ: デザイナーと紐づく全企業を削除する。自分自身は削除不可。"""
+    _admin_only()
+    if designer_id == current_user.id:
+        flash("自分自身は削除できません", "error")
+        return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
+
+    designer = Designer.query.get_or_404(designer_id)
+    designer_name = designer.name
+
+    try:
+        # このデザイナーのみが担当している企業を削除
+        client_ids = [a.client_id for a in designer.assignments]
+        for cid in client_ids:
+            # 他のデザイナーも担当していれば企業は残してアサインのみ解除
+            other = DesignerClient.query.filter(
+                DesignerClient.client_id == cid,
+                DesignerClient.designer_id != designer_id,
+            ).first()
+            if other:
+                DesignerClient.query.filter_by(client_id=cid, designer_id=designer_id).delete()
+            else:
+                _delete_client_data(cid)
+        db.session.flush()
+
+        # ClientSubscription（企業削除後に残るもの）
+        ClientSubscription.query.filter_by(designer_id=designer_id).delete()
+
+        # Invoice と InvoiceItems（cascade delete-orphan）
+        for inv in Invoice.query.filter_by(designer_id=designer_id).all():
+            if inv.pdf_path and os.path.exists(inv.pdf_path):
+                try:
+                    os.remove(inv.pdf_path)
+                except OSError:
+                    pass
+            db.session.delete(inv)
+        db.session.flush()
+
+        # DesignerAgreement と AgreementPdf
+        for agr in DesignerAgreement.query.filter_by(designer_id=designer_id).all():
+            if agr.pdf and agr.pdf.pdf_path and os.path.exists(agr.pdf.pdf_path):
+                try:
+                    os.remove(agr.pdf.pdf_path)
+                except OSError:
+                    pass
+            db.session.delete(agr)
+        db.session.flush()
+
+        # Stripe カード情報を解除
+        import stripe_utils as _su
+        _su.detach_payment_method(designer.stripe_payment_method_id or "")
+
+        db.session.delete(designer)
+        db.session.commit()
+        flash(f"デザイナー「{designer_name}」と紐づく企業を削除しました", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"削除エラー: {e}", "error")
+        return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
+
+    return redirect(url_for("designer.admin_designers"))
 
 
 @designer_bp.route("/admin/run-migrate", methods=["POST"])

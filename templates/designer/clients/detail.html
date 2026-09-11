@@ -4,6 +4,13 @@
 {% block topbar_actions %}
   <a href="{{ url_for('designer.client_edit', client_id=client.id) }}" class="btn btn-secondary btn-sm">設定編集</a>
   <a href="{{ url_for('designer.post_list', client_id=client.id) }}" class="btn btn-primary btn-sm">投稿一覧</a>
+  {% if current_user.role == 'admin' %}
+  <form method="POST" action="{{ url_for('designer.admin_client_delete', client_id=client.id) }}"
+        style="display:inline;"
+        onsubmit="return confirm('「{{ client.name }}」と全データを削除します。\nこの操作は取り消せません。本当に削除しますか？')">
+    <button type="submit" class="btn btn-danger btn-sm">削除</button>
+  </form>
+  {% endif %}
 {% endblock %}
 
 {% block content %}

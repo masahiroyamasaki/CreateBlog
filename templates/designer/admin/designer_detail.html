@@ -4,6 +4,13 @@
 {% block topbar_actions %}
   <a href="{{ url_for('designer.admin_designers') }}" class="btn btn-secondary btn-sm">← 一覧に戻る</a>
   <a href="{{ url_for('designer.admin_designer_edit', designer_id=designer.id) }}" class="btn btn-primary btn-sm">編集</a>
+  {% if designer.id != current_user.id %}
+  <form method="POST" action="{{ url_for('designer.admin_designer_delete', designer_id=designer.id) }}"
+        style="display:inline;"
+        onsubmit="return confirm('「{{ designer.name }}」と紐づく全企業・データを削除します。\nこの操作は取り消せません。本当に削除しますか？')">
+    <button type="submit" class="btn btn-danger btn-sm">削除</button>
+  </form>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -102,6 +109,7 @@
             <td>
               {% if c.client_status == 'active' %}<span class="badge badge-green">稼働中</span>
               {% elif c.client_status == 'pending' %}<span class="badge badge-orange">保留中</span>
+              {% elif c.client_status == 'taikai' %}<span class="badge badge-red">退会</span>
               {% else %}<span class="badge badge-gray">設定中</span>{% endif %}
             </td>
             <td style="font-size:13px;">{{ c.monthly_post_count }} 件 / 月</td>
