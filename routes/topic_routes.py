@@ -240,6 +240,11 @@ def topic_generate(client_id: int, topic_id: int):
     target_audience      = client.target_audience or ""
     character_prompt     = client.character_prompt or ""
     business_description = client.business_description or ""
+    from models import ClientKnowledge as _CK
+    knowledge_items_val = [
+        {"type": k.knowledge_type, "title": k.title or "", "content": k.content}
+        for k in _CK.query.filter_by(client_id=client_id).order_by(_CK.created_at).all()
+    ]
     _th_on = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
     threads_limit        = 400 if _th_on else 0
     image_gen_enabled_val   = False  # 画像生成機能無効化
@@ -299,6 +304,7 @@ def topic_generate(client_id: int, topic_id: int):
                 "target_audience": target_audience,
                 "character_prompt": character_prompt,
                 "business_description": business_description,
+                "knowledge_items": knowledge_items_val,
             })
             if run.get("cancel_requested"):
                 _cancel_and_cleanup(); return
@@ -315,7 +321,7 @@ def topic_generate(client_id: int, topic_id: int):
 
             # ── Step 3: ファクトチェック ─────────────────────────────────────
             run.update(step="fact_checker", step_num=3)
-            fact_check = FactCheckerAgent().run({"draft": seo_draft})
+            fact_check = FactCheckerAgent().run({"draft": seo_draft, "knowledge_items": knowledge_items_val})
             if run.get("cancel_requested"):
                 _cancel_and_cleanup(); return
 
@@ -510,6 +516,11 @@ def topic_bulk_generate(client_id: int):
     target_audience_bulk      = client.target_audience or ""
     character_prompt_bulk     = client.character_prompt or ""
     business_description_bulk = client.business_description or ""
+    from models import ClientKnowledge as _CK2
+    knowledge_items_bulk = [
+        {"type": k.knowledge_type, "title": k.title or "", "content": k.content}
+        for k in _CK2.query.filter_by(client_id=client_id).order_by(_CK2.created_at).all()
+    ]
     _th_on_bulk = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
     threads_limit_bulk        = 400 if _th_on_bulk else 0
     image_gen_enabled_bulk    = False  # 画像生成機能無効化
@@ -597,7 +608,7 @@ def topic_bulk_generate(client_id: int):
                 import markdown as _md
 
                 run.update(step="blog_creator", step_num=1)
-                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count, "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt, "taste": article_taste, "target_audience": target_audience, "character_prompt": character_prompt, "business_description": business_description})
+                draft = BlogCreatorAgent().run({"topic": topic_title, "keywords": topic_outline, "tone": "標準", "word_count": target_word_count, "existing_posts": wp_sample_posts, "design_prompt": hp_design_prompt, "taste": article_taste, "target_audience": target_audience, "character_prompt": character_prompt, "business_description": business_description, "knowledge_items": knowledge_items_bulk})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
 
@@ -607,7 +618,7 @@ def topic_bulk_generate(client_id: int):
                     _cancel_and_cleanup(); return
 
                 run.update(step="fact_checker", step_num=3)
-                fact_check = FactCheckerAgent().run({"draft": seo_draft})
+                fact_check = FactCheckerAgent().run({"draft": seo_draft, "knowledge_items": knowledge_items_bulk})
                 if run.get("cancel_requested"):
                     _cancel_and_cleanup(); return
 

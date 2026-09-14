@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from flask import render_template, request, jsonify, redirect, url_for, abort, current_app
 from flask_login import login_required, current_user
-from models import db, Client, Post, PostImage
+from models import db, Client, Post, PostImage, ClientKnowledge
 from routes import designer_bp
 
 logger = logging.getLogger(__name__)
@@ -170,6 +170,10 @@ def _image_post_generate_impl(client_id: int):
     except Exception:
         pass
     hp_design_prompt    = client.hp_design_prompt or ""
+    knowledge_items_val = [
+        {"type": ki.knowledge_type, "title": ki.title or "", "content": ki.content}
+        for ki in ClientKnowledge.query.filter_by(client_id=client_id_val).all()
+    ]
     platform_type       = client.platform_type or "wordpress"
     _th_on_img = getattr(client, "threads_enabled", True) and bool((client.threads_user_id or "").strip())
     threads_limit       = 400 if _th_on_img else 0
@@ -247,6 +251,7 @@ def _image_post_generate_impl(client_id: int):
                 "target_audience": target_audience,
                 "character_prompt": character_prompt,
                 "business_description": business_desc,
+                "knowledge_items": knowledge_items_val,
             })
 
             # ── Stage 2: SEO最適化 ──────────────────────────────────────────
@@ -259,7 +264,7 @@ def _image_post_generate_impl(client_id: int):
 
             # ── Stage 3: ファクトチェック ───────────────────────────────────
             job.update(step="fact_checker", step_label="ファクトチェック中...")
-            fact_check = FactCheckerAgent().run({"draft": seo_draft})
+            fact_check = FactCheckerAgent().run({"draft": seo_draft, "knowledge_items": knowledge_items_val})
 
             # ── Stage 4: リーガルチェック ───────────────────────────────────
             job.update(step="legal_checker", step_label="リーガルチェック中...")

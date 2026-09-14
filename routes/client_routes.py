@@ -1,7 +1,7 @@
 """routes/client_routes.py — 契約企業の管理"""
 from flask import render_template, request, redirect, url_for, flash, abort, send_file, jsonify
 from flask_login import login_required, current_user
-from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem, ClientSubscription
+from models import db, Client, DesignerClient, Post, TopicQueue, Designer, Invoice, InvoiceItem, ClientSubscription, ClientKnowledge
 from config import encrypt_field, decrypt_field
 from routes import designer_bp
 
@@ -366,7 +366,8 @@ def client_edit(client_id: int):
         "ig_access_token": decrypt_field(client.ig_access_token),
         "threads_access_token": decrypt_field(client.threads_access_token or ""),
     }
-    return render_template("designer/clients/form.html", client=client, form_data=form_data, plan_locked=locked)
+    knowledge_items = ClientKnowledge.query.filter_by(client_id=client_id).order_by(ClientKnowledge.created_at).all()
+    return render_template("designer/clients/form.html", client=client, form_data=form_data, plan_locked=locked, knowledge_items=knowledge_items)
 
 
 @designer_bp.route("/clients/<int:client_id>/fetch-wp-posts", methods=["POST"])
@@ -606,3 +607,37 @@ def client_assign(client_id: int):
         db.session.add(DesignerClient(designer_id=designer_id, client_id=client_id))
         db.session.commit()
     return redirect(url_for("designer.client_detail", client_id=client_id))
+
+
+@designer_bp.route("/clients/<int:client_id>/knowledge/add", methods=["POST"])
+@login_required
+def client_knowledge_add(client_id: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    ktype   = request.form.get("knowledge_type", "text")
+    title   = request.form.get("title", "").strip()
+    content = request.form.get("content", "").strip()
+    if not content:
+        flash("内容を入力してください", "error")
+        return redirect(url_for("designer.client_edit", client_id=client_id) + "#knowledge")
+    db.session.add(ClientKnowledge(
+        client_id=client_id,
+        knowledge_type=ktype,
+        title=title,
+        content=content,
+    ))
+    db.session.commit()
+    flash("ナレッジを追加しました", "success")
+    return redirect(url_for("designer.client_edit", client_id=client_id) + "#knowledge")
+
+
+@designer_bp.route("/clients/<int:client_id>/knowledge/<int:kid>/delete", methods=["POST"])
+@login_required
+def client_knowledge_delete(client_id: int, kid: int):
+    client = Client.query.get_or_404(client_id)
+    _assert_access(client)
+    item = ClientKnowledge.query.filter_by(id=kid, client_id=client_id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    flash("ナレッジを削除しました", "success")
+    return redirect(url_for("designer.client_edit", client_id=client_id) + "#knowledge")

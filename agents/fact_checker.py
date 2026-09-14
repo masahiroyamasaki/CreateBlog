@@ -13,6 +13,18 @@ SYSTEM = """あなたはプロのファクトチェッカーです。
 4. **時事・最新性**: 古い情報や現時点と乖離している可能性がある記述
    - 要確認の箇所は 🟡 でフラグを立てる
 
+【企業ナレッジとの照合】
+ナレッジベースが提供されている場合は、記事内容とナレッジを照合し、
+- ナレッジと一致する記述: ✅ で信頼度「高」を示す
+- ナレッジと矛盾する記述: 🔴 で「ナレッジと相違あり」として具体的な差異を示す
+- ナレッジで確認できない記述: 🟡 で「要確認」とし信頼度「中〜低」を示す
+
+【信頼度の表示ルール】
+各問題箇所に信頼度スコアを付与すること:
+- 🔴 **信頼度: 低** — ナレッジと矛盾 or 根拠不明の数値・断定
+- 🟡 **信頼度: 中** — ナレッジで未確認 or 古い可能性あり
+- 🟢 **信頼度: 高** — ナレッジで裏付け済み or 一般的事実
+
 【レポート形式】
 - 問題箇所は引用（>）で抜き出し、具体的な修正案を記載すること
 - 問題がない場合は「問題なし」と明記すること
@@ -24,13 +36,31 @@ SYSTEM = """あなたはプロのファクトチェッカーです。
 class FactCheckerAgent(BaseAgent):
     def _build_message(self, data: dict) -> str:
         draft = data.get("draft", "")
-        return f"""以下のブログ記事をファクトチェックしてください。
+        knowledge_items = data.get("knowledge_items", [])
+
+        knowledge_section = ""
+        if knowledge_items:
+            lines = []
+            for item in knowledge_items:
+                ktype = item.get("type", "text")
+                title = item.get("title", "")
+                content = item.get("content", "")
+                label = f"【{title}】" if title else ""
+                if ktype == "url":
+                    lines.append(f"- {label}URL参照: {content}")
+                else:
+                    lines.append(f"- {label}{content}")
+            knowledge_section = "\n\n---\n## 企業ナレッジベース（正しい情報として扱うこと）\n" + "\n".join(lines)
+
+        return f"""以下のブログ記事をファクトチェックしてください。{knowledge_section}
 
 ---
+## チェック対象記事
 {draft}
 ---
 
-数字・固有名詞・断定表現・時事情報の観点から詳細なファクトチェックレポートを Markdown 形式で作成してください。"""
+数字・固有名詞・断定表現・時事情報の観点から、ナレッジベースとの照合を含めた詳細なファクトチェックレポートを Markdown 形式で作成してください。
+各問題箇所には必ず信頼度（🔴低/🟡中/🟢高）を明示してください。"""
 
     def stream(self, data: dict):
         yield from self._stream(SYSTEM, self._build_message(data))

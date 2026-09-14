@@ -30,6 +30,11 @@ def billing_checkout():
         current_user, success_url, cancel_url
     )
     if not checkout_url:
+        current_app.logger.error(
+            f"[billing] Setup Session作成失敗 designer_id={current_user.id} "
+            f"customer_id={current_user.stripe_customer_id!r} "
+            f"stripe_enabled={stripe_utils.stripe_enabled()}"
+        )
         flash("決済ページの準備中です。しばらくお待ちください。", "error")
         return redirect(url_for("designer.billing"))
     return redirect(checkout_url, code=303)

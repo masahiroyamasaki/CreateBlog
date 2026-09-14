@@ -417,6 +417,22 @@ class AgreementPdf(db.Model):
     agreement = db.relationship("DesignerAgreement", back_populates="pdf")
 
 
+# ─── 企業ナレッジ ─────────────────────────────────────────────────────────────
+
+class ClientKnowledge(db.Model):
+    """企業ごとのナレッジベース。記事生成・ファクトチェックで参照される。"""
+    __tablename__ = "client_knowledge"
+
+    id           = db.Column(db.Integer, primary_key=True)
+    client_id    = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False)
+    knowledge_type = db.Column(db.String(10), default="text")  # "text" or "url"
+    title        = db.Column(db.String(255), default="")       # ラベル（任意）
+    content      = db.Column(db.Text, nullable=False)          # テキスト本文 or URL
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    client = db.relationship("Client", backref=db.backref("knowledge_items", lazy="dynamic", cascade="all, delete-orphan"))
+
+
 # ─── Instagram 週次インサイト ────────────────────────────────────────────────
 
 class WeeklyInsight(db.Model):

@@ -91,6 +91,18 @@ class BlogCreatorAgent(BaseAgent):
         character_prompt = data.get("character_prompt", "")
         character_section = f"\n\n## ライターのキャラクター・ペルソナ\n{character_prompt}" if character_prompt else ""
 
+        knowledge_items = data.get("knowledge_items", [])
+        if knowledge_items:
+            lines = []
+            for item in knowledge_items:
+                title = item.get("title", "")
+                content = item.get("content", "")
+                label = f"【{title}】" if title else ""
+                lines.append(f"- {label}{content}")
+            knowledge_section = "\n\n## 企業ナレッジベース（必ずこの情報を正として記事に反映すること）\n" + "\n".join(lines)
+        else:
+            knowledge_section = ""
+
         taste = data.get("taste", "standard")
         _taste_map = {
             "standard":     "標準（既存記事のトンマナに準じる）",
@@ -114,7 +126,7 @@ class BlogCreatorAgent(BaseAgent):
 
 ## 文字数・トーン
 {word_count} ／ トーン: {tone}
-{posts_section}{design_section}{business_section}{audience_section}{character_section}{taste_section}
+{posts_section}{design_section}{business_section}{audience_section}{character_section}{taste_section}{knowledge_section}
 
 6ステップに従い、Markdown 形式で記事を出力してください。"""
 

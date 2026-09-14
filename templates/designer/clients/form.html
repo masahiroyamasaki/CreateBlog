@@ -644,6 +644,64 @@
         <p class="hint">投稿予約を自動設定するときのデフォルトスケジュールです。</p>
       </div>
 
+      <!-- ナレッジベース -->
+      {% if client %}
+      <div class="form-group section-block" id="knowledge">
+        <p class="section-title">ナレッジベース</p>
+        <p class="hint" style="margin-bottom:12px;">記事生成・ファクトチェック時に参照される正確な情報源です。URL またはテキストで登録してください。</p>
+
+        {% if knowledge_items %}
+        <div style="margin-bottom:16px;display:flex;flex-direction:column;gap:8px;">
+          {% for item in knowledge_items %}
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+            <span style="flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:4px;margin-top:2px;
+              {% if item.knowledge_type == 'url' %}background:#dbeafe;color:#1d4ed8;{% else %}background:#f0fdf4;color:#166534;{% endif %}">
+              {{ 'URL' if item.knowledge_type == 'url' else 'テキスト' }}
+            </span>
+            <div style="flex:1;min-width:0;">
+              {% if item.title %}<div style="font-size:12px;font-weight:600;margin-bottom:2px;">{{ item.title }}</div>{% endif %}
+              <div style="font-size:12px;color:var(--muted);word-break:break-all;">
+                {% if item.knowledge_type == 'url' %}
+                  <a href="{{ item.content }}" target="_blank" rel="noopener" style="color:var(--primary);">{{ item.content }}</a>
+                {% else %}
+                  {{ item.content }}
+                {% endif %}
+              </div>
+            </div>
+            <form method="POST" action="{{ url_for('designer.client_knowledge_delete', client_id=client.id, kid=item.id) }}"
+                  style="flex-shrink:0;" onsubmit="return confirm('このナレッジを削除しますか？')">
+              <button type="submit" class="btn btn-danger btn-sm" style="padding:3px 10px;">削除</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 追加フォーム -->
+        <form method="POST" action="{{ url_for('designer.client_knowledge_add', client_id=client.id) }}"
+              style="display:grid;grid-template-columns:100px 1fr auto;gap:8px;align-items:end;">
+          <div>
+            <label style="font-size:11px;color:var(--muted);">種類</label>
+            <select name="knowledge_type" class="form-control" style="font-size:13px;">
+              <option value="text">テキスト</option>
+              <option value="url">URL</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);">内容（URLまたはテキスト）</label>
+            <input type="text" name="content" class="form-control" placeholder="https://... またはテキストで入力" style="font-size:13px;">
+          </div>
+          <div>
+            <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">追加</button>
+          </div>
+          <div style="grid-column:2/3;">
+            <label style="font-size:11px;color:var(--muted);">ラベル（任意）</label>
+            <input type="text" name="title" class="form-control" placeholder="例: 会社概要、料金表" style="font-size:13px;">
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
       <div style="display:flex;gap:10px;margin-top:28px;">
         <a href="{{ url_for('designer.client_detail', client_id=client.id) if client else url_for('designer.clients') }}" class="btn btn-secondary">キャンセル</a>
         <button type="submit" class="btn btn-primary">保存する</button>
