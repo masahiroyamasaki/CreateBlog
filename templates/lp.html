@@ -749,12 +749,12 @@
       font-weight: 700;
       margin-top: 8px;
     }
-    /* ━━━ 時間削減グラフ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* ━━━ 時間削減グラフ（カレンダー型） ━━━━━━━━━━━━━━━━━━━━━ */
     .timesave-chart-wrap {
       background: var(--white);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 40px 48px 32px;
+      padding: 40px 40px 32px;
       margin-bottom: 64px;
       box-shadow: 0 2px 16px rgba(0,0,0,0.05);
     }
@@ -763,94 +763,91 @@
       font-size: 15px;
       font-weight: 700;
       color: var(--text-muted);
-      margin-bottom: 32px;
+      margin-bottom: 36px;
       letter-spacing: 0.04em;
     }
-    .timesave-chart {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 32px;
+    .tchart { display: flex; flex-direction: column; gap: 24px; }
+    .tchart-row { display: flex; align-items: center; gap: 20px; }
+    .tchart-label { width: 130px; flex-shrink: 0; text-align: center; }
+    .tchart-badge {
+      display: inline-block;
+      border-radius: 40px;
+      padding: 3px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
     }
-    .chart-col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .chart-label-top { font-size: 13px; font-weight: 700; }
-    .before-color { color: #dc2626; }
-    .after-color  { color: #16a34a; }
-    .chart-bar-area {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      height: 220px;
-    }
-    .chart-bar {
-      width: 120px;
-      border-radius: 10px 10px 0 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 12px;
-      position: relative;
-    }
-    .chart-bar.before-bar { background: linear-gradient(180deg, #fca5a5 0%, #ef4444 100%); }
-    .chart-bar-val {
-      font-size: 14px;
-      font-weight: 900;
-      color: var(--white);
-      white-space: nowrap;
-    }
-    .chart-bar-stack {
-      width: 120px;
+    .tchart-badge-before { background: #fee2e2; color: #dc2626; }
+    .tchart-badge-after  { background: #dcfce7; color: #16a34a; }
+    .tchart-label-sub { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 6px; }
+    .tchart-count-wrap { font-size: 11px; color: var(--text); font-weight: 700; }
+    .tchart-count-num { font-size: 22px; font-weight: 900; color: #dc2626; }
+    .tchart-count-num.after-num { color: #16a34a; }
+    .tchart-days { flex: 1; display: flex; gap: 3px; }
+    .tcell {
+      flex: 1;
+      min-width: 0;
+      height: 48px;
+      border-radius: 6px;
       display: flex;
       flex-direction: column;
-    }
-    .chart-bar-auto {
-      background: rgba(134,239,172,0.35);
-      border: 2px dashed #86efac;
-      border-bottom: none;
-      border-radius: 10px 10px 0 0;
-      display: flex;
       align-items: center;
       justify-content: center;
-    }
-    .chart-bar-val-small {
-      font-size: 12px;
+      font-size: 9px;
       font-weight: 700;
-      color: #16a34a;
+      cursor: default;
+      transition: transform 0.12s;
     }
-    .chart-bar-work {
-      background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
-      border-radius: 0 0 0 0;
+    .tcell:hover { transform: scaleY(1.1); z-index: 1; }
+    .tcell-label { line-height: 1; }
+    .tcell-num { font-size: 8px; font-weight: 400; opacity: 0.65; margin-top: 3px; line-height: 1; }
+    .tcell-work-before { background: linear-gradient(180deg, #fca5a5, #ef4444); color: #fff; }
+    .tcell-idle-before { background: #fef2f2; color: #fca5a5; }
+    .tcell-work-after  { background: linear-gradient(180deg, #4ade80, #16a34a); color: #fff; }
+    .tcell-auto  { background: #dcfce7; color: #16a34a; border: 1px dashed #86efac; }
+    .tcell-free  { background: #eff6ff; color: #93c5fd; border: 1px solid #dbeafe; }
+    .tchart-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .tchart-legend {
       display: flex;
-      align-items: center;
+      gap: 20px;
       justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
     }
-    .chart-bar-work .chart-bar-val { font-size: 13px; }
-    .chart-label-bottom {
-      font-size: 12px;
-      color: var(--text-muted);
+    .tchart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-body); }
+    .tchart-legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+    .dot-work-before { background: #ef4444; }
+    .dot-work-after  { background: #16a34a; }
+    .dot-auto { background: #dcfce7; border: 1px dashed #86efac; }
+    .dot-free { background: #eff6ff; border: 1px solid #dbeafe; }
+    .tchart-saving-banner {
+      margin-top: 20px;
+      background: linear-gradient(135deg, var(--navy-deeper), var(--navy));
+      border-radius: 12px;
+      padding: 16px 24px;
       text-align: center;
-      line-height: 1.5;
+      color: var(--white);
+      font-size: 15px;
+      line-height: 1.6;
     }
-    .chart-arrow {
-      font-size: 36px;
-      color: var(--navy);
-      font-weight: 900;
-      padding-bottom: 40px;
-    }
+    .tchart-saving-banner strong { color: #f09070; }
     .timesave-chart-note {
       text-align: center;
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 20px;
+      margin-top: 14px;
     }
 
     @media (max-width: 768px) {
       .timesave-compare { grid-template-columns: 1fr; }
       .timesave-arrow { transform: rotate(90deg); text-align: center; }
       .feature4-grid { grid-template-columns: 1fr; }
-      .timesave-chart-wrap { padding: 28px 20px 24px; }
-      .chart-bar { width: 90px; }
-      .chart-bar-stack { width: 90px; }
+      .timesave-chart-wrap { padding: 24px 16px 20px; }
+      .tchart-row { flex-direction: column; align-items: flex-start; }
+      .tchart-label { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; }
+      .tchart-days { width: 100%; }
+      .tcell { height: 36px; }
     }
 
     /* ━━━ 対応媒体 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -1425,37 +1422,38 @@
 
     <!-- 時間削減グラフ -->
     <div class="timesave-chart-wrap">
-      <div class="timesave-chart-title">月間の作業時間イメージ</div>
-      <div class="timesave-chart">
+      <div class="timesave-chart-title">月間の投稿作業スケジュールイメージ（30日間）</div>
+      <div class="tchart">
         <!-- Before -->
-        <div class="chart-col">
-          <div class="chart-label-top before-color">導入前</div>
-          <div class="chart-bar-area">
-            <div class="chart-bar before-bar" style="height:220px;">
-              <span class="chart-bar-val">約30時間</span>
-            </div>
+        <div class="tchart-row">
+          <div class="tchart-label">
+            <span class="tchart-badge tchart-badge-before">導入前</span>
+            <div class="tchart-label-sub">3日に1回<br>投稿作業が発生</div>
+            <div class="tchart-count-wrap"><span class="tchart-count-num">10</span>回/月 作業</div>
           </div>
-          <div class="chart-label-bottom">毎日投稿作業</div>
+          <div class="tchart-days" id="before-days"></div>
         </div>
-        <!-- Arrow -->
-        <div class="chart-arrow">→</div>
-        <!-- After batch -->
-        <div class="chart-col">
-          <div class="chart-label-top after-color">導入後</div>
-          <div class="chart-bar-area">
-            <div class="chart-bar-stack">
-              <div class="chart-bar after-bar-auto" style="height:176px;">
-                <span class="chart-bar-val-small">自動化</span>
-              </div>
-              <div class="chart-bar after-bar-work" style="height:44px;">
-                <span class="chart-bar-val">約3時間</span>
-              </div>
-            </div>
+        <div class="tchart-divider"></div>
+        <!-- After -->
+        <div class="tchart-row">
+          <div class="tchart-label">
+            <span class="tchart-badge tchart-badge-after">導入後</span>
+            <div class="tchart-label-sub">月1回まとめて設定<br>あとは自動投稿</div>
+            <div class="tchart-count-wrap"><span class="tchart-count-num after-num">1</span>回/月 作業</div>
           </div>
-          <div class="chart-label-bottom">月1回まとめ作業<br>＋自動投稿</div>
+          <div class="tchart-days" id="after-days"></div>
         </div>
       </div>
-      <div class="timesave-chart-note">※あくまでイメージです。運用規模により異なります。</div>
+      <div class="tchart-legend">
+        <div class="tchart-legend-item"><span class="tchart-legend-dot dot-work-before"></span>作業日（投稿準備）</div>
+        <div class="tchart-legend-item"><span class="tchart-legend-dot dot-work-after"></span>まとめ作業日（月1回）</div>
+        <div class="tchart-legend-item"><span class="tchart-legend-dot dot-auto"></span>自動投稿日</div>
+        <div class="tchart-legend-item"><span class="tchart-legend-dot dot-free"></span>別の仕事に使える日</div>
+      </div>
+      <div class="tchart-saving-banner">
+        🎉 月<strong>9日分の作業時間</strong>が<strong>別の仕事</strong>に充てられるようになります
+      </div>
+      <div class="timesave-chart-note">※3日に1回投稿（月10回）の場合のイメージです</div>
     </div>
 
     <!-- 4つの機能 -->
@@ -1823,6 +1821,46 @@
 </footer>
 
 <script>
+// カレンダー型グラフのセル生成
+(function() {
+  var postDays = new Set([1,4,7,10,13,16,19,22,25,28]);
+  var containers = { before: document.getElementById('before-days'), after: document.getElementById('after-days') };
+  if (!containers.before || !containers.after) return;
+
+  for (var i = 1; i <= 30; i++) {
+    ['before','after'].forEach(function(type) {
+      var cell = document.createElement('div');
+      var labelSpan = document.createElement('span');
+      var numSpan = document.createElement('span');
+      labelSpan.className = 'tcell-label';
+      numSpan.className = 'tcell-num';
+      numSpan.textContent = i;
+
+      if (type === 'before') {
+        if (postDays.has(i)) {
+          cell.className = 'tcell tcell-work-before';
+          labelSpan.textContent = '作';
+        } else {
+          cell.className = 'tcell tcell-idle-before';
+        }
+      } else {
+        if (i === 1) {
+          cell.className = 'tcell tcell-work-after';
+          labelSpan.textContent = '作';
+        } else if (postDays.has(i)) {
+          cell.className = 'tcell tcell-auto';
+          labelSpan.textContent = '自';
+        } else {
+          cell.className = 'tcell tcell-free';
+        }
+      }
+      cell.appendChild(labelSpan);
+      cell.appendChild(numSpan);
+      containers[type].appendChild(cell);
+    });
+  }
+})();
+
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
