@@ -639,6 +639,122 @@
     .sim-highlight-unit { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.85); }
     .sim-note { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 8px; }
 
+    /* ━━━ 時間削減セクション ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .timesave-compare {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-top: 56px;
+      margin-bottom: 64px;
+    }
+    .timesave-box {
+      border-radius: 18px;
+      padding: 32px 28px;
+    }
+    .timesave-box.before {
+      background: #fff5f5;
+      border: 2px solid #fca5a5;
+    }
+    .timesave-box.after {
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+    }
+    .timesave-box-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .timesave-box.before .timesave-box-label { color: #dc2626; }
+    .timesave-box.after  .timesave-box-label { color: #16a34a; }
+    .timesave-box h4 {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 16px;
+      line-height: 1.35;
+    }
+    .timesave-box.before h4 { color: #991b1b; }
+    .timesave-box.after  h4 { color: #166534; }
+    .timesave-task {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 0;
+      font-size: 14px;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    .timesave-task:last-child { border-bottom: none; }
+    .timesave-task-icon { font-size: 16px; flex-shrink: 0; }
+    .timesave-arrow {
+      font-size: 40px;
+      color: var(--navy);
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .feature4-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .feature4-card {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feature4-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.09);
+    }
+    .feature4-icon-wrap {
+      width: 60px; height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .feature4-icon-wrap.purple { background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
+    .feature4-icon-wrap.orange { background: linear-gradient(135deg, #fff7ed, #ffedd5); }
+    .feature4-icon-wrap.teal   { background: linear-gradient(135deg, #f0fdfa, #ccfbf1); }
+    .feature4-icon-wrap.blue   { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+    .feature4-content {}
+    .feature4-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+    .feature4-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+    }
+    .feature4-badge {
+      display: inline-block;
+      background: rgba(47,93,138,0.1);
+      color: var(--navy);
+      border-radius: 40px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    @media (max-width: 768px) {
+      .timesave-compare { grid-template-columns: 1fr; }
+      .timesave-arrow { transform: rotate(90deg); text-align: center; }
+      .feature4-grid { grid-template-columns: 1fr; }
+    }
+
     /* ━━━ 対応媒体 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     .media-grid {
       display: grid;
@@ -1167,6 +1283,97 @@
           <span class="sim-highlight-unit">万円</span>
         </div>
         <div class="sim-note">※あくまで目安の試算です</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 時間削減 ══════════════════ -->
+<section class="bg-light" id="timesave">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-eyebrow">Time Saving</div>
+      <h2 class="section-title">毎日の作業を、<br><em style="color:var(--orange);font-style:normal;">週1回にまとめる</em></h2>
+      <p class="section-body">
+        InstagramやHP運用で毎日時間を取られていませんか？<br>
+        Artivoなら、まとめて1日作業するだけ。あとはスケジュール通りに自動で動き続けます。
+      </p>
+    </div>
+
+    <!-- Before / After 比較 -->
+    <div class="timesave-compare">
+      <div class="timesave-box before">
+        <div class="timesave-box-label">Before — 今まで</div>
+        <h4>毎日、作業に<br>追われていた</h4>
+        <div class="timesave-task"><span class="timesave-task-icon">😩</span>今日のネタを考える</div>
+        <div class="timesave-task"><span class="timesave-task-icon">😩</span>文章を書く・修正する</div>
+        <div class="timesave-task"><span class="timesave-task-icon">😩</span>画像を用意して投稿する</div>
+        <div class="timesave-task"><span class="timesave-task-icon">😩</span>ハッシュタグを毎回調べる</div>
+        <div class="timesave-task"><span class="timesave-task-icon">😩</span>これを毎日・毎アカウント繰り返す</div>
+      </div>
+
+      <div class="timesave-arrow">→</div>
+
+      <div class="timesave-box after">
+        <div class="timesave-box-label">After — Artivo導入後</div>
+        <h4>週1回まとめるだけ。<br>あとは全自動</h4>
+        <div class="timesave-task"><span class="timesave-task-icon">✅</span>AIが投稿ネタを一括提案</div>
+        <div class="timesave-task"><span class="timesave-task-icon">✅</span>画像をアップするだけで記事生成</div>
+        <div class="timesave-task"><span class="timesave-task-icon">✅</span>スケジュール投稿で自動公開</div>
+        <div class="timesave-task"><span class="timesave-task-icon">✅</span>運用ノウハウはシステムが実装済み</div>
+        <div class="timesave-task"><span class="timesave-task-icon">✅</span>確認だけして、あとは任せるだけ</div>
+      </div>
+    </div>
+
+    <!-- 4つの機能 -->
+    <div class="text-center" style="margin-bottom:40px;">
+      <h3 style="font-size:clamp(20px,2.8vw,28px);font-weight:900;letter-spacing:-0.01em;">
+        時間を削減する4つの機能
+      </h3>
+    </div>
+    <div class="feature4-grid">
+      <div class="feature4-card">
+        <div class="feature4-icon-wrap purple">📅</div>
+        <div class="feature4-content">
+          <div class="feature4-title">スケジュール投稿機能</div>
+          <div class="feature4-desc">
+            投稿日時をまとめて設定するだけ。曜日・時刻を指定すれば、あとはArtivoが自動で公開。毎日ログインする必要はありません。
+          </div>
+          <span class="feature4-badge">自動投稿</span>
+        </div>
+      </div>
+
+      <div class="feature4-card">
+        <div class="feature4-icon-wrap orange">🖼️</div>
+        <div class="feature4-content">
+          <div class="feature4-title">画像から記事生成機能</div>
+          <div class="feature4-desc">
+            写真や画像をアップロードするだけで、AIが内容を読み取りキャプション・記事を自動生成。文章を考える時間をゼロにします。
+          </div>
+          <span class="feature4-badge">AI生成</span>
+        </div>
+      </div>
+
+      <div class="feature4-card">
+        <div class="feature4-icon-wrap teal">💡</div>
+        <div class="feature4-content">
+          <div class="feature4-title">記事ネタ出力機能</div>
+          <div class="feature4-desc">
+            業種・ターゲット・季節に合わせてAIが投稿ネタを複数提案。「今日は何を投稿しよう」と悩む時間を完全に排除します。
+          </div>
+          <span class="feature4-badge">ネタ自動提案</span>
+        </div>
+      </div>
+
+      <div class="feature4-card">
+        <div class="feature4-icon-wrap blue">📖</div>
+        <div class="feature4-content">
+          <div class="feature4-title">Instagram運用ノウハウ提供</div>
+          <div class="feature4-desc">
+            最適な投稿頻度・ハッシュタグ選定・エンゲージメントを高める文体など、プロのノウハウがシステムに組み込まれています。あなたが学ぶ必要はありません。
+          </div>
+          <span class="feature4-badge">ノウハウ内蔵</span>
+        </div>
       </div>
     </div>
   </div>
