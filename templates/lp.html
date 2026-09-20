@@ -749,10 +749,108 @@
       font-weight: 700;
       margin-top: 8px;
     }
+    /* ━━━ 時間削減グラフ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .timesave-chart-wrap {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 48px 32px;
+      margin-bottom: 64px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    }
+    .timesave-chart-title {
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      letter-spacing: 0.04em;
+    }
+    .timesave-chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 32px;
+    }
+    .chart-col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .chart-label-top { font-size: 13px; font-weight: 700; }
+    .before-color { color: #dc2626; }
+    .after-color  { color: #16a34a; }
+    .chart-bar-area {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 220px;
+    }
+    .chart-bar {
+      width: 120px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 12px;
+      position: relative;
+    }
+    .chart-bar.before-bar { background: linear-gradient(180deg, #fca5a5 0%, #ef4444 100%); }
+    .chart-bar-val {
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--white);
+      white-space: nowrap;
+    }
+    .chart-bar-stack {
+      width: 120px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chart-bar-auto {
+      background: rgba(134,239,172,0.35);
+      border: 2px dashed #86efac;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chart-bar-val-small {
+      font-size: 12px;
+      font-weight: 700;
+      color: #16a34a;
+    }
+    .chart-bar-work {
+      background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+      border-radius: 0 0 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chart-bar-work .chart-bar-val { font-size: 13px; }
+    .chart-label-bottom {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+    .chart-arrow {
+      font-size: 36px;
+      color: var(--navy);
+      font-weight: 900;
+      padding-bottom: 40px;
+    }
+    .timesave-chart-note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 20px;
+    }
+
     @media (max-width: 768px) {
       .timesave-compare { grid-template-columns: 1fr; }
       .timesave-arrow { transform: rotate(90deg); text-align: center; }
       .feature4-grid { grid-template-columns: 1fr; }
+      .timesave-chart-wrap { padding: 28px 20px 24px; }
+      .chart-bar { width: 90px; }
+      .chart-bar-stack { width: 90px; }
     }
 
     /* ━━━ 対応媒体 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -1245,8 +1343,8 @@
       </div>
       <div class="solution-card">
         <div class="solution-num">2</div>
-        <h3>キャプションを<br>自動作成</h3>
-        <p>Instagram用の投稿文をAIが自動で生成。ブランドのトーンに合わせた文体設定も可能。あなたは確認するだけ。</p>
+        <h3>作成した画像から<br>記事を自動生成</h3>
+        <p>用意した画像をアップロードするだけで、AIが内容を読み取り記事を自動生成。ブランドのトーンに合わせた文体設定も可能。あなたは確認するだけ。</p>
       </div>
       <div class="solution-card">
         <div class="solution-num">3</div>
@@ -1293,7 +1391,7 @@
   <div class="container">
     <div class="text-center">
       <div class="section-eyebrow">Time Saving</div>
-      <h2 class="section-title">毎日の作業を、<br><em style="color:var(--orange);font-style:normal;">週1回にまとめる</em></h2>
+      <h2 class="section-title">毎日の作業を、<br><em style="color:var(--orange);font-style:normal;">月1回にまとめる</em></h2>
       <p class="section-body">
         InstagramやHP運用で毎日時間を取られていませんか？<br>
         Artivoなら、まとめて1日作業するだけ。あとはスケジュール通りに自動で動き続けます。
@@ -1316,13 +1414,48 @@
 
       <div class="timesave-box after">
         <div class="timesave-box-label">After — Artivo導入後</div>
-        <h4>週1回まとめるだけ。<br>あとは全自動</h4>
+        <h4>月1回まとめるだけ。<br>あとは全自動</h4>
         <div class="timesave-task"><span class="timesave-task-icon">✅</span>AIが投稿ネタを一括提案</div>
         <div class="timesave-task"><span class="timesave-task-icon">✅</span>画像をアップするだけで記事生成</div>
         <div class="timesave-task"><span class="timesave-task-icon">✅</span>スケジュール投稿で自動公開</div>
         <div class="timesave-task"><span class="timesave-task-icon">✅</span>運用ノウハウはシステムが実装済み</div>
         <div class="timesave-task"><span class="timesave-task-icon">✅</span>確認だけして、あとは任せるだけ</div>
       </div>
+    </div>
+
+    <!-- 時間削減グラフ -->
+    <div class="timesave-chart-wrap">
+      <div class="timesave-chart-title">月間の作業時間イメージ</div>
+      <div class="timesave-chart">
+        <!-- Before -->
+        <div class="chart-col">
+          <div class="chart-label-top before-color">導入前</div>
+          <div class="chart-bar-area">
+            <div class="chart-bar before-bar" style="height:220px;">
+              <span class="chart-bar-val">約30時間</span>
+            </div>
+          </div>
+          <div class="chart-label-bottom">毎日投稿作業</div>
+        </div>
+        <!-- Arrow -->
+        <div class="chart-arrow">→</div>
+        <!-- After batch -->
+        <div class="chart-col">
+          <div class="chart-label-top after-color">導入後</div>
+          <div class="chart-bar-area">
+            <div class="chart-bar-stack">
+              <div class="chart-bar after-bar-auto" style="height:176px;">
+                <span class="chart-bar-val-small">自動化</span>
+              </div>
+              <div class="chart-bar after-bar-work" style="height:44px;">
+                <span class="chart-bar-val">約3時間</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-label-bottom">月1回まとめ作業<br>＋自動投稿</div>
+        </div>
+      </div>
+      <div class="timesave-chart-note">※あくまでイメージです。運用規模により異なります。</div>
     </div>
 
     <!-- 4つの機能 -->
@@ -1348,7 +1481,7 @@
         <div class="feature4-content">
           <div class="feature4-title">画像から記事生成機能</div>
           <div class="feature4-desc">
-            写真や画像をアップロードするだけで、AIが内容を読み取りキャプション・記事を自動生成。文章を考える時間をゼロにします。
+            作成した画像をアップロードするだけで、AIが内容を読み取り記事を自動生成。文章を考える時間をゼロにします。
           </div>
           <span class="feature4-badge">AI生成</span>
         </div>
@@ -1394,7 +1527,7 @@
           <div class="media-icon ig">📸</div>
           <div>
             <h3>Instagram</h3>
-            <p>キャプション自動生成＋自動投稿</p>
+            <p>画像から記事生成＋スケジュール自動投稿</p>
           </div>
         </div>
         <div class="media-card-body">
