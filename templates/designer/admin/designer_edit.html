@@ -147,14 +147,6 @@
           <option value="admin"    {% if designer.role == 'admin'    %}selected{% endif %}>管理者</option>
         </select>
       </div>
-      <div class="form-group">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;">
-          <input type="checkbox" name="billing_exempt" value="1" {% if designer.billing_exempt %}checked{% endif %}
-                 style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
-          課金免除（クレジット登録なしで操作を許可）
-        </label>
-        <div class="hint" style="margin-top:4px;">有効にすると、このデザイナーはクレジットカードを登録していなくても企業追加・記事生成・投稿などの操作が可能になります。管理者のみ設定できます。</div>
-      </div>
       {% endif %}
       <div class="form-group">
         <label>新しいパスワード（変更する場合のみ入力）</label>
