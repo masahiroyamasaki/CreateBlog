@@ -27,13 +27,15 @@ def can_add_client(designer) -> bool:
 
 def is_client_operational(client, designer) -> bool:
     """クライアントの操作（生成・投稿）が許可されているか判定する。
-    管理者・テスト企業は常に許可。
+    管理者・テスト企業・課金免除企業は常に許可。
     デザイナーは「利用規約同意済み」かつ「subscription_status == active」かつ「client_status == active」の場合のみ許可。
     """
     if designer.role == "admin":
         return True
     if client.client_status == "test":
         return True
+    if getattr(client, "billing_exempt", False):
+        return client.client_status == "active"
     if not designer.has_agreed_terms:
         return False
     if designer.subscription_status != "active":

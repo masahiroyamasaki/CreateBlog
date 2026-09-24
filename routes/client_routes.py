@@ -323,6 +323,8 @@ def client_edit(client_id: int):
         if _new_status == "test" and current_user.role != "admin":
             _new_status = "active"
         client.client_status = _new_status
+        if current_user.role == "admin":
+            client.billing_exempt = request.form.get("billing_exempt") == "1"
         client.delivery_method = request.form.get("delivery_method", "email")
         client.webhook_url = request.form.get("webhook_url", "")
         client.schedule_type = request.form.get("schedule_type", "weekly")
@@ -591,6 +593,19 @@ def client_fetch_threads_uid(client_id: int):
         })
     except Exception as e:
         return jsonify({"success": False, "reason": f"取得失敗: {e}"})
+
+
+@designer_bp.route("/clients/<int:client_id>/toggle-billing-exempt", methods=["POST"])
+@login_required
+def client_toggle_billing_exempt(client_id: int):
+    if current_user.role != "admin":
+        abort(403)
+    client = Client.query.get_or_404(client_id)
+    client.billing_exempt = not bool(getattr(client, "billing_exempt", False))
+    db.session.commit()
+    state = "有効" if client.billing_exempt else "無効"
+    flash(f"「{client.name}」の課金免除を{state}にしました", "success")
+    return redirect(url_for("designer.client_detail", client_id=client_id))
 
 
 @designer_bp.route("/clients/<int:client_id>/assign", methods=["POST"])

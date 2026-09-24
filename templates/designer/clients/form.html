@@ -50,6 +50,18 @@
         </select>
       </div>
 
+      {% if current_user.role == 'admin' %}
+      <div class="form-group" style="padding:12px 14px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0;">
+          <input type="checkbox" name="billing_exempt" value="1"
+                 {% if client and client.billing_exempt %}checked{% endif %}
+                 style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
+          <span style="font-weight:600;font-size:13px;">課金免除（管理者設定）</span>
+        </label>
+        <div class="hint" style="margin-top:6px;padding-left:26px;">有効にすると、この企業に限り担当デザイナーがクレジットカード未登録でも記事生成・投稿などの操作が可能になります。</div>
+      </div>
+      {% endif %}
+
       <!-- 料金プラン（投稿タイプ → 投稿数 → 月額自動計算） -->
       <div class="form-group section-block">
         <p class="section-title">料金プラン</p>

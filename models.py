@@ -96,6 +96,7 @@ class Client(db.Model):
     character_prompt   = db.Column(db.Text)                            # キャラ・ペルソナ設定
     email_format       = db.Column(db.String(10), default="html")      # email_only出力形式: html/text
     client_status = db.Column(db.String(20), default="active")  # active/pending/setting
+    billing_exempt = db.Column(db.Boolean, default=False)  # 課金免除フラグ（管理者のみ設定可）
     monthly_post_count = db.Column(db.Integer, default=4)       # 月間契約投稿数
     monthly_fee = db.Column(db.Integer, default=0)              # 月額料金（円）
     schedule_type = db.Column(db.String(10), default="weekly")  # weekly / monthly
