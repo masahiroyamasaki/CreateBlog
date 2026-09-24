@@ -38,6 +38,26 @@
         {% endfor %}
       </table>
 
+      <!-- 課金免除ステータス -->
+      <div style="margin-top:16px;padding:14px 16px;background:{% if designer.billing_exempt %}rgba(16,185,129,0.08){% else %}var(--bg3){% endif %};border-radius:10px;border:1px solid {% if designer.billing_exempt %}rgba(16,185,129,0.3){% else %}var(--border){% endif %};">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">課金免除ステータス</div>
+            {% if designer.billing_exempt %}
+            <span style="font-size:13px;font-weight:700;color:#059669;">✓ 免除中（クレジット登録不要）</span>
+            {% else %}
+            <span style="font-size:13px;color:var(--muted);">通常（クレジット登録が必要）</span>
+            {% endif %}
+          </div>
+          <form method="POST" action="{{ url_for('designer.admin_toggle_billing_exempt', designer_id=designer.id) }}"
+                onsubmit="return confirm('課金免除を{% if designer.billing_exempt %}無効{% else %}有効{% endif %}にします。よろしいですか？')">
+            <button type="submit" class="btn btn-sm {% if designer.billing_exempt %}btn-secondary{% else %}btn-primary{% endif %}" style="font-size:12px;padding:5px 12px;">
+              {% if designer.billing_exempt %}免除を解除{% else %}免除を有効にする{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+
       {% if designer.bank_name or designer.bank_account_number %}
       <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">振込口座</div>

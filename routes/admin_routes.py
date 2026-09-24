@@ -86,6 +86,7 @@ def admin_designer_edit(designer_id: int):
             new_role = request.form.get("role", "designer")
             if new_role in ("designer", "admin"):
                 designer.role = new_role
+            designer.billing_exempt = request.form.get("billing_exempt") == "1"
         new_pass = request.form.get("new_password", "").strip()
         if new_pass:
             if len(new_pass) < 8:
@@ -531,6 +532,19 @@ def admin_designer_delete(designer_id: int):
         return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
 
     return redirect(url_for("designer.admin_designers"))
+
+
+@designer_bp.route("/admin/designers/<int:designer_id>/toggle-billing-exempt", methods=["POST"])
+@login_required
+def admin_toggle_billing_exempt(designer_id: int):
+    """課金免除フラグをトグルする（管理者専用）"""
+    _admin_only()
+    designer = Designer.query.get_or_404(designer_id)
+    designer.billing_exempt = not bool(getattr(designer, "billing_exempt", False))
+    db.session.commit()
+    state = "有効" if designer.billing_exempt else "無効"
+    flash(f"課金免除を{state}にしました", "success")
+    return redirect(url_for("designer.admin_designer_detail", designer_id=designer_id))
 
 
 @designer_bp.route("/admin/run-migrate", methods=["POST"])
